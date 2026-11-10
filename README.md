@@ -7,7 +7,7 @@ Music Seerr is a self-hosted web app for finding music, previewing tracks, downl
 Requirements: Docker Engine with the Compose plugin, a reachable Jellyfin server, and enough disk space for your music library. The image targets `linux/amd64` and `linux/arm64` through the official Python base image; Raspberry Pi performance still depends on the model and storage.
 
 ```sh
-git clone https://github.com/<owner>/music-seerr.git
+git clone https://github.com/giulio177/music-seerr.git
 cd music-seerr
 mkdir -p music backend/data
 sudo chown -R 10001:10001 music backend/data
@@ -27,7 +27,7 @@ The default web endpoint uses HTTP. Keep it on a trusted network, or put it behi
 ## Beta limitations
 
 - This is beta software. The setup, Jellyfin integration, and download sources can fail when external services change.
-- Download jobs and queue state live in process memory. A restart interrupts active jobs; they do not resume automatically.
+- Queue execution state lives in process memory. A restart interrupts active jobs; they do not resume automatically. Download history is stored separately in SQLite.
 - SQLite stores app sessions and download history for a single app instance. There is no database migration or automatic backup workflow yet.
 - The application has not been validated on every Raspberry Pi model or storage setup. Check logs, free disk space, and Jellyfin library visibility after installation.
 - Downloads require a working `yt-dlp` source and `ffmpeg`; availability and quality vary by track and source.
