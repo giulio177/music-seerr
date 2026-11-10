@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 97813)
-Total output lines: 8404
-
 <!DOCTYPE html>
 <html lang="it">
 <head>
@@ -3720,7 +3717,2356 @@ Total output lines: 8404
                             </div>
                             <button class="btn-shelf-see-all" onclick="openJellyfinAllView('albums')">
                                 Mostra tutto
-                                <svg viewBox="0 0 24 24"><path d="M10 6L…37813 tokens truncated…) playerQueueCount.textContent = Math.max(0, total - index - 1);
+                                <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+                            </button>
+                        </div>
+                        <div class="shelf-carousel-wrapper">
+                            <button class="shelf-arrow-edge left" id="arrowLeft_jellyAlbumsTrack" onclick="scrollShelf('jellyAlbumsTrack', -520)" title="Scorri a sinistra">
+                                <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+                            </button>
+                            <div id="jellyAlbumsTrack" class="jelly-shelf-track" onscroll="updateShelfArrows('jellyAlbumsTrack')">
+                                <div class="empty-state"><p>Caricamento album da Jellyfin...</p></div>
+                            </div>
+                            <button class="shelf-arrow-edge right" id="arrowRight_jellyAlbumsTrack" onclick="scrollShelf('jellyAlbumsTrack', 520)" title="Scorri a destra">
+                                <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- SHELF 3: ARTISTI -->
+                    <div class="jelly-shelf-section" id="shelfArtists">
+                        <div class="jelly-shelf-header">
+                            <div class="jelly-shelf-title-wrap">
+                                <div class="jelly-shelf-title">
+                                    <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                                    <span data-i18n="jellyfin.shelf_artists">Artisti</span>
+                                </div>
+                                <span class="jelly-shelf-count" id="countArtists">0</span>
+                            </div>
+                            <button class="btn-shelf-see-all" onclick="openJellyfinAllView('artists')">
+                                Mostra tutto
+                                <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+                            </button>
+                        </div>
+                        <div class="shelf-carousel-wrapper">
+                            <button class="shelf-arrow-edge left" id="arrowLeft_jellyArtistsTrack" onclick="scrollShelf('jellyArtistsTrack', -520)" title="Scorri a sinistra">
+                                <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+                            </button>
+                            <div id="jellyArtistsTrack" class="jelly-shelf-track artists-track" onscroll="updateShelfArrows('jellyArtistsTrack')">
+                                <div class="empty-state"><p>Caricamento artisti da Jellyfin...</p></div>
+                            </div>
+                            <button class="shelf-arrow-edge right" id="arrowRight_jellyArtistsTrack" onclick="scrollShelf('jellyArtistsTrack', 520)" title="Scorri a destra">
+                                <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DEDICATED FULL GRID SECTION (Active when user clicks "Mostra tutto") -->
+                <div id="jellyfinAllItemsSection" style="display:none; padding: 10px 0 30px 0;">
+                    <div class="section-header-row" style="margin-bottom: 24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+                        <div style="display:flex; align-items:center; gap:14px;">
+                            <button class="btn-subtle-back" onclick="closeJellyfinAllView()">
+                                <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                                <span data-i18n="jellyfin.back_to_library">Torna alla Libreria</span>
+                            </button>
+                            <h2 id="jellyfinAllViewTitle" style="font-size:1.35rem; font-weight:700; color:#ffffff;">Tutti gli Album</h2>
+                            <span id="jellyfinAllViewBadge" class="jelly-shelf-count">0</span>
+                        </div>
+                        <div class="jelly-filter-search-box">
+                            <svg class="jelly-filter-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                            <input type="text" id="jellyfinAllFilterInput" placeholder="Filtra..." data-i18n-placeholder="common.filter" oninput="handleJellyfinAllFilter(this.value)">
+                        </div>
+                    </div>
+                    <div id="jellyfinAllGrid" class="jellyfin-all-grid"></div>
+                </div>
+
+                <!-- DETAIL VIEW: Tracks of Selected Album / Artist / Playlist -->
+                <div id="jellyfinDetailView" style="display:none;">
+                    <button class="btn-subtle-back" onclick="handleDetailBack()">
+                        <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                        <span id="detailBackLabel">Torna alla libreria</span>
+                    </button>
+
+                    <!-- Hero Card -->
+                    <div class="jelly-detail-hero">
+                        <div class="jelly-detail-cover-box" id="detailCoverBox">
+                            <img id="detailHeroCover" src="" alt="Cover" class="jelly-detail-img" onerror="this.onerror=null;this.style.display='none';">
+                        </div>
+                        <div class="jelly-detail-info">
+                            <span class="jelly-detail-type" id="detailTypeBadge">ALBUM</span>
+                            <h1 class="jelly-detail-title" id="detailTitle">Titolo</h1>
+                            <p class="jelly-detail-sub" id="detailSubtitle">Artista • 0 brani</p>
+                            <div class="jelly-detail-stats">
+                                <span id="detailLyricsOkBadge" class="jelly-stat-badge ok">0 con Lyrics</span>
+                                <span id="detailLyricsMissingBadge" class="jelly-stat-badge missing">0 senza Lyrics</span>
+                            </div>
+                        </div>
+                        <div class="jelly-detail-actions">
+                            <button class="btn-batch-lyrics" id="btnBatchDownloadLyrics" onclick="startBatchLyricsDownload()">
+                                <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+                                <span id="batchDownloadLabel">Scarica Lyrics Mancanti</span>
+                            </button>
+                            <button class="btn-batch-lyrics" id="btnPlaylistCsv" onclick="openPlaylistCsvModal()" style="display:none; background: rgba(59, 130, 246, 0.18); border-color: rgba(59, 130, 246, 0.35); color: #60a5fa;" title="Accoppia foglio CSV">
+                                <svg viewBox="0 0 24 24" style="fill:currentColor; width:16px; height:16px;"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                                <span id="btnPlaylistCsvLabel" data-i18n="jellyfin.sync_csv_btn">Accoppia CSV</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tracks List in Detail View -->
+                    <div id="jellyDetailTracksList" class="jellyfin-tracks-container"></div>
+                </div>
+            </div>
+
+            <!-- TAB 3: DOWNLOAD IN CORSO -->
+            <div id="viewDownloads" class="tab-view">
+                <div class="settings-view-intro history-page-intro">
+                    <div><span class="settings-eyebrow" data-i18n="history.eyebrow">Your activity</span>
+                        <h2 data-i18n="history.page_title">Activity</h2>
+                        <p data-i18n="history.page_description">Track downloads and recent listening in one place.</p>
+                    </div>
+                </div>
+                <div class="history-toolbar">
+                    <div class="history-tabs" id="historyTabList" role="tablist" aria-label="Activity views" data-i18n-aria-label="history.views_label">
+                        <button type="button" class="history-tab active" id="historyTabQueue" role="tab" aria-controls="downloadsQueuePanel" aria-selected="true" tabindex="0" onclick="switchDownloadsView('queue')" data-i18n="history.queue">Queue</button>
+                        <button type="button" class="history-tab" id="historyTabDownloads" role="tab" aria-controls="downloadHistoryPanel" aria-selected="false" tabindex="-1" onclick="switchDownloadsView('downloads')" data-i18n="history.downloads">Download history</button>
+                        <button type="button" class="history-tab" id="historyTabPlays" role="tab" aria-controls="playHistoryPanel" aria-selected="false" tabindex="-1" onclick="switchDownloadsView('plays')" data-i18n="history.plays">Listening history</button>
+                    </div>
+                    <button type="button" class="btn-secondary admin-scope-toggle" id="historyAdminScopeToggle" style="display:none;" onclick="toggleAdminAllUsersMode()" data-i18n="users.scope_all">Show all users</button>
+                    <label id="adminActivityUserLabel" class="admin-recommendation-user" style="display:none;" for="adminActivityUser"><span data-i18n="users.filter_user">Filter by user</span><select id="adminActivityUser" class="form-input" onchange="reloadAdminActivityUser(this.value)"></select></label>
+                </div>
+                <div id="downloadsQueuePanel" role="tabpanel" aria-labelledby="historyTabQueue" tabindex="0">
+                    <div id="downloadsList" class="downloads-container">
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+                        <p data-i18n="history.queue_empty">No downloads in progress.</p>
+                    </div>
+                    </div>
+                </div>
+                <div id="downloadHistoryPanel" class="downloads-container" role="tabpanel" aria-labelledby="historyTabDownloads" tabindex="0" style="display:none;" aria-live="polite"></div>
+                <div id="playHistoryPanel" class="downloads-container" role="tabpanel" aria-labelledby="historyTabPlays" tabindex="0" style="display:none;" aria-live="polite"></div>
+            </div>
+
+            <!-- TAB 4: IMPOSTAZIONI -->
+            <div id="viewSettings" class="tab-view">
+                <div class="settings-view-intro">
+                    <div>
+                        <span class="settings-eyebrow">Music Seerr</span>
+                        <h2 data-i18n="settings.page_title">Settings</h2>
+                        <p data-i18n="settings.overview">Manage your library, Jellyfin connection, account, and language.</p>
+                    </div>
+                </div>
+                <div class="settings-grid">
+                <div class="settings-card settings-card-wide" id="adminDataControlsCard" style="display:none;">
+                    <div class="settings-card-title"><span data-i18n="users.admin_controls_title">Administrator visibility</span></div>
+                    <div class="settings-card-desc" data-i18n="users.admin_controls_description">Choose whether to show controls for viewing other users’ activity and playlists.</div>
+                    <label class="admin-controls-setting"><input type="checkbox" id="showOtherUsersControls" onchange="saveOtherUsersControlsPreference(this.checked)"><span data-i18n="users.show_admin_controls">Show cross-user controls in the interface</span></label>
+                </div>
+                <!-- Lingua & Traduzioni -->
+                <div class="settings-card">
+                    <div class="settings-card-title">
+                        <svg viewBox="0 0 24 24"><path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg>
+                        <span data-i18n="settings.language_section_title">Lingua &amp; Traduzioni</span>
+                    </div>
+                    <div class="settings-card-desc" data-i18n="settings.language_section_desc">
+                        Seleziona la lingua dell'interfaccia di Music Seerr.
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label for="settingsLanguage" data-i18n="settings.language_select_label">Lingua dell'applicazione:</label>
+                        <select id="settingsLanguage" class="form-input" onchange="changeLanguage(this.value)">
+                            <option value="en">English (US) - Default</option>
+                            <option value="it">Italiano (IT)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Cartella Libreria -->
+                <div class="settings-card" id="adminStorageSettingsCard">
+                    <div class="settings-card-title">
+                        <svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+                        <span data-i18n="settings.music_dir_title">Cartella della Libreria Musicale</span>
+                    </div>
+                    <div class="settings-card-desc" data-i18n="settings.music_dir_desc">
+                        Percorso del disco in cui salvare i brani scaricati e i file .lrc dei testi.
+                    </div>
+
+                    <!-- Jellyfin Detected Library Path Quick Bar -->
+                    <div id="jellyfinDetectedDirBox" style="display:none; align-items:center; justify-content:space-between; background:rgba(147, 51, 234, 0.08); border:1px solid rgba(147, 51, 234, 0.2); border-radius:10px; padding:10px 14px; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
+                        <div style="font-size:0.84rem; color:#d8b4fe;">
+                            <strong>Rilevato da Jellyfin:</strong> <code id="jellyfinDetectedPathBadge" style="background:rgba(0,0,0,0.3); padding:2px 6px; border-radius:4px; font-size:0.8rem;"></code>
+                        </div>
+                        <button type="button" class="btn-secondary" style="padding:4px 10px; font-size:0.75rem; border-radius:6px;" onclick="applyJellyfinDetectedPath()">Usa questo percorso</button>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:8px;">
+                        <label for="settingsMusicDir" data-i18n="settings.music_dir_label">Percorso Cartella sul Server:</label>
+                        <input type="text" id="settingsMusicDir" class="form-input" placeholder="/home/giulio/Desktop/Music NAS/music oppure /music" oninput="checkPathComparison()">
+                        <p style="font-size:0.76rem; color:var(--text-secondary); margin-top:5px;">Assicurati che questo percorso corrisponda al montaggio dei volumi definito nel container o sul NAS.</p>
+                    </div>
+
+                    <div id="dirStatusBadge"></div>
+                </div>
+
+                <!-- Collegamento Jellyfin -->
+                <div class="settings-card settings-card-wide" id="adminJellyfinSettingsCard">
+                    <div class="settings-card-title">
+                        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+                        <span data-i18n="settings.jellyfin_section_title">Integrazione Jellyfin</span>
+                    </div>
+                    <div class="settings-card-desc" data-i18n="settings.jellyfin_section_desc">
+                        Collega il tuo server Jellyfin per permettere l'aggiornamento automatico della libreria dopo ogni download e la selezione rapida delle playlist.
+                    </div>
+
+                    <div class="form-group">
+                        <label for="settingsJellyfinUrl" data-i18n="settings.jellyfin_url_label">URL Server Jellyfin:</label>
+                        <input type="text" id="settingsJellyfinUrl" class="form-input" placeholder="http://192.168.1.100:8096 oppure http://localhost:8096">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="settingsJellyfinApiKey" data-i18n="settings.jellyfin_api_key_label">Chiave API Jellyfin (API Key):</label>
+                        <input type="password" id="settingsJellyfinApiKey" class="form-input" placeholder="Incolla l'API Key generata da Jellyfin">
+                        <p style="font-size:0.75rem; color:var(--text-secondary); margin-top:4px;" data-i18n="settings.jellyfin_api_key_help">Generabile in: Jellyfin Dashboard &gt; Avanzate &gt; Chiavi API.</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="settingsJellyfinUserId" data-i18n="settings.jellyfin_user_id_label">User ID (Opzionale per Playlist utente):</label>
+                        <input type="text" id="settingsJellyfinUserId" class="form-input" placeholder="ID utente Jellyfin (GUID)">
+                    </div>
+
+                    <div id="jellyfinStatusBadge" style="margin-top: 14px; margin-bottom: 8px;"></div>
+
+                    <div style="display:flex; gap:12px; margin-top: 16px; flex-wrap:wrap;">
+                        <button class="btn-secondary" onclick="testJellyfin()" data-i18n="settings.btn_test_connection">
+                            Verifica Connessione
+                        </button>
+                        <button class="btn-primary" onclick="saveAllSettings()" data-i18n="settings.btn_save_settings">
+                            Salva Impostazioni
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Gestione Utenti & Sessione Jellyfin -->
+                <div class="settings-card settings-card-wide">
+                    <div class="settings-card-title">
+                        <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                        <span data-i18n="settings.users_section_title">Gestione Utenti &amp; Sessione Jellyfin</span>
+                    </div>
+                    <div class="settings-card-desc" data-i18n="settings.users_section_desc">
+                        Gestisci la sessione attiva di Jellyfin o cambia account.
+                    </div>
+
+                    <!-- Current active user display -->
+                    <div class="settings-account-summary">
+                        <div class="sidebar-user-avatar" id="settingsUserAvatar" style="width:44px; height:44px; min-width:44px; font-size:1.1rem;">
+                            <img id="settingsUserAvatarImg" style="display:none;" alt="Avatar" />
+                            <span id="settingsUserAvatarInitial">U</span>
+                        </div>
+                        <div style="flex:1; min-width:0;">
+                            <div id="settingsUserName" style="font-size:1rem; font-weight:700; color:#fff;">Ospite</div>
+                            <div id="settingsUserRoleBadge" class="settings-account-state" style="margin-top:4px;">Guest access</div>
+                        </div>
+                    </div>
+
+                    <div class="settings-actions">
+                        <button type="button" class="btn-secondary" onclick="openLoginModal()" data-i18n="auth.switch_user">
+                            Cambia Account
+                        </button>
+                        <button type="button" class="btn-secondary" onclick="openSetupWizard()" data-i18n="settings.btn_rerun_setup">
+                            Riavvia Procedura di Set-up
+                        </button>
+                        <button type="button" class="btn-secondary" style="color:#f87171; border-color:rgba(239,68,68,0.3);" onclick="logoutUser()" data-i18n="settings.btn_logout">
+                            Disconnetti
+                        </button>
+                    </div>
+                </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- LIQUID GLASS BOTTOM BAR PLAYER (Foto 1 Style, 100% Full Width) -->
+    <div id="liquidBottomBar" class="liquid-bottom-bar">
+        <!-- Left: Track Cover & Metadata & Format Capsule Badge -->
+        <div class="liquid-track-meta">
+            <div class="liquid-cover-wrap" id="liquidCoverContainer" onclick="toggleFullTrackPlay()" title="Play / Pausa">
+                <img id="liquidCoverImg" class="liquid-cover-thumb" style="display:none;" />
+                <div class="liquid-icon-badge" id="liquidCoverPlaceholder">
+                    <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                </div>
+                <div class="liquid-cover-wave-overlay" id="liquidCoverWaveOverlay">
+                    <div class="sound-wave-anim paused" id="bottomBarSoundWave">
+                        <div class="bar bar-1"></div>
+                        <div class="bar bar-2"></div>
+                        <div class="bar bar-3"></div>
+                        <div class="bar bar-4"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="liquid-meta-texts">
+                <div class="liquid-title" id="liquidTitle">Nessun brano</div>
+                <div class="liquid-artist" id="liquidArtist">Seleziona un brano per iniziare</div>
+                <div class="liquid-meta-subrow">
+                    <span class="liquid-subtext" id="liquidSubtext">Libreria</span>
+                    <span class="liquid-badge-capsule" id="liquidFormatBadge">MP3</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center: Controls (Top) + Scrubber Row (Bottom) -->
+        <div class="liquid-center-controls">
+            <div class="liquid-buttons">
+                <!-- Shuffle button -->
+                <button class="liquid-btn-subtle" id="liquidShuffleBtn" onclick="toggleShuffle()" title="Riproduzione Casuale (Shuffle)">
+                    <svg viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
+                </button>
+                <!-- Prev button -->
+                <button class="liquid-btn-subtle" onclick="playPrevTrack()" title="Precedente">
+                    <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                </button>
+                <!-- Big circular green Play / Pause button (Foto 1) -->
+                <button class="liquid-btn-round" id="liquidToggleBtn" onclick="toggleFullTrackPlay()" title="Play / Pausa">
+                    <svg id="liquidPlayIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    <svg id="liquidPauseIcon" viewBox="0 0 24 24" style="display:none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                </button>
+                <!-- Next button -->
+                <button class="liquid-btn-subtle" onclick="playNextTrack()" title="Successivo">
+                    <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                </button>
+            </div>
+
+            <!-- Scrubber timeline -->
+            <div class="liquid-scrubber-row">
+                <span class="liquid-time" id="liquidCurrentTime">0:00</span>
+                <input type="range" id="liquidSongSlider" class="liquid-slider" min="0" max="100" value="0">
+                <span class="liquid-time" id="liquidDuration">0:00</span>
+            </div>
+        </div>
+
+        <!-- Right: Queue with Badge Count, Lyrics, Equalizer, Volume Slider, Source Tag -->
+        <div class="liquid-right-actions">
+            <!-- Queue button with badge count (Foto 1: yellow-green badge with remaining items) -->
+            <button class="liquid-btn-subtle" id="liquidQueueBtn" onclick="toggleQueueModal()" title="Coda di Riproduzione" style="position:relative;">
+                <svg viewBox="0 0 24 24"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
+                <span class="player-queue-badge" id="playerQueueCount">0</span>
+            </button>
+
+            <!-- Lyrics button (Musical note icon) -->
+            <button class="liquid-btn-subtle" id="liquidLyricsBtn" onclick="toggleCurrentPlayingLyrics()" title="Testi Sincronizzati (Lyrics)">
+                <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+            </button>
+
+            <!-- Equalizer / Audio Info button (3 Faders) -->
+            <button class="liquid-btn-subtle" id="liquidAudioOptsBtn" onclick="toggleAudioInfoModal()" title="Info & Qualità Audio">
+                <svg viewBox="0 0 24 24"><path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/></svg>
+            </button>
+
+            <!-- Volume Control (Speaker + Horizontal Slider) -->
+            <div class="player-volume-wrapper" title="Volume">
+                <button class="liquid-btn-subtle" id="liquidVolumeMuteBtn" onclick="toggleMuteAudio()" style="padding:4px;">
+                    <svg id="liquidVolumeIcon" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+                </button>
+                <input type="range" id="liquidVolumeSlider" class="player-vol-slider" min="0" max="1" step="0.01" value="0.8">
+            </div>
+
+            <!-- Source indicator tag on far right (Foto 1: Local MP3 or Jellyfin) -->
+            <div class="player-source-tag" id="playerSourceTag" title="Sorgente di riproduzione">
+                <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                <span id="playerSourceLabel">Local MP3</span>
+            </div>
+
+            <!-- Close / Dismiss Player Button -->
+            <button class="liquid-btn-subtle" onclick="closeLiquidPlayer()" title="Chiudi Player" style="margin-left: 2px;">
+                <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- QUEUE POPUP MODAL -->
+    <div id="playerQueueModal" class="alert-popup-overlay" style="display:none;" onclick="if(event.target===this) toggleQueueModal()">
+        <div class="alert-popup-box" style="max-width: 480px; text-align: left; max-height: 70vh; display:flex; flex-direction:column;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                <div style="font-size:1.15rem; font-weight:700; color:#fff;">Coda di Riproduzione</div>
+                <button class="btn-icon" onclick="toggleQueueModal()">✕</button>
+            </div>
+            <div id="playerQueueModalList" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
+        </div>
+    </div>
+
+    <!-- AUDIO INFO POPUP MODAL -->
+    <div id="playerAudioInfoModal" class="alert-popup-overlay" style="display:none;" onclick="if(event.target===this) toggleAudioInfoModal()">
+        <div class="alert-popup-box" style="max-width: 420px; text-align: left;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <div style="font-size:1.15rem; font-weight:700; color:#fff;">Qualità &amp; Dettagli Audio</div>
+                <button class="btn-icon" onclick="toggleAudioInfoModal()">✕</button>
+            </div>
+            <div id="playerAudioInfoContent" style="font-size:0.88rem; color:#cbd5e1; line-height:1.7;">
+                <!-- Audio info populated dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- PLAYLIST CSV PAIRING & MATCHER MODAL -->
+    <div id="playlistCsvModal" class="alert-popup-overlay" style="display:none;" onclick="if(event.target===this) closePlaylistCsvModal()">
+        <div class="alert-popup-box csv-modal-card" style="max-width: 820px; width: 92%; max-height: 85vh; display: flex; flex-direction: column; text-align: left; padding: 24px;">
+            <!-- Header -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <h2 style="font-size: 1.25rem; font-weight: 700; color: #ffffff; margin: 0;" data-i18n="jellyfin.csv_modal_title">Accoppiamento Playlist CSV</h2>
+                        <span id="csvModalBadge" class="csv-badge-info" style="display: none;">CSV</span>
+                    </div>
+                    <p style="font-size: 0.82rem; color: var(--text-secondary); margin: 4px 0 0 0;" data-i18n="jellyfin.csv_modal_desc">
+                        Confronta un foglio CSV con questa playlist: scopri i brani già presenti, quelli in libreria da aggiungere e quelli da scaricare.
+                    </p>
+                </div>
+                <button class="btn-icon" onclick="closePlaylistCsvModal()" title="Chiudi">✕</button>
+            </div>
+
+            <!-- Upload & File Info Bar -->
+            <div class="csv-upload-banner">
+                <div style="display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1;">
+                    <div class="csv-file-icon">
+                        <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                    </div>
+                    <div style="min-width: 0;">
+                        <div id="csvCurrentFilename" style="font-size: 0.88rem; font-weight: 600; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" data-i18n="jellyfin.csv_no_file">Nessun file CSV accoppiato</div>
+                        <div id="csvFileMetaSub" style="font-size: 0.75rem; color: var(--text-secondary);">Carica un file .csv esportato da Spotify, Apple Music o Soundiiz</div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
+                    <input type="file" id="csvFileInput" accept=".csv,text/csv,text/plain,application/vnd.ms-excel" style="display:none;" onchange="handleCsvFileSelected(event)">
+                    <button class="btn-download" onclick="const inp = document.getElementById('csvFileInput'); if (inp) { inp.value = ''; inp.click(); }" style="background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.18);">
+                        <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
+                        <span data-i18n="jellyfin.csv_upload_btn">Carica CSV</span>
+                    </button>
+                    <button class="btn-download" id="btnCsvReMatch" onclick="runPlaylistCsvMatch()" style="display:none;" title="Rianalizza confronto">
+                        <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab Pills & Batch Actions Toolbar -->
+            <div class="csv-toolbar" id="csvToolbar" style="display: none;">
+                <div class="csv-tabs">
+                    <button class="csv-tab-btn active" id="csvTabAll" onclick="setCsvFilterTab('all')">
+                        <span data-i18n="jellyfin.csv_tab_all">Tutti</span> (<span id="csvCountAll">0</span>)
+                    </button>
+                    <button class="csv-tab-btn" id="csvTabInPlaylist" onclick="setCsvFilterTab('in_playlist')">
+                        <span data-i18n="jellyfin.csv_tab_in_playlist">In Playlist</span> (<span id="csvCountInPlaylist">0</span>)
+                    </button>
+                    <button class="csv-tab-btn" id="csvTabInLibrary" onclick="setCsvFilterTab('in_library')">
+                        <span data-i18n="jellyfin.csv_tab_in_library">In Libreria</span> (<span id="csvCountInLibrary">0</span>)
+                    </button>
+                    <button class="csv-tab-btn" id="csvTabToDownload" onclick="setCsvFilterTab('to_download')">
+                        <span data-i18n="jellyfin.csv_tab_to_download">Da Scaricare</span> (<span id="csvCountToDownload">0</span>)
+                    </button>
+                </div>
+
+                <div class="csv-actions-group">
+                    <button class="btn-batch-lyrics" id="btnCsvAddAllLibrary" onclick="addAllMatchedLibraryToPlaylist()" style="display: none; background: rgba(34, 197, 94, 0.18); border-color: rgba(34, 197, 94, 0.35); color: #4ade80;">
+                        <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                        <span data-i18n="jellyfin.csv_btn_add_all">Aggiungi Tutti alla Playlist</span>
+                    </button>
+                    <button class="btn-batch-lyrics" id="btnCsvDownloadAll" onclick="queueAllDownloadsFromCsv()" style="display: none; background: rgba(239, 68, 68, 0.18); border-color: rgba(239, 68, 68, 0.35); color: #f87171;">
+                        <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                        <span data-i18n="jellyfin.csv_btn_download_all">Metti Tutti in Coda Download</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Track List Container -->
+            <div id="csvTracksContainer" class="csv-list-container">
+                <div class="empty-state" style="padding: 40px 20px;">
+                    <p data-i18n="jellyfin.csv_no_file">Carica un file CSV per iniziare il confronto con la libreria Jellyfin.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <!-- APPLE MUSIC STYLE FULL SYNCED LYRICS OVERLAY -->
+    <div id="appleLyricsOverlay" class="apple-lyrics-overlay">
+        <div class="apple-lyrics-header">
+            <div class="apple-lyrics-title-group">
+                <h3 id="appleLyricsTitle">Titolo Brano</h3>
+                <p id="appleLyricsArtist">Artista</p>
+            </div>
+            <button class="btn-icon" onclick="closeLyricsView()">
+                <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            </button>
+        </div>
+
+        <div class="apple-lyrics-scroll-container" id="appleLyricsScrollContainer">
+            <div class="apple-lyrics-wrapper" id="appleLyricsWrapper">
+                <!-- Lyrics rendered dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- JELLYFIN LOGIN MODAL -->
+    <div id="loginModal" class="alert-popup-overlay login-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
+        <div class="login-card glass-modal-card">
+            <div class="login-header">
+                <div class="brand-logo" style="width:52px; height:52px; margin: 0 auto 14px auto;">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3v10.4a3.6 3.6 0 1 1-2-3.23V7.1l8-2.15v9.05a3.6 3.6 0 1 1-2-3.23V7.58l-4 1.08V3z"/><path d="M4.7 9.1v5.8M2 10.7v2.6" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" opacity=".9"/></svg>
+                </div>
+                <h2 id="loginModalTitle" class="login-title" data-i18n="auth.login_title">Accedi con Jellyfin</h2>
+                <p class="login-subtitle" data-i18n="auth.login_subtitle">Autenticati con le tue credenziali Jellyfin per accedere a Music Seerr.</p>
+            </div>
+
+            <!-- Detected Users Pills -->
+            <div id="loginUsersPillsContainer" style="display:none; margin-bottom: 20px;">
+                <div style="font-size:0.78rem; color:var(--text-secondary); margin-bottom:8px;" data-i18n="auth.select_account">Seleziona account:</div>
+                <div id="loginUsersPillsList" class="login-users-pills"></div>
+            </div>
+
+            <!-- Form -->
+            <form id="loginForm" onsubmit="handleLoginSubmit(event)" style="display:flex; flex-direction:column; gap:16px;">
+                <div class="form-group" style="text-align:left; margin:0;">
+                    <label for="loginUsername" data-i18n="auth.username_label">Nome Utente</label>
+                    <input type="text" id="loginUsername" class="form-input" required autocomplete="username" data-i18n-placeholder="auth.username_placeholder" placeholder="Inserisci il nome utente Jellyfin">
+                </div>
+                <div class="form-group" style="text-align:left; margin:0;">
+                    <label for="loginPassword" data-i18n="auth.password_label">Password</label>
+        <input type="password" id="loginPassword" class="form-input" required autocomplete="current-password" data-i18n-placeholder="auth.password_placeholder" placeholder="Inserisci la password Jellyfin">
+                </div>
+
+                <div id="loginErrorMsg" class="login-error-badge" style="display:none;" role="alert" aria-live="assertive"></div>
+
+                <button type="submit" id="loginSubmitBtn" class="btn-primary" style="width:100%; padding:14px; font-size:1rem; font-weight:600; justify-content:center; margin-top:4px;">
+                    <span data-i18n="auth.btn_login">Accedi</span>
+                </button>
+                <button type="button" class="btn-secondary" style="width:100%; justify-content:center;" onclick="continueAsGuest()" data-i18n="auth.continue_guest">Continua come ospite</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- SETUP WIZARD MODAL -->
+    <div id="setupWizardModal" class="alert-popup-overlay setup-wizard-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="setupWizardTitle">
+        <div class="setup-wizard-card glass-modal-card">
+            <!-- Header -->
+            <div class="setup-wizard-header">
+                <div style="display:flex; align-items:center; gap:14px;">
+                    <div class="brand-logo" style="width:40px; height:40px;">
+                        <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                    </div>
+                    <div>
+                        <h2 id="setupWizardTitle" style="font-size:1.25rem; font-weight:700; color:#fff; margin:0;" data-i18n="setup.wizard_title">Configurazione Guidata Music Seerr</h2>
+                        <p style="font-size:0.8rem; color:var(--text-secondary); margin:2px 0 0 0;" data-i18n="setup.wizard_subtitle">Completa questi rapidi passaggi per collegare Jellyfin e impostare la tua libreria musicale.</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-icon" id="closeSetupWizardBtn" onclick="closeSetupWizard()" title="Chiudi" style="display:none;">✕</button>
+            </div>
+
+            <!-- Steps Nav Bar -->
+            <div class="setup-steps-bar">
+                <div class="setup-step-pill active" id="setupStepPill1">
+                    <span class="step-num">1</span>
+                    <span class="step-txt" data-i18n="setup.step_server">1. Server Jellyfin</span>
+                </div>
+                <div class="setup-step-pill" id="setupStepPill2">
+                    <span class="step-num">2</span>
+                    <span class="step-txt" data-i18n="setup.step_storage">2. Cartella Musica</span>
+                </div>
+                <div class="setup-step-pill" id="setupStepPill3">
+                    <span class="step-num">3</span>
+                    <span class="step-txt" data-i18n="setup.step_user">3. Utente Jellyfin</span>
+                </div>
+                <div class="setup-step-pill" id="setupStepPill4">
+                    <span class="step-num">4</span>
+                    <span class="step-txt" data-i18n="setup.step_finish">4. Completamento</span>
+                </div>
+            </div>
+
+            <!-- Step Content Container -->
+            <div class="setup-step-content">
+                <!-- STEP 1: Server Jellyfin -->
+                <div class="setup-step-panel active" id="setupStepPanel1">
+                    <p style="font-size:0.88rem; color:var(--text-secondary); margin-bottom:16px;" data-i18n="setup.server_desc">Inserisci l'indirizzo del server Jellyfin e l'API Key per stabilire la connessione.</p>
+                    
+                    <div class="form-group">
+                        <label for="setupJellyfinUrl" data-i18n="settings.jellyfin_url_label">URL Server Jellyfin:</label>
+                        <input type="text" id="setupJellyfinUrl" class="form-input" placeholder="http://192.168.1.100:8096 oppure http://localhost:8096">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="setupJellyfinApiKey" data-i18n="settings.jellyfin_api_key_label">Chiave API Jellyfin (API Key):</label>
+                        <input type="password" id="setupJellyfinApiKey" class="form-input" placeholder="Incolla l'API Key generata da Jellyfin">
+                        <p style="font-size:0.75rem; color:var(--text-secondary); margin-top:4px;" data-i18n="settings.jellyfin_api_key_help">Generabile in: Jellyfin Dashboard &gt; Avanzate &gt; Chiavi API.</p>
+                    </div>
+
+                    <div id="setupStep1Badge" style="margin-top:12px;" role="status" aria-live="polite"></div>
+                </div>
+
+                <!-- STEP 2: Cartella Musica Storage -->
+                <div class="setup-step-panel" id="setupStepPanel2" style="display:none;">
+                    <p style="font-size:0.88rem; color:var(--text-secondary); margin-bottom:16px;" data-i18n="setup.storage_desc">Imposta la cartella in cui verranno salvati i file audio scaricati e i testi.</p>
+
+                    <!-- Detected path from Jellyfin -->
+                    <div id="setupDetectedPathBox" style="display:none; align-items:center; justify-content:space-between; background:rgba(147, 51, 234, 0.1); border:1px solid rgba(147, 51, 234, 0.25); border-radius:10px; padding:12px 14px; margin-bottom:14px; gap:8px;">
+                        <div style="font-size:0.84rem; color:#d8b4fe;">
+                            <strong>Rilevato da Jellyfin:</strong> <code id="setupDetectedPathCode" style="background:rgba(0,0,0,0.3); padding:2px 6px; border-radius:4px;"></code>
+                        </div>
+                        <button type="button" class="btn-secondary" style="padding:6px 12px; font-size:0.78rem; border-radius:8px;" onclick="applySetupDetectedPath()" data-i18n="setup.use_detected_path">Usa Percorso Rilevato</button>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="setupMusicDir" data-i18n="settings.music_dir_label">Percorso Cartella sul Server:</label>
+                        <input type="text" id="setupMusicDir" class="form-input" placeholder="/home/giulio/Desktop/Music NAS/music oppure /music">
+                    </div>
+
+                    <div id="setupStep2Badge" style="margin-top:12px;" role="status" aria-live="polite"></div>
+                </div>
+
+                <!-- STEP 3: Utente Jellyfin -->
+                <div class="setup-step-panel" id="setupStepPanel3" style="display:none;">
+                    <p style="font-size:0.88rem; color:var(--text-secondary); margin-bottom:16px;" data-i18n="setup.user_desc">Accedi con username e password Jellyfin per verificare i privilegi dell'utente.</p>
+
+                    <!-- Detected users selector -->
+                    <div id="setupUsersPickerContainer" style="display:none; margin-bottom:16px;">
+                        <div style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:8px;" data-i18n="auth.select_account">Seleziona account:</div>
+                        <div id="setupUsersPickerList" class="login-users-pills"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="setupUsername" data-i18n="auth.username_label">Nome Utente:</label>
+                        <input type="text" id="setupUsername" class="form-input" autocomplete="username" placeholder="Username Jellyfin">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="setupPassword" data-i18n="auth.password_label">Password:</label>
+                        <input type="password" id="setupPassword" class="form-input" autocomplete="current-password" placeholder="Password Jellyfin">
+                    </div>
+
+                    <div id="setupStep3Badge" style="margin-top:12px;" role="status" aria-live="polite"></div>
+                </div>
+
+                <!-- STEP 4: Completamento -->
+                <div class="setup-step-panel" id="setupStepPanel4" style="display:none;">
+                    <p style="font-size:0.88rem; color:var(--text-secondary); margin-bottom:16px;" data-i18n="setup.finish_desc">Verifica il riepilogo e inizia a usare Music Seerr.</p>
+
+                    <div class="setup-summary-card">
+                        <div class="setup-summary-row">
+                            <span class="setup-summary-label" data-i18n="setup.summary_server">Server Jellyfin:</span>
+                            <span class="setup-summary-val" id="setupSummaryServer">-</span>
+                        </div>
+                        <div class="setup-summary-row">
+                            <span class="setup-summary-label" data-i18n="setup.summary_storage">Cartella Musica:</span>
+                            <span class="setup-summary-val" id="setupSummaryDir">-</span>
+                        </div>
+                        <div class="setup-summary-row">
+                            <span class="setup-summary-label" data-i18n="setup.summary_user">Utente Attivo:</span>
+                            <span class="setup-summary-val" id="setupSummaryUser">-</span>
+                        </div>
+                        <div class="setup-summary-row">
+                            <span class="setup-summary-label" data-i18n="setup.summary_role">Ruolo:</span>
+                            <span class="setup-summary-val" id="setupSummaryRole">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Action Buttons -->
+            <div class="setup-wizard-footer">
+                <button type="button" class="btn-secondary" id="setupBackBtn" onclick="prevSetupStep()" style="display:none;" data-i18n="setup.btn_back">Indietro</button>
+                <button type="button" class="btn-secondary setup-skip-guest-btn" id="setupSkipUserBtn" onclick="skipSetupUser()" style="display:none;" data-i18n="setup.btn_skip_guest">Skip (Continue as Guest)</button>
+                <div style="margin-left:auto; display:flex; gap:10px;">
+                    <button type="button" class="btn-secondary" id="setupTestBtn" onclick="testCurrentSetupStep()" data-i18n="setup.btn_test_server">Test Connection</button>
+                    <button type="button" class="btn-primary" id="setupNextBtn" onclick="nextSetupStep()" data-i18n="setup.btn_next">Passaggio Successivo</button>
+                    <button type="button" class="btn-primary" id="setupFinishBtn" onclick="finishSetupWizard()" style="display:none;" data-i18n="setup.btn_finish">Completa e Avvia Music Seerr</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert / Popup Modal -->
+    <div id="alertPopup" class="alert-popup-overlay">
+        <div class="alert-popup-box">
+            <div class="alert-popup-icon" id="alertPopupIcon">
+                <svg viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+            </div>
+            <div class="alert-popup-title" id="alertPopupTitle">Avviso</div>
+            <div class="alert-popup-msg" id="alertPopupMsg">Messaggio</div>
+            <button class="alert-popup-btn" onclick="closeAlertPopup()">Ho Capito</button>
+        </div>
+    </div>
+
+    <audio id="globalAudio" preload="none" crossorigin="anonymous"></audio>
+
+    <script>
+        // State
+        const globalAudio = document.getElementById('globalAudio');
+        const globalVolumeSlider = document.getElementById('globalVolumeSlider');
+        const globalSearchInput = document.getElementById('globalSearchInput');
+        const globalSearchClearBtn = document.getElementById('globalSearchClearBtn');
+        const resultsGrid = document.getElementById('resultsGrid');
+        const playlistSelect = document.getElementById('playlistSelect');
+        const resultsSummary = document.getElementById('resultsSummary');
+        const libraryList = document.getElementById('libraryList');
+        const sidebarLibraryBadge = document.getElementById('sidebarLibraryBadge');
+        const sidebarDownloadsBadge = document.getElementById('sidebarDownloadsBadge');
+        const sidebarJellyfinBadge = document.getElementById('sidebarJellyfinBadge');
+        const downloadsList = document.getElementById('downloadsList');
+        const pageTitle = document.getElementById('pageTitle');
+
+        // Jellyfin Dropped Needle Elements
+        const jellyfinPlaylistFilter = document.getElementById('jellyfinPlaylistFilter');
+        const jellyfinSummary = document.getElementById('jellyfinSummary');
+        const jellyfinTracksList = document.getElementById('jellyfinTracksList');
+        const liquidCoverImg = document.getElementById('liquidCoverImg');
+        const liquidCoverPlaceholder = document.getElementById('liquidCoverPlaceholder');
+
+        let currentJellyfinTracksList = [];
+        let currentJellyfinTrackIndex = -1;
+        let currentPlayingJellyfinTrack = null;
+        let currentJellyfinSearch = "";
+        let currentJellyfinPlaylist = "";
+        let currentJellyfinHasLyrics = null;
+        let jellyfinSearchTimeout = null;
+
+        // Liquid Player
+        const liquidBottomBar = document.getElementById('liquidBottomBar');
+        const liquidTitle = document.getElementById('liquidTitle');
+        const liquidArtist = document.getElementById('liquidArtist');
+        const liquidPlayIcon = document.getElementById('liquidPlayIcon');
+        const liquidPauseIcon = document.getElementById('liquidPauseIcon');
+        const liquidSongSlider = document.getElementById('liquidSongSlider');
+        const liquidCurrentTime = document.getElementById('liquidCurrentTime');
+        const liquidDuration = document.getElementById('liquidDuration');
+        const liquidLyricsBtn = document.getElementById('liquidLyricsBtn');
+        const liquidSubtext = document.getElementById('liquidSubtext');
+        const liquidFormatBadge = document.getElementById('liquidFormatBadge');
+        const playerSourceTag = document.getElementById('playerSourceTag');
+        const playerSourceLabel = document.getElementById('playerSourceLabel');
+
+        // Apple Lyrics Elements
+        const appleLyricsOverlay = document.getElementById('appleLyricsOverlay');
+        const appleLyricsTitle = document.getElementById('appleLyricsTitle');
+        const appleLyricsArtist = document.getElementById('appleLyricsArtist');
+        const appleLyricsScrollContainer = document.getElementById('appleLyricsScrollContainer');
+        const appleLyricsWrapper = document.getElementById('appleLyricsWrapper');
+
+        const tracksStore = new Map();
+        let downloadedTracksList = [];
+        let currentPlayingTrackId = null;
+        let currentFullTrackIndex = -1;
+        let isPlayingFullTrack = false;
+        let searchTimeout = null;
+        let isSeeking = false;
+        let currentNavTab = 'search';
+
+        // --- JELLYFIN HERO SHELF SCROLL ---
+        function scrollToShelf(shelfId) {
+            const el = document.getElementById(shelfId);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+        window.scrollToShelf = scrollToShelf;
+
+        // --- REAL-TIME AUDIO VISUALIZER (Web Audio API) ---
+        let audioCtx = null;
+        let analyserNode = null;
+        let audioSourceNode = null;
+        let visualizerRafId = null;
+        const freqDataArray = new Uint8Array(128); // 128 bins (fftSize = 256)
+        let smoothH1 = 4, smoothH2 = 6, smoothH3 = 5, smoothH4 = 4;
+
+        function initAudioVisualizer() {
+            if (!audioCtx) {
+                try {
+                    const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+                    if (!AudioCtxClass) return;
+                    audioCtx = new AudioCtxClass();
+                    analyserNode = audioCtx.createAnalyser();
+                    analyserNode.fftSize = 256; // 128 frequency bins for sharp multi-band separation
+                    analyserNode.smoothingTimeConstant = 0.75;
+
+                    audioSourceNode = audioCtx.createMediaElementSource(globalAudio);
+                    audioSourceNode.connect(analyserNode);
+                    analyserNode.connect(audioCtx.destination);
+                } catch (err) {
+                    console.warn("Visualizer Web Audio initialization error:", err);
+                }
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume().catch(() => {});
+            }
+        }
+
+        ['click', 'touchstart', 'keydown'].forEach(evt => {
+            window.addEventListener(evt, () => {
+                if (!audioCtx) initAudioVisualizer();
+                else if (audioCtx.state === 'suspended') {
+                    audioCtx.resume().catch(() => {});
+                }
+            }, { passive: true });
+        });
+
+        function startVisualizerLoop() {
+            if (visualizerRafId) cancelAnimationFrame(visualizerRafId);
+
+            function updateWaveHeights() {
+                if (!globalAudio.paused) {
+                    let b1 = 0, b2 = 0, b3 = 0, b4 = 0;
+                    if (analyserNode) {
+                        try {
+                            analyserNode.getByteFrequencyData(freqDataArray);
+                            // Multi-band Acoustic Calibration:
+                            // Band 1: Sub & Bass Kick (bins 1..3, approx 40-350Hz) - Leftmost bar
+                            b1 = Math.max(freqDataArray[1], freqDataArray[2], freqDataArray[3]);
+                            // Band 2: Mid-bass & Snare (bins 4..8, approx 350-1000Hz) - 2nd bar
+                            b2 = (freqDataArray[4] + freqDataArray[5] + freqDataArray[6] + freqDataArray[7] + freqDataArray[8]) / 5;
+                            // Band 3: High-mids & Vocals (bins 9..20, approx 1kHz-2.4kHz) - 3rd bar
+                            b3 = (freqDataArray[9] + freqDataArray[12] + freqDataArray[15] + freqDataArray[18] + freqDataArray[20]) / 5;
+                            // Band 4: Treble & Hi-hat presence (bins 22..48, approx 2.5kHz-6kHz) - Rightmost bar
+                            b4 = (freqDataArray[22] + freqDataArray[26] + freqDataArray[32] + freqDataArray[40] + freqDataArray[48]) / 5;
+                        } catch (e) {}
+                    }
+
+                    const sum = b1 + b2 + b3 + b4;
+                    let target1, target2, target3, target4;
+
+                    if (sum > 0) {
+                        // Wide dynamic range: subtract baseline floor (threshold) and use quadratic response
+                        // Bar 1 (Bass kick): punches up sharply when kick hits, drops low when quiet
+                        const n1 = Math.max(0, (b1 - 40) / 215);
+                        target1 = 3.5 + Math.pow(n1, 2.0) * 15.5;
+
+                        // Bar 2 (Mid-bass & Snare): responsive to snare hits and bassline
+                        const n2 = Math.max(0, (b2 - 35) / 220);
+                        target2 = 3.5 + Math.pow(n2, 1.8) * 15.5;
+
+                        // Bar 3 (Mids & Vocals): active during voice/melodic sections
+                        const n3 = Math.max(0, (b3 - 25) / 210);
+                        target3 = 3.5 + Math.pow(n3, 1.6) * 15.5;
+
+                        // Bar 4 (Treble & Hi-hat): rhythmic top end without saturating
+                        const n4 = Math.max(0, (b4 - 15) / 190);
+                        target4 = 3.5 + Math.pow(n4, 1.4) * 15.5;
+                    } else {
+                        // High-contrast musical rhythm fallback: clear kick pulses and dynamic range
+                        const t = (globalAudio.currentTime > 0) ? globalAudio.currentTime : (Date.now() / 1000);
+                        // Bass (Bar 1, leftmost): heavy distinct 4/4 bass kick that drops to rest between hits
+                        const kick = Math.pow(Math.max(0, Math.sin(t * 6.283 * 2.0)), 6.0);
+                        target1 = 3.5 + kick * 15.5;
+
+                        // Snare / Mid-bass (Bar 2): punchy backbeat on the 2 and 4
+                        const snare = Math.pow(Math.max(0, Math.sin(t * 6.283 * 2.0 + Math.PI)), 5.0);
+                        target2 = 3.5 + snare * 14.5;
+
+                        // Mids / Vocal melody (Bar 3): musical oscillation with 35%-80% range
+                        const vocal = Math.max(0, Math.sin(t * 5.2) * 0.6 + Math.cos(t * 2.6) * 0.4);
+                        target3 = 3.5 + Math.pow(vocal, 1.8) * 13.0;
+
+                        // Treble / Hi-hat (Bar 4, rightmost): 16th-note shimmer
+                        const hihat = Math.pow(Math.max(0, Math.sin(t * 6.283 * 4.0)), 2.5) * 0.8 + (Math.sin(t * 31.4) > 0.7 ? 0.3 : 0);
+                        target4 = 3.5 + Math.min(1.0, hihat) * 12.0;
+                    }
+
+                    // Snappy attack (jump up on beat) & fast decay (drop down so it doesn't linger near top)
+                    smoothH1 = target1 > smoothH1 ? (smoothH1 + (target1 - smoothH1) * 0.75) : (smoothH1 * 0.80);
+                    smoothH2 = target2 > smoothH2 ? (smoothH2 + (target2 - smoothH2) * 0.75) : (smoothH2 * 0.80);
+                    smoothH3 = target3 > smoothH3 ? (smoothH3 + (target3 - smoothH3) * 0.75) : (smoothH3 * 0.82);
+                    smoothH4 = target4 > smoothH4 ? (smoothH4 + (target4 - smoothH4) * 0.75) : (smoothH4 * 0.82);
+
+                    const h1 = Math.max(3.5, Math.min(19, Math.round(smoothH1 * 10) / 10));
+                    const h2 = Math.max(3.5, Math.min(19, Math.round(smoothH2 * 10) / 10));
+                    const h3 = Math.max(3.5, Math.min(19, Math.round(smoothH3 * 10) / 10));
+                    const h4 = Math.max(3.5, Math.min(19, Math.round(smoothH4 * 10) / 10));
+
+                    const activeWaves = document.querySelectorAll('.sound-wave-anim:not(.paused)');
+                    for (let i = 0; i < activeWaves.length; i++) {
+                        const wave = activeWaves[i];
+                        const bar1 = wave.querySelector('.bar-1');
+                        const bar2 = wave.querySelector('.bar-2');
+                        const bar3 = wave.querySelector('.bar-3');
+                        const bar4 = wave.querySelector('.bar-4');
+                        if (bar1) bar1.style.height = `${h1}px`;
+                        if (bar2) bar2.style.height = `${h2}px`;
+                        if (bar3) bar3.style.height = `${h3}px`;
+                        if (bar4) bar4.style.height = `${h4}px`;
+                    }
+                }
+                visualizerRafId = requestAnimationFrame(updateWaveHeights);
+            }
+
+            visualizerRafId = requestAnimationFrame(updateWaveHeights);
+        }
+
+        // --- INTERNATIONALIZATION (i18n) & CROWDIN SYSTEM ---
+        function safeLocalStorageGet(key) {
+            try { return window.localStorage.getItem(key); } catch (error) { return null; }
+        }
+        function safeLocalStorageSet(key, value) {
+            try { window.localStorage.setItem(key, value); } catch (error) {}
+        }
+
+        let currentLanguage = safeLocalStorageGet('app_language') || 'en';
+        let localeData = {};
+
+        const embeddedLocales = {
+            en: {
+                app: { name: "Music Seerr", subtitle: "Self-hosted Music & Lyrics Downloader for Jellyfin" },
+                nav: { search: "Search Music", jellyfin: "Jellyfin Library", downloads: "Activity", settings: "Settings" },
+                common: { save: "Save", saved: "Saved", cancel: "Cancel", loading: "Loading...", error: "Error", success: "Success", ok: "OK", got_it: "Got It", sync: "Sync", syncing: "Syncing...", tracks: "tracks", songs: "songs", all: "All", filter: "Filter...", retry: "Retry" },
+                search: { page_eyebrow: "Discover", page_description: "Find a track, preview it, and send it to your library.", recommendations_title: "Picked for you", recommendations_subtitle: "Based on artists in your Jellyfin library", recommendations_loading: "Loading recommendations…", recommendations_empty: "No recommendations are available yet.", recommendations_error: "Could not load recommendations.", recommendations_based_on: "Based on: {artists}", page_title: "Search Music", input_placeholder: "Search songs to download to NAS...", filter_target_playlist: "Add to Playlist:", none_library_only: "None (Library Only)", empty_initial: "Search for a song to preview and download directly to your server with 1 click.", searching: "Searching...", download_btn: "Download", in_library: "In Library", downloading: "Downloading...", results_found: "{count} tracks found", no_results: "No results found for \"{query}\"." },
+                history: { views_label: "Activity views", eyebrow: "Your activity", page_title: "Activity", page_description: "Track downloads and recent listening in one place.", queue: "Queue", downloads: "Download history", plays: "Listening history", queue_empty: "No downloads in progress.", downloads_empty: "No downloads have been recorded for this account yet.", plays_empty: "No listening activity has been recorded for this account yet.", recorded: "Added {date}", status_pending: "Queued", status_downloading: "Downloading", status_tagging: "Adding metadata", status_jellyfin_sync: "Syncing Jellyfin", status_completed: "Completed", status_failed: "Failed", status_interrupted: "Interrupted by server restart", status_retried: "Retry queued" },
+                users: { scope_all: "Show all users", scope_mine: "Show my data", admin_controls_title: "Administrator visibility", admin_controls_description: "Choose whether to show controls for viewing other users’ activity and playlists.", show_admin_controls: "Show cross-user controls in the interface", playlist_owner: "Owned by {user}", owner_unknown: "Owner unknown", recommendations_for: "Recommendations for {user}", select_user: "Choose a Jellyfin user", filter_user: "Filter by user", all_users: "All users", preference_error: "Could not save this preference." },
+                jellyfin: { page_title: "Jellyfin Library", shelf_tracks: "Tracks in your library", loading_tracks: "Loading tracks from Jellyfin…", no_tracks: "No tracks found in the Jellyfin library.", error_loading_library: "Could not load tracks. Check the Jellyfin connection in Settings.", input_placeholder: "Search tracks in your Jellyfin library...", status_connected: "Connected to Jellyfin", status_disconnected: "Disconnected from Jellyfin", status_refresh_tooltip: "Reload library data from Jellyfin", tracks_in_library: "tracks in Jellyfin library", shelf_playlists: "Playlists", shelf_albums: "Albums", shelf_artists: "Artists", card_artist: "Artist", back_to_albums: "Back to all Albums", back_to_artists: "Back to all Artists", back_to_playlists: "Back to Playlists", back_to_library: "Back to Jellyfin Library", badge_album: "ALBUM", badge_artist: "ARTIST", badge_playlist: "PLAYLIST", lyrics_ok: "Lyrics OK", no_lyrics: "No Lyrics", with_lyrics: "{count} with Lyrics", without_lyrics: "{count} without Lyrics", all_lyrics_present: "All lyrics present", download_missing_lyrics: "Download {count} Missing Lyrics", downloading_lyrics: "Downloading lyrics {current}/{total}...", download_lrc: "Download LRC", lyrics_saved: "Lyrics Saved", lyrics_unavailable: "Lyrics unavailable", loading_album_tracks: "Loading album tracks...", loading_artist_tracks: "Loading artist tracks...", loading_playlist_tracks: "Loading playlist tracks...", error_loading_tracks: "Error loading tracks.", search_in_progress: "Searching Jellyfin library...", search_results_count: "{count} tracks found", search_no_results: "No tracks found for \"{query}\".", all_albums: "All Albums", all_artists: "All Artists", no_items_found: "No items found.", sync_csv_btn: "Sync CSV", csv_modal_title: "Pair Playlist CSV", csv_modal_desc: "Compare an exported CSV sheet with this playlist: identify existing tracks, library tracks to add, and tracks to download.", csv_current: "Paired CSV:", csv_no_file: "No CSV file paired", csv_upload_btn: "Upload CSV", csv_tab_all: "All", csv_tab_in_playlist: "In Playlist", csv_tab_in_library: "In Library", csv_tab_to_download: "To Download", csv_btn_add_all: "Add All Library Tracks to Playlist", csv_btn_download_all: "Queue All Missing for Download", csv_btn_add: "Add to Playlist", csv_btn_download: "Download", csv_matching: "Matching tracks with Jellyfin library..." },
+                player: { now_playing: "Now Playing", default_title: "Track Title", default_artist: "Artist", prev_track: "Previous", play_pause: "Play / Pause", next_track: "Next", synced_lyrics: "Synchronized Lyrics", close_player: "Close Player", preview_source: "Preview", playback_error: "Audio playback failed. Please try another track." },
+                lyrics_modal: { close: "Close Lyrics", no_synced_lyrics: "No synchronized lyrics found for this track." },
+                downloads: { page_title: "Download Queue", empty: "No active downloads in queue.", status_pending: "Pending", status_downloading: "Downloading...", status_completed: "Completed", status_failed: "Failed", clear_completed: "Clear Completed" },
+                auth: { role_admin: "Administrator", role_user: "User", role_guest: "Guest access", continue_guest: "Continue as Guest", checking_session: "Checking your session…" },
+                setup: { server_fields_required: "Enter the Jellyfin server URL and API key.", storage_path_required: "Enter the music storage directory to continue.", btn_skip_guest: "Skip (Continue as Guest)", user_skipped: "You will continue as a guest." },
+                settings: { page_title: "Settings", overview: "Manage your library, Jellyfin connection, account, and language.", guest_name: "Guest", language_section_title: "Language & Translations", language_section_desc: "Select the application language. All text is connected to our Crowdin localization project.", language_select_label: "Display Language:", crowdin_badge: "Crowdin Ready", crowdin_info: "Translations are synchronized with Crowdin. To add new languages or refine translations, join the project on Crowdin.", music_dir_title: "Music Library Folder", music_dir_desc: "Path where Music Seerr will save downloaded audio files and look for .lrc synchronized lyric files.", music_dir_label: "Server Folder Path:", docker_note_title: "Note for Docker / NAS environments:", docker_note_body: "When running in Docker, make sure this path matches the volume mount defined in docker-compose.yml (e.g. ./music:/music).", jellyfin_section_title: "Jellyfin Integration", jellyfin_section_desc: "Connect your Jellyfin server for instant library scanning, playlist selection, and audio playback.", jellyfin_url_label: "Jellyfin Server URL:", jellyfin_api_key_label: "Jellyfin API Key:", jellyfin_api_key_help: "Can be generated in: Jellyfin Dashboard > Advanced > API Keys.", jellyfin_user_id_label: "User ID (Optional, for user playlists):", btn_test_connection: "Test Connection", btn_save_settings: "Save Settings", testing_connection: "Testing connection...", saved_success: "Settings saved successfully!" }
+            },
+            it: {
+                app: { name: "Music Seerr", subtitle: "Scaricatore musicale self-hosted con testi sincronizzati per Jellyfin" },
+                nav: { search: "Cerca Musica", jellyfin: "Libreria Jellyfin", downloads: "Attività", settings: "Impostazioni" },
+                common: { save: "Salva", saved: "Salvato", cancel: "Annulla", loading: "Caricamento...", error: "Errore", success: "Successo", ok: "OK", got_it: "Ho Capito", sync: "Sincronizza", syncing: "Sincronizzazione...", tracks: "brani", songs: "canzoni", all: "Tutti", filter: "Filtra...", retry: "Riprova" },
+                search: { page_eyebrow: "Scopri", page_description: "Trova un brano, ascoltane l’anteprima e aggiungilo alla tua libreria.", recommendations_title: "Scelti per te", recommendations_subtitle: "Basati sugli artisti nella tua libreria Jellyfin", recommendations_loading: "Caricamento dei consigliati…", recommendations_empty: "Non ci sono ancora brani consigliati.", recommendations_error: "Impossibile caricare i consigliati.", recommendations_based_on: "Basati su: {artists}", page_title: "Cerca Musica", input_placeholder: "Cerca brani da scaricare sul NAS...", filter_target_playlist: "Aggiungi a Playlist:", none_library_only: "Nessuna (Solo Libreria)", empty_initial: "Cerca una canzone per ascoltare l'anteprima circolare e scaricarla sul server con 1 click.", searching: "Ricerca in corso...", download_btn: "Scarica", in_library: "In Libreria", downloading: "Download in corso...", results_found: "{count} brani trovati", no_results: "Nessun brano trovato per \"{query}\"." },
+                history: { views_label: "Viste attività", eyebrow: "La tua attività", page_title: "Attività", page_description: "Consulta download e ascolti recenti in un unico posto.", queue: "Coda", downloads: "Cronologia download", plays: "Cronologia ascolti", queue_empty: "Nessun download in corso.", downloads_empty: "Non ci sono ancora download registrati per questo account.", plays_empty: "Non ci sono ancora ascolti registrati per questo account.", recorded: "Aggiunto il {date}", status_pending: "In coda", status_downloading: "Download in corso", status_tagging: "Tag in aggiornamento", status_jellyfin_sync: "Sincronizzazione Jellyfin", status_completed: "Completato", status_failed: "Non riuscito", status_interrupted: "Interrotto dal riavvio del server", status_retried: "Nuovo tentativo in coda" },
+                users: { scope_all: "Mostra tutti gli utenti", scope_mine: "Mostra i miei dati", admin_controls_title: "Visibilità amministratore", admin_controls_description: "Scegli se mostrare i controlli per consultare le attività e le playlist degli altri utenti.", show_admin_controls: "Mostra i controlli per gli altri utenti", playlist_owner: "Di {user}", owner_unknown: "Proprietario sconosciuto", recommendations_for: "Consigliati per {user}", select_user: "Scegli un utente Jellyfin", filter_user: "Filtra per utente", all_users: "Tutti gli utenti", preference_error: "Impossibile salvare questa preferenza." },
+                jellyfin: { page_title: "Libreria Jellyfin", shelf_tracks: "Brani nella libreria", loading_tracks: "Caricamento brani da Jellyfin…", no_tracks: "Nessun brano trovato nella libreria Jellyfin.", error_loading_library: "Impossibile caricare i brani. Verifica la connessione Jellyfin nelle Impostazioni.", input_placeholder: "Cerca brani nella tua libreria Jellyfin...", status_connected: "Connesso a Jellyfin", status_disconnected: "Disconnesso da Jellyfin", status_refresh_tooltip: "Ricarica i dati da Jellyfin", tracks_in_library: "brani nella libreria Jellyfin", shelf_playlists: "Playlist", shelf_albums: "Album", shelf_artists: "Artisti", card_artist: "Artista", back_to_albums: "Torna a tutti gli Album", back_to_artists: "Torna a tutti gli Artisti", back_to_playlists: "Torna alle Playlist", back_to_library: "Torna alla Libreria Jellyfin", badge_album: "ALBUM", badge_artist: "ARTISTA", badge_playlist: "PLAYLIST", lyrics_ok: "Lyrics OK", no_lyrics: "No Lyrics", with_lyrics: "{count} con Lyrics", without_lyrics: "{count} senza Lyrics", all_lyrics_present: "Tutte le lyrics presenti", download_missing_lyrics: "Scarica {count} Lyrics Mancanti", downloading_lyrics: "Download testi in corso {current}/{total}...", download_lrc: "Scarica LRC", lyrics_saved: "Testo Salvato", lyrics_unavailable: "Testo non disponibile", loading_album_tracks: "Caricamento tracce dell'album...", loading_artist_tracks: "Caricamento brani dell'artista...", loading_playlist_tracks: "Caricamento brani della playlist...", error_loading_tracks: "Errore nel caricamento delle tracce.", search_in_progress: "Ricerca in corso su Jellyfin...", search_results_count: "{count} brani trovati", search_no_results: "Nessun brano trovato per \"{query}\".", all_albums: "Tutti gli Album", all_artists: "Tutti gli Artisti", no_items_found: "Nessun elemento trovato.", sync_csv_btn: "Accoppia CSV", csv_modal_title: "Accoppiamento Playlist CSV", csv_modal_desc: "Confronta un foglio CSV con questa playlist: scopri i brani già presenti, quelli in libreria da aggiungere e quelli da scaricare.", csv_current: "CSV accoppiato:", csv_no_file: "Nessun file CSV accoppiato", csv_upload_btn: "Carica CSV", csv_tab_all: "Tutti", csv_tab_in_playlist: "In Playlist", csv_tab_in_library: "In Libreria", csv_tab_to_download: "Da Scaricare", csv_btn_add_all: "Aggiungi Tutti alla Playlist", csv_btn_download_all: "Metti Tutti in Coda Download", csv_btn_add: "Aggiungi", csv_btn_download: "Scarica", csv_matching: "Confronto con la libreria Jellyfin in corso..." },
+                player: { now_playing: "In Riproduzione", default_title: "Titolo Brano", default_artist: "Artista", prev_track: "Precedente", play_pause: "Play / Pausa", next_track: "Successivo", synced_lyrics: "Testi Sincronizzati (Lyrics)", close_player: "Chiudi Player", preview_source: "Anteprima", playback_error: "Riproduzione audio non riuscita. Prova un altro brano." },
+                lyrics_modal: { close: "Chiudi Testi", no_synced_lyrics: "Nessun testo sincronizzato disponibile per questo brano." },
+                downloads: { page_title: "Coda di Download", empty: "Nessun download in coda o attivo.", status_pending: "In attesa", status_downloading: "Download...", status_completed: "Completato", status_failed: "Fallito", clear_completed: "Pulisci Completati" },
+                auth: { role_admin: "Amministratore", role_user: "Utente", role_guest: "Accesso ospite", continue_guest: "Continua come ospite", checking_session: "Verifica della sessione…" },
+                settings: { page_title: "Impostazioni", overview: "Gestisci libreria, connessione Jellyfin, account e lingua.", guest_name: "Ospite", language_section_title: "Lingua & Traduzioni", language_section_desc: "Seleziona la lingua dell'interfaccia. Tutti i testi sono collegati al progetto di localizzazione Crowdin.", language_select_label: "Lingua dell'applicazione:", crowdin_badge: "Crowdin Ready", crowdin_info: "Le traduzioni sono sincronizzate tramite Crowdin. Per aggiungere nuove lingue o migliorare i testi, partecipa al progetto su Crowdin.", music_dir_title: "Cartella della Libreria Musicale", music_dir_desc: "Definisci il percorso del disco sul quale Music Seerr salverà i brani scaricati e cercherà i file .lrc dei testi.", music_dir_label: "Percorso Cartella sul Server:", docker_note_title: "Nota per ambienti Docker / NAS:", docker_note_body: "Se esegui in Docker, assicurati che questo percorso corrisponda al montaggio dei volumi definito in docker-compose.yml (es: ./music:/music).", jellyfin_section_title: "Integrazione Jellyfin", jellyfin_section_desc: "Collega il tuo server Jellyfin per permettere l'aggiornamento automatico della libreria dopo ogni download e la selezione rapida delle playlist.", jellyfin_url_label: "URL Server Jellyfin:", jellyfin_api_key_label: "Chiave API Jellyfin (API Key):", jellyfin_api_key_help: "Generabile in: Jellyfin Dashboard > Avanzate > Chiavi API.", jellyfin_user_id_label: "User ID (Opzionale per Playlist utente):", btn_test_connection: "Verifica Connessione", btn_save_settings: "Salva Impostazioni", testing_connection: "Verifica in corso...", saved_success: "Impostazioni salvate con successo!" }
+            }
+        };
+
+        function t(key, params = {}) {
+            const keys = key.split('.');
+            let val = localeData;
+            for (const k of keys) {
+                if (val && typeof val === 'object' && k in val) {
+                    val = val[k];
+                } else {
+                    val = null;
+                    break;
+                }
+            }
+            if (typeof val !== 'string') {
+                let fb = (embeddedLocales[currentLanguage] || embeddedLocales.en);
+                for (const k of keys) {
+                    if (fb && typeof fb === 'object' && k in fb) fb = fb[k];
+                    else { fb = null; break; }
+                }
+                val = typeof fb === 'string' ? fb : key;
+            }
+            return val.replace(/\{(\w+)\}/g, (_, match) => params[match] !== undefined ? params[match] : `{${match}}`);
+        }
+        window.t = t;
+
+        function applyTranslations() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (key) {
+                    const translated = t(key);
+                    if (translated && translated !== key) {
+                        el.textContent = translated;
+                    }
+                }
+            });
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-i18n-placeholder');
+                if (key) {
+                    const translated = t(key);
+                    if (translated && translated !== key) {
+                        el.placeholder = translated;
+                    }
+                }
+            });
+            document.querySelectorAll('[data-i18n-title]').forEach(el => {
+                const key = el.getAttribute('data-i18n-title');
+                if (key) {
+                    const translated = t(key);
+                    if (translated && translated !== key) {
+                        el.title = translated;
+                    }
+                }
+            });
+            document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+                const key = el.getAttribute('data-i18n-aria-label');
+                if (key) el.setAttribute('aria-label', t(key));
+            });
+
+            if (currentNavTab === 'search') pageTitle.textContent = t('nav.search');
+            else if (currentNavTab === 'jellyfin') pageTitle.textContent = t('nav.jellyfin');
+            else if (currentNavTab === 'downloads') pageTitle.textContent = t('nav.downloads');
+            else if (currentNavTab === 'settings') pageTitle.textContent = t('nav.settings');
+
+            if (globalSearchInput) {
+                if (currentNavTab === 'jellyfin') {
+                    globalSearchInput.placeholder = t('jellyfin.input_placeholder');
+                } else {
+                    globalSearchInput.placeholder = t('search.input_placeholder');
+                }
+            }
+
+            const defaultPlOpt = document.querySelector('#playlistSelect option[value=""]');
+            if (defaultPlOpt) {
+                defaultPlOpt.textContent = t('search.none_library_only');
+            }
+
+            const searchEmpty = document.querySelector('#viewSearch .empty-state p');
+            if (searchEmpty && (!globalSearchInput || !globalSearchInput.value.trim())) {
+                searchEmpty.textContent = t('search.empty_initial');
+            }
+
+            if (typeof checkPathComparison === 'function') {
+                checkPathComparison();
+            }
+        }
+        window.applyTranslations = applyTranslations;
+
+        async function setLanguage(lang, saveToBackend = false) {
+            currentLanguage = lang || 'en';
+            safeLocalStorageSet('app_language', currentLanguage);
+            const langSelect = document.getElementById('settingsLanguage');
+            if (langSelect) langSelect.value = currentLanguage;
+
+            if (embeddedLocales[currentLanguage]) {
+                localeData = embeddedLocales[currentLanguage];
+            }
+
+            try {
+                const res = await fetch(`/static/locales/${currentLanguage}.json?t=${Date.now()}`);
+                if (res.ok) {
+                    localeData = await res.json();
+                }
+            } catch (e) {}
+
+            applyTranslations();
+            updateAdminControlVisibility();
+
+            if (saveToBackend) {
+                try {
+                    await fetch('/api/settings', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ language: currentLanguage })
+                    });
+                } catch (e) {}
+            }
+        }
+        window.setLanguage = setLanguage;
+
+        function changeLanguage(lang) {
+            setLanguage(lang, true);
+        }
+        window.changeLanguage = changeLanguage;
+
+        let currentAppUser = null;
+        let showOtherUsersControls = false;
+        let adminAllUsersMode = false;
+        let jobsPollingInterval = null;
+        let currentDownloadsView = 'queue';
+        let currentAdminActivityUser = '';
+        let setupStep = 1;
+        let setupUsers = [];
+        let setupAuthenticatedUser = null;
+        let setupPreserveSession = false;
+        let setupDetectedMusicPath = '';
+        let setupConnectionValid = false;
+
+        function setSetupBadge(step, message, success = null) {
+            const el = document.getElementById(`setupStep${step}Badge`);
+            if (!el) return;
+            el.textContent = message || '';
+            el.setAttribute('role', success === false ? 'alert' : 'status');
+            el.style.color = success === false ? '#fca5a5' : success ? '#86efac' : 'var(--text-secondary)';
+        }
+
+        function showSetupStep(step) {
+            setupStep = Math.min(4, Math.max(1, step));
+            for (let i = 1; i <= 4; i++) {
+                const panel = document.getElementById(`setupStepPanel${i}`);
+                const pill = document.getElementById(`setupStepPill${i}`);
+                if (panel) panel.style.display = i === setupStep ? 'block' : 'none';
+                if (pill) {
+                    pill.classList.toggle('active', i === setupStep);
+                    pill.classList.toggle('completed', i < setupStep);
+                    if (i === setupStep) pill.setAttribute('aria-current', 'step');
+                    else pill.removeAttribute('aria-current');
+                }
+            }
+            document.getElementById('setupBackBtn').style.display = setupStep > 1 ? '' : 'none';
+            document.getElementById('setupSkipUserBtn').style.display = setupStep === 3 ? '' : 'none';
+            document.getElementById('setupTestBtn').style.display = setupStep === 1 ? '' : 'none';
+            document.getElementById('setupNextBtn').style.display = setupStep < 4 ? '' : 'none';
+            document.getElementById('setupFinishBtn').style.display = setupStep === 4 ? '' : 'none';
+            if (setupStep === 4) updateSetupSummary();
+        }
+
+        function updateSetupSummary() {
+            document.getElementById('setupSummaryServer').textContent = document.getElementById('setupJellyfinUrl').value.trim() || '—';
+            document.getElementById('setupSummaryDir').textContent = document.getElementById('setupMusicDir').value.trim() || '—';
+            document.getElementById('setupSummaryUser').textContent = setupAuthenticatedUser?.name || 'Guest';
+            document.getElementById('setupSummaryRole').textContent = setupAuthenticatedUser?.is_admin ? t('auth.role_admin') : setupAuthenticatedUser ? t('auth.role_user') : t('auth.role_guest');
+        }
+
+        window.openSetupWizard = async function() {
+            setupPreserveSession = Boolean(currentAppUser && !currentAppUser.is_guest);
+            setupAuthenticatedUser = setupPreserveSession ? currentAppUser : null;
+            if (currentAppUser && currentAppUser.is_admin) {
+                try {
+                    const response = await fetch('/api/setup/status');
+                    if (response.ok) {
+                        const status = await response.json();
+                        if (status.jellyfin_url) document.getElementById('setupJellyfinUrl').value = status.jellyfin_url;
+                        if (status.music_dir) document.getElementById('setupMusicDir').value = status.music_dir;
+                        if (status.jellyfin_api_key) document.getElementById('setupJellyfinApiKey').value = status.jellyfin_api_key;
+                    }
+                } catch (error) {}
+            }
+            document.getElementById('setupWizardModal').style.display = 'flex';
+            showSetupStep(1);
+            document.getElementById('setupJellyfinUrl').focus();
+        };
+        window.closeSetupWizard = function() {
+            if (document.getElementById('setupWizardModal').dataset.required === 'true') return;
+            document.getElementById('setupWizardModal').style.display = 'none';
+        };
+        window.applySetupDetectedPath = function() {
+            if (setupDetectedMusicPath) document.getElementById('setupMusicDir').value = setupDetectedMusicPath;
+        };
+
+        window.testCurrentSetupStep = async function() {
+            const url = document.getElementById('setupJellyfinUrl').value.trim();
+            const key = document.getElementById('setupJellyfinApiKey').value.trim();
+            const button = document.getElementById('setupTestBtn');
+            if (!url || !key) {
+                setupConnectionValid = false;
+                setSetupBadge(1, t('setup.server_fields_required'), false);
+                return;
+            }
+            button.disabled = true;
+            setupConnectionValid = false;
+            setSetupBadge(1, t('common.loading'));
+            try {
+                const response = await fetch('/api/settings/test-jellyfin', {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ jellyfin_url: url, jellyfin_api_key: key })
+                });
+                const data = await response.json();
+                setSetupBadge(1, data.message || (data.success ? t('common.success') : t('common.error')), Boolean(data.success));
+                if (!data.success) return;
+                setupConnectionValid = true;
+                setupUsers = Array.isArray(data.users) ? data.users : [];
+                setupDetectedMusicPath = (data.jellyfin_music_paths || []).find(path => typeof path === 'string') || '';
+                const detected = document.getElementById('setupDetectedPathBox');
+                if (detected && setupDetectedMusicPath) {
+                    detected.style.display = 'flex';
+                    document.getElementById('setupDetectedPathCode').textContent = setupDetectedMusicPath;
+                }
+                const picker = document.getElementById('setupUsersPickerContainer');
+                const list = document.getElementById('setupUsersPickerList');
+                if (picker && list && setupUsers.length) {
+                    list.replaceChildren();
+                    setupUsers.forEach(user => {
+                        const chip = document.createElement('button');
+                        chip.type = 'button'; chip.className = 'login-user-pill'; chip.textContent = user.Name || user.name || 'Jellyfin';
+                        chip.setAttribute('aria-pressed', 'false');
+                        chip.addEventListener('click', () => {
+                            document.getElementById('setupUsername').value = chip.textContent;
+                            list.querySelectorAll('button').forEach(item => {
+                                const selected = item === chip;
+                                item.classList.toggle('selected', selected);
+                                item.setAttribute('aria-pressed', String(selected));
+                            });
+                        });
+                        list.append(chip);
+                    });
+                    picker.style.display = '';
+                }
+            } catch (error) {
+                setupConnectionValid = false;
+                setSetupBadge(1, error.message || t('auth.error_connection'), false);
+            } finally { button.disabled = false; }
+        };
+
+        window.nextSetupStep = async function() {
+            if (setupStep === 1) {
+                if (!setupConnectionValid) {
+                    await window.testCurrentSetupStep();
+                    if (!setupConnectionValid) return;
+                }
+                if (!document.getElementById('setupMusicDir').value.trim()) {
+                    document.getElementById('setupMusicDir').value = (setupDetectedMusicPath || '').trim();
+                }
+            } else if (setupStep === 2) {
+                if (!document.getElementById('setupMusicDir').value.trim()) {
+                    setSetupBadge(2, t('setup.storage_path_required'), false);
+                    document.getElementById('setupMusicDir').focus(); return;
+                }
+            } else if (setupStep === 3) {
+                const username = document.getElementById('setupUsername').value.trim();
+                const password = document.getElementById('setupPassword').value;
+                if (username) {
+                    setSetupBadge(3, t('common.loading'));
+                    try {
+                        const response = await fetch('/api/auth/login', {
+                            method: 'POST', headers: {'Content-Type':'application/json'},
+                            body: JSON.stringify({ username, password, jellyfin_url: document.getElementById('setupJellyfinUrl').value.trim() })
+                        });
+                        const data = await response.json();
+                        if (!response.ok || !data.success || !data.user?.id) throw new Error(data.detail || t('auth.error_credentials'));
+                        setupAuthenticatedUser = { id: data.user.id, name: data.user.name, is_admin: Boolean(data.user.is_admin) };
+                        setSetupBadge(3, t('common.success'), true);
+                    } catch (error) { setSetupBadge(3, error.message || t('auth.error_credentials'), false); return; }
+                }
+            }
+            showSetupStep(setupStep + 1);
+        };
+        window.prevSetupStep = function() { showSetupStep(setupStep - 1); };
+        window.skipSetupUser = function() {
+            setupAuthenticatedUser = setupPreserveSession ? currentAppUser : null;
+            document.getElementById('setupUsername').value = '';
+            document.getElementById('setupPassword').value = '';
+            setSetupBadge(3, t('setup.user_skipped'), true);
+            showSetupStep(4);
+        };
+
+        window.finishSetupWizard = async function() {
+            const button = document.getElementById('setupFinishBtn');
+            button.disabled = true;
+            try {
+                const response = await fetch('/api/setup/complete', {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({
+                        jellyfin_url: document.getElementById('setupJellyfinUrl').value.trim(),
+                        jellyfin_api_key: document.getElementById('setupJellyfinApiKey').value.trim(),
+                        music_dir: document.getElementById('setupMusicDir').value.trim(),
+                        jellyfin_user_id: setupAuthenticatedUser?.id || '',
+                        language: currentLanguage
+                    })
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.detail || t('common.error'));
+                const modal = document.getElementById('setupWizardModal');
+                modal.dataset.required = 'false'; modal.style.display = 'none';
+                document.getElementById('setupPassword').value = '';
+                if (setupAuthenticatedUser) {
+                    renderSidebarUser(setupAuthenticatedUser);
+                } else if (!setupPreserveSession) {
+                    await fetch('/api/auth/guest', { method: 'POST', credentials: 'same-origin' });
+                    renderSidebarUser(null);
+                }
+                await refreshVerifiedSession();
+                if (!currentAppUser) throw new Error(t('auth.error_connection'));
+                await startAuthenticatedApp();
+                showAlertPopup(t('common.success'), data.message || t('common.saved'), true);
+            } catch (error) { setSetupBadge(4, error.message || t('common.error'), false); }
+            finally { button.disabled = false; }
+        };
+
+        async function initializeSetupAndSession() {
+            try {
+                await setLanguage(currentLanguage, false);
+                const response = await fetch('/api/setup/status', { credentials: 'same-origin', cache: 'no-store' });
+                if (!response.ok) throw new Error(t('auth.error_connection'));
+                const status = await response.json();
+                if (status.jellyfin_url) document.getElementById('setupJellyfinUrl').value = status.jellyfin_url;
+                if (status.music_dir) document.getElementById('setupMusicDir').value = status.music_dir;
+                if (status.jellyfin_api_key) document.getElementById('setupJellyfinApiKey').value = status.jellyfin_api_key;
+                if (status.language && !safeLocalStorageGet('app_language')) await setLanguage(status.language, false);
+                if (!status.setup_completed) {
+                    const modal = document.getElementById('setupWizardModal');
+                    modal.dataset.required = 'true';
+                    window.openSetupWizard();
+                    return;
+                }
+                document.getElementById('setupWizardModal').dataset.required = 'false';
+                await refreshVerifiedSession();
+                if (!currentAppUser) {
+                    openLoginModal();
+                    return;
+                }
+                restoreJellyfinSession();
+                await startAuthenticatedApp();
+            } catch (error) {
+                document.body.classList.remove('app-booting');
+                openLoginModal();
+                const errorEl = document.getElementById('loginErrorMsg');
+                if (errorEl) {
+                    errorEl.textContent = error.message || t('auth.error_connection');
+                    errorEl.style.display = 'block';
+                }
+            }
+        }
+
+        ['setupJellyfinUrl', 'setupJellyfinApiKey'].forEach(id => {
+            document.getElementById(id).addEventListener('input', () => {
+                setupConnectionValid = false;
+                setSetupBadge(1, '');
+            });
+        });
+
+        function renderSettingsUser(user) {
+            const nameEl = document.getElementById('settingsUserName');
+            const roleEl = document.getElementById('settingsUserRoleBadge');
+            const initialEl = document.getElementById('settingsUserAvatarInitial');
+            const imageEl = document.getElementById('settingsUserAvatarImg');
+            const displayName = user?.name || (user ? t('auth.role_user') : t('settings.guest_name'));
+            if (nameEl) nameEl.textContent = displayName;
+            if (roleEl) roleEl.textContent = user ? (user.is_admin ? t('auth.role_admin') : t('auth.role_user')) : t('auth.role_guest');
+            if (roleEl) roleEl.classList.toggle('is-guest', !user);
+            if (initialEl) initialEl.textContent = displayName.slice(0, 1).toUpperCase();
+            if (imageEl) {
+                imageEl.onerror = () => { imageEl.style.display = 'none'; };
+                if (user?.image_url) {
+                    imageEl.src = user.image_url;
+                    imageEl.style.display = 'block';
+                } else {
+                    imageEl.removeAttribute('src');
+                    imageEl.style.display = 'none';
+                }
+            }
+        }
+
+        function renderSidebarUser(user) {
+            const nameEl = document.getElementById('sidebarUserName');
+            const roleEl = document.getElementById('sidebarUserRole');
+            const initialEl = document.getElementById('sidebarUserAvatarInitial');
+            const imageEl = document.getElementById('sidebarUserAvatarImg');
+            document.body.classList.toggle('is-guest', !user);
+            renderSettingsUser(user);
+
+            if (!user) {
+                if (nameEl) nameEl.textContent = t('settings.guest_name');
+                if (roleEl) roleEl.textContent = t('auth.role_guest');
+                if (initialEl) initialEl.textContent = 'G';
+                if (imageEl) {
+                    imageEl.removeAttribute('src');
+                    imageEl.style.display = 'none';
+                }
+                return;
+            }
+
+            if (nameEl) nameEl.textContent = user.name || 'Jellyfin';
+            if (roleEl) roleEl.textContent = user.is_admin ? t('auth.role_admin') : t('auth.role_user');
+            if (initialEl) initialEl.textContent = (user.name || 'J').slice(0, 1).toUpperCase();
+            if (imageEl) {
+                imageEl.style.display = user.image_url ? 'block' : 'none';
+                imageEl.onerror = () => { imageEl.style.display = 'none'; };
+                if (user.image_url) imageEl.src = user.image_url;
+            }
+        }
+
+        async function recordPlayback(track, source) {
+            if (!track || !track.id || !track.title) return;
+            try {
+                await fetch('/api/history/plays', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ source: source, track: { id: track.id, title: track.title, artist: track.artist || '', album: track.album || '' } })
+                });
+            } catch (error) { console.debug('Playback history could not be recorded.', error); }
+        }
+
+        async function refreshVerifiedSession() {
+            let identityChanged = false;
+            const response = await fetch('/api/auth/session', { credentials: 'same-origin', cache: 'no-store' });
+            if (!response.ok) throw new Error('Sessione non verificabile.');
+            const data = await response.json();
+            const previousUserId = currentAppUser?.id;
+            currentAppUser = data.authenticated ? data.user : null;
+            if (previousUserId && currentAppUser?.id !== previousUserId) {
+                identityChanged = true;
+                adminAllUsersMode = false;
+                currentAdminActivityUser = '';
+                recsLoaded = false;
+            }
+            renderSidebarUser(currentAppUser && !currentAppUser.is_guest ? currentAppUser : null);
+            showOtherUsersControls = false;
+            if (currentAppUser) {
+                try {
+                    const preferenceResponse = await fetch('/api/me/preferences', { credentials: 'same-origin', cache: 'no-store' });
+                    const preferences = preferenceResponse.ok ? await preferenceResponse.json() : {};
+                    showOtherUsersControls = Boolean(preferences.show_other_users_controls && currentAppUser.is_admin);
+                } catch (error) {}
+            }
+            if (!showOtherUsersControls) adminAllUsersMode = false;
+            updateAdminControlVisibility();
+            if (identityChanged && currentNavTab === 'downloads') {
+                if (currentDownloadsView === 'queue') fetchJobs();
+                else await loadActivityHistory(currentDownloadsView);
+            }
+        }
+
+        function updateAdminControlVisibility() {
+            const isAdmin = Boolean(currentAppUser && currentAppUser.is_admin);
+            const showControls = isAdmin && showOtherUsersControls;
+            document.querySelectorAll('.admin-scope-toggle').forEach(button => {
+                button.style.display = showControls ? 'inline-flex' : 'none';
+                button.textContent = t(adminAllUsersMode ? 'users.scope_mine' : 'users.scope_all');
+            });
+            const controlsCard = document.getElementById('adminDataControlsCard');
+            if (controlsCard) controlsCard.style.display = isAdmin ? '' : 'none';
+            const storageCard = document.getElementById('adminStorageSettingsCard');
+            if (storageCard) storageCard.style.display = isAdmin ? '' : 'none';
+            const jellyfinCard = document.getElementById('adminJellyfinSettingsCard');
+            if (jellyfinCard) jellyfinCard.style.display = isAdmin ? '' : 'none';
+            const preference = document.getElementById('showOtherUsersControls');
+            if (preference) preference.checked = showOtherUsersControls;
+            const userSelect = document.getElementById('adminRecommendationsUser');
+            const userSelectLabel = document.getElementById('adminRecommendationsUserLabel');
+            if (userSelectLabel) userSelectLabel.style.display = showControls && adminAllUsersMode ? 'grid' : 'none';
+            const activityUserLabel = document.getElementById('adminActivityUserLabel');
+            if (activityUserLabel) activityUserLabel.style.display = showControls && adminAllUsersMode ? 'grid' : 'none';
+        }
+
+        window.saveOtherUsersControlsPreference = async function(value) {
+            if (!currentAppUser || !currentAppUser.is_admin) return;
+            try {
+                const response = await fetch('/api/me/preferences', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ show_other_users_controls: Boolean(value) })
+                });
+                if (!response.ok) throw new Error();
+                showOtherUsersControls = Boolean(value);
+                if (!showOtherUsersControls) {
+                    adminAllUsersMode = false;
+                    currentAdminActivityUser = '';
+                }
+                updateAdminControlVisibility();
+                await loadPlaylists();
+                recsLoaded = false;
+                loadSearchRecommendations(true);
+                fetchJobs();
+                if (currentDownloadsView !== 'queue') await loadActivityHistory(currentDownloadsView);
+            } catch (error) {
+                const preference = document.getElementById('showOtherUsersControls');
+                if (preference) preference.checked = showOtherUsersControls;
+                showAlertPopup(t('common.error'), t('users.preference_error'));
+            }
+        };
+
+        window.toggleAdminAllUsersMode = async function() {
+            if (!currentAppUser || !currentAppUser.is_admin || !showOtherUsersControls) return;
+            adminAllUsersMode = !adminAllUsersMode;
+            updateAdminControlVisibility();
+            if (adminAllUsersMode) await loadAdminRecommendationUsers();
+            await loadPlaylists();
+            recsLoaded = false;
+            loadSearchRecommendations(true);
+            fetchJobs();
+            if (currentDownloadsView !== 'queue') loadActivityHistory(currentDownloadsView);
+        };
+
+        async function loadAdminRecommendationUsers() {
+            const select = document.getElementById('adminRecommendationsUser');
+            const activitySelect = document.getElementById('adminActivityUser');
+            if ((!select && !activitySelect) || !adminAllUsersMode) return;
+            try {
+                const response = await fetch('/api/admin/users');
+                if (!response.ok) return;
+                const data = await response.json();
+                const users = data.users || [];
+                if (select) {
+                    const selectedId = select.value || (currentAppUser && currentAppUser.id) || '';
+                    select.innerHTML = '<option value="">' + t('users.select_user') + '</option>' + users.map(user =>
+                        '<option value="' + escapeHtml(user.id) + '">' + escapeHtml(user.name) + '</option>'
+                    ).join('');
+                    if (Array.from(select.options).some(option => option.value === selectedId)) select.value = selectedId;
+                    if (!select.value && select.options.length > 1) select.selectedIndex = 1;
+                }
+                if (activitySelect) {
+                    activitySelect.innerHTML = '<option value="">' + t('users.all_users') + '</option>' + users.map(user =>
+                        '<option value="' + escapeHtml(user.id) + '">' + escapeHtml(user.name) + '</option>'
+                    ).join('');
+                    activitySelect.value = currentAdminActivityUser;
+                }
+                updateAdminControlVisibility();
+            } catch (error) {}
+        }
+
+        window.reloadUserRecommendations = function() {
+            recsLoaded = false;
+            loadSearchRecommendations(true);
+        };
+
+        window.reloadAdminActivityUser = function(userId) {
+            currentAdminActivityUser = userId || '';
+            if (currentDownloadsView === 'queue') fetchJobs();
+            else loadActivityHistory(currentDownloadsView);
+        };
+
+        window.switchDownloadsView = function(view) {
+            if (['queue', 'downloads', 'plays'].indexOf(view) < 0) return;
+            currentDownloadsView = view;
+            document.getElementById('downloadsQueuePanel').style.display = view === 'queue' ? '' : 'none';
+            document.getElementById('downloadHistoryPanel').style.display = view === 'downloads' ? '' : 'none';
+            document.getElementById('playHistoryPanel').style.display = view === 'plays' ? '' : 'none';
+            document.getElementById('historyTabQueue').classList.toggle('active', view === 'queue');
+            document.getElementById('historyTabDownloads').classList.toggle('active', view === 'downloads');
+            document.getElementById('historyTabPlays').classList.toggle('active', view === 'plays');
+            document.getElementById('historyTabQueue').setAttribute('aria-selected', String(view === 'queue'));
+            document.getElementById('historyTabDownloads').setAttribute('aria-selected', String(view === 'downloads'));
+            document.getElementById('historyTabPlays').setAttribute('aria-selected', String(view === 'plays'));
+            const tabs = { queue: 'historyTabQueue', downloads: 'historyTabDownloads', plays: 'historyTabPlays' };
+            Object.entries(tabs).forEach(([key, id]) => document.getElementById(id).tabIndex = key === view ? 0 : -1);
+            if (view === 'queue') fetchJobs();
+            else loadActivityHistory(view);
+        };
+
+        document.getElementById('historyTabList')?.addEventListener('keydown', event => {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+            const tabs = Array.from(event.currentTarget.querySelectorAll('[role="tab"]'));
+            const active = tabs.indexOf(document.activeElement);
+            const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (active + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length;
+            event.preventDefault();
+            tabs[next].focus();
+            tabs[next].click();
+        });
+
+        async function loadActivityHistory(kind) {
+            const isDownloads = kind === 'downloads';
+            const panel = document.getElementById(isDownloads ? 'downloadHistoryPanel' : 'playHistoryPanel');
+            if (!panel) return;
+            panel.innerHTML = '<div class="empty-state"><p>' + t('common.loading') + '</p></div>';
+            const endpointName = isDownloads ? 'downloads' : 'plays';
+            let url = '/api/history/' + endpointName + '?limit=100';
+            if (adminAllUsersMode && currentAppUser && currentAppUser.is_admin) {
+                url = '/api/admin/history/' + endpointName + '?limit=200';
+                if (currentAdminActivityUser) url += '&user_id=' + encodeURIComponent(currentAdminActivityUser);
+            }
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error();
+                const entries = await response.json();
+                if (!entries.length) {
+                    panel.innerHTML = '<div class="empty-state"><p>' + t(isDownloads ? 'history.downloads_empty' : 'history.plays_empty') + '</p></div>';
+                    return;
+                }
+                panel.innerHTML = entries.map(entry => {
+                    const track = entry.track || entry;
+                    const timestamp = isDownloads ? entry.created_at : entry.played_at;
+                    const date = new Date(timestamp * 1000).toLocaleString(currentLanguage === 'it' ? 'it-IT' : 'en-US');
+                    const statusKey = 'history.status_' + entry.status;
+                    const status = entry.status ? t(statusKey) : (entry.source || '');
+                    const detail = isDownloads
+                        ? [track.artist, entry.playlist_name].filter(Boolean).join(' · ')
+                        : [track.artist, track.album].filter(Boolean).join(' · ');
+                    const owner = adminAllUsersMode ? '<span class="history-user-tag">' + escapeHtml(entry.user_name || '') + '</span>' : '';
+                    return '<article class="history-record"><div><div class="history-record-title">' + escapeHtml(track.title || '') +
+                        '</div><div class="history-record-subtitle">' + escapeHtml(detail) + '</div>' + owner +
+                        '</div><div class="history-record-meta">' + escapeHtml(status) + '<br>' + escapeHtml(date) + '</div></article>';
+                }).join('');
+            } catch (error) {
+                panel.innerHTML = '<div class="empty-state"><p>' + t('common.error') + '</p></div>';
+            }
+        }
+
+        window.openLoginModal = function() {
+            if (jobsPollingInterval) {
+                clearInterval(jobsPollingInterval);
+                jobsPollingInterval = null;
+            }
+            document.body.classList.remove('app-booting');
+            document.body.classList.add('auth-gated');
+            const modal = document.getElementById('loginModal');
+            const errorEl = document.getElementById('loginErrorMsg');
+            if (errorEl) errorEl.style.display = 'none';
+            if (modal) modal.style.display = 'flex';
+            document.getElementById('loginUsername')?.focus();
+        };
+
+        async function startAuthenticatedApp() {
+            if (!currentAppUser) {
+                openLoginModal();
+                return false;
+            }
+            document.body.classList.remove('app-booting', 'auth-gated');
+            const loginModal = document.getElementById('loginModal');
+            if (loginModal) loginModal.style.display = 'none';
+            renderSidebarUser(currentAppUser.is_guest ? null : currentAppUser);
+            const jellyfinNav = document.getElementById('navJellyfin');
+            if (jellyfinNav) jellyfinNav.style.display = currentAppUser.is_guest ? 'none' : '';
+            await loadPlaylists();
+            loadSearchRecommendations(true);
+            fetchJobs();
+            if (!jobsPollingInterval) jobsPollingInterval = window.setInterval(fetchJobs, 3000);
+            if (!currentAppUser.is_guest) {
+                initJellyfinHub(true);
+                await loadJellyTotalTracks();
+            } else if (sidebarJellyfinBadge) {
+                sidebarJellyfinBadge.textContent = '0';
+            }
+            if (window.location.hash) navigateFromHash(false);
+            else history.replaceState({ tab: 'search' }, '', '#search');
+            return true;
+        }
+
+        window.continueAsGuest = async function() {
+            try {
+                const response = await fetch('/api/auth/guest', { method: 'POST', credentials: 'same-origin' });
+                if (!response.ok) throw new Error(t('auth.error_connection'));
+                await refreshVerifiedSession();
+                if (!currentAppUser?.is_guest) throw new Error(t('auth.error_connection'));
+                await startAuthenticatedApp();
+            } catch (error) {
+                const errorEl = document.getElementById('loginErrorMsg');
+                if (errorEl) {
+                    errorEl.textContent = error.message || t('auth.error_connection');
+                    errorEl.style.display = 'block';
+                }
+            }
+        };
+
+        window.handleLoginSubmit = async function(event) {
+            event.preventDefault();
+            const usernameInput = document.getElementById('loginUsername');
+            const passwordInput = document.getElementById('loginPassword');
+            const errorEl = document.getElementById('loginErrorMsg');
+            const submitBtn = document.getElementById('loginSubmitBtn');
+            const username = usernameInput?.value.trim() || '';
+            const password = passwordInput?.value || '';
+            if (!username) return;
+
+            if (errorEl) errorEl.style.display = 'none';
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.querySelector('span').textContent = t('auth.logging_in');
+            }
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok || !data.success || !data.user?.id) {
+                    throw new Error(data.detail || data.message || t('auth.error_credentials'));
+                }
+
+                // Jellyfin's access token is not stored in the browser; the backend handles its configured API key.
+                const user = {
+                    id: data.user.id,
+                    name: data.user.name,
+                    is_admin: Boolean(data.user.is_admin),
+                    image_url: data.user.image_url || ''
+                };
+                await refreshVerifiedSession();
+                if (!currentAppUser || currentAppUser.is_guest) throw new Error(t('auth.error_connection'));
+                if (passwordInput) passwordInput.value = '';
+                await startAuthenticatedApp();
+            } catch (error) {
+                if (errorEl) {
+                    errorEl.textContent = error.message || t('auth.error_connection');
+                    errorEl.style.display = 'block';
+                }
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.querySelector('span').textContent = t('auth.btn_login');
+                }
+            }
+        };
+
+        window.logoutUser = async function() {
+            if (jobsPollingInterval) {
+                clearInterval(jobsPollingInterval);
+                jobsPollingInterval = null;
+            }
+            currentAppUser = null;
+            showOtherUsersControls = false;
+            adminAllUsersMode = false;
+            updateAdminControlVisibility();
+            renderSidebarUser(null);
+            try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' }); } catch (error) {}
+            window.openLoginModal();
+        };
+
+        function restoreJellyfinSession() {
+            renderSidebarUser(currentAppUser && !currentAppUser.is_guest ? currentAppUser : null);
+            return Boolean(currentAppUser);
+        }
+
+        // Lyrics Sync State
+        let currentLyricsLines = []; // [{ time: float, text: string }]
+        let activeLyricIndex = -1;
+
+        // Synchronized Volume Control across Top Bar and Bottom Player Bar
+        function setUnifiedVolume(val, triggerElement = null) {
+            const v = Math.min(1, Math.max(0, parseFloat(val) || 0));
+            globalAudio.volume = v;
+            if (globalVolumeSlider && triggerElement !== globalVolumeSlider) {
+                globalVolumeSlider.value = v;
+            }
+            const liquidVol = document.getElementById('liquidVolumeSlider');
+            if (liquidVol && triggerElement !== liquidVol) {
+                liquidVol.value = v;
+            }
+            if (typeof updateVolumeIcon === 'function') {
+                updateVolumeIcon(v);
+            }
+        }
+        if (globalVolumeSlider) {
+            setUnifiedVolume(globalVolumeSlider.value);
+            globalVolumeSlider.addEventListener('input', (e) => {
+                setUnifiedVolume(e.target.value, globalVolumeSlider);
+            });
+        }
+
+        // Sidebar Persistence
+        const isCollapsedSaved = safeLocalStorageGet('sidebar_collapsed') === 'true';
+        if (isCollapsedSaved) {
+            document.body.classList.add('sidebar-collapsed');
+        }
+
+        window.toggleSidebar = function() {
+            const isCollapsed = document.body.classList.toggle('sidebar-collapsed');
+            safeLocalStorageSet('sidebar_collapsed', isCollapsed ? 'true' : 'false');
+        };
+
+        // Navigation with Browser History Support
+        window.switchNavTab = function(tab, pushState = true) {
+            if (tab === 'jellyfin' && currentAppUser?.is_guest) {
+                tab = 'search';
+                if (pushState) history.replaceState({ tab: 'search' }, '', '#search');
+            }
+            currentNavTab = tab;
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-view').forEach(el => el.classList.remove('active'));
+
+            if (globalSearchInput) {
+                if (tab === 'jellyfin') {
+                    globalSearchInput.placeholder = t('jellyfin.input_placeholder');
+                } else {
+                    globalSearchInput.placeholder = t('search.input_placeholder');
+                }
+            }
+
+            if (tab === 'search') {
+                document.getElementById('navSearch').classList.add('active');
+                document.getElementById('viewSearch').classList.add('active');
+                pageTitle.textContent = t('nav.search');
+                loadSearchRecommendations();
+                if (pushState && window.location.hash !== '#search') history.pushState({ tab: 'search' }, '', '#search');
+            } else if (tab === 'jellyfin') {
+                document.getElementById('navJellyfin').classList.add('active');
+                document.getElementById('viewJellyfin').classList.add('active');
+                pageTitle.textContent = t('nav.jellyfin');
+                if (pushState) {
+                    closeJellyDetailView(false);
+                    closeJellyfinAllView(false);
+                    clearJellyfinSearch(false);
+                    setJellyfinSubView('browse');
+                }
+                initJellyfinHub();
+                if (pushState && window.location.hash !== '#jellyfin') history.pushState({ tab: 'jellyfin' }, '', '#jellyfin');
+            } else if (tab === 'downloads') {
+                document.getElementById('navDownloads').classList.add('active');
+                document.getElementById('viewDownloads').classList.add('active');
+                pageTitle.textContent = t('nav.downloads');
+                fetchJobs();
+                if (pushState && window.location.hash !== '#downloads') history.pushState({ tab: 'downloads' }, '', '#downloads');
+            } else if (tab === 'settings') {
+                document.getElementById('navSettings').classList.add('active');
+                document.getElementById('viewSettings').classList.add('active');
+                pageTitle.textContent = t('nav.settings');
+                if (currentAppUser && currentAppUser.is_admin) loadSettings();
+                else setLanguage(currentLanguage, false);
+                if (pushState && window.location.hash !== '#settings') history.pushState({ tab: 'settings' }, '', '#settings');
+            }
+        };
+
+        // Playlists
+        async function loadPlaylists() {
+            if (currentAppUser?.is_guest) {
+                playlistSelect.innerHTML = `<option value="">${t('search.none_library_only')}</option>`;
+                if (jellyfinPlaylistFilter) jellyfinPlaylistFilter.innerHTML = '<option value="">' + t('common.all') + '</option>';
+                return;
+            }
+            try {
+                const allUsers = adminAllUsersMode && currentAppUser && currentAppUser.is_admin;
+                const res = await fetch(allUsers ? '/api/admin/jellyfin/playlists' : '/api/jellyfin/playlists');
+                if (res.ok) {
+                    const playlists = await res.json();
+                    playlistSelect.innerHTML = `<option value="" data-i18n="search.none_library_only">${t('search.none_library_only')}</option>`;
+                    if (jellyfinPlaylistFilter) {
+                        jellyfinPlaylistFilter.innerHTML = '<option value="">Tutte le Playlist & Brani</option>';
+                    }
+                    playlists.forEach(pl => {
+                        const opt = document.createElement('option');
+                        opt.value = pl.id;
+                        const ownerLabel = allUsers ? ' · ' + t('users.playlist_owner', {user: pl.owner_name || t('users.owner_unknown')}) : '';
+                        opt.textContent = pl.name + ownerLabel + ' (' + pl.track_count + ' ' + t('common.tracks') + ')';
+                        playlistSelect.appendChild(opt);
+
+                        if (jellyfinPlaylistFilter) {
+                            const optJelly = document.createElement('option');
+                            optJelly.value = pl.id;
+                            optJelly.textContent = `${pl.name} (${pl.track_count})`;
+                            jellyfinPlaylistFilter.appendChild(optJelly);
+                        }
+                    });
+                }
+            } catch (err) {}
+        }
+        loadPlaylists();
+
+        // --- UNIFIED GLOBAL TOP BAR SEARCH ---
+        if (globalSearchInput) {
+            globalSearchInput.addEventListener('focus', () => {
+                if (currentNavTab !== 'jellyfin' && currentNavTab !== 'search') {
+                    switchNavTab('search');
+                }
+            });
+
+            globalSearchInput.addEventListener('input', (e) => {
+                const rawVal = e.target.value;
+                const query = rawVal.trim();
+                if (globalSearchClearBtn) {
+                    globalSearchClearBtn.style.display = rawVal.length > 0 ? 'flex' : 'none';
+                }
+
+                if (currentNavTab === 'jellyfin') {
+                    clearTimeout(jellyfinSearchTimeout);
+                    if (!query) {
+                        clearJellyfinSearch(false);
+                        return;
+                    }
+                    jellyfinSearchTimeout = setTimeout(() => {
+                        performJellyfinLiveSearch(query);
+                    }, 300);
+                } else {
+                    if (currentNavTab !== 'search') {
+                        switchNavTab('search');
+                    }
+                    clearTimeout(searchTimeout);
+                    if (!query) {
+                        document.getElementById('searchRecommendationsSection').style.display = '';
+                        document.getElementById('searchResultsWrapper').style.display = 'none';
+                        resultsSummary.textContent = '';
+                        return;
+                    }
+                    document.getElementById('searchRecommendationsSection').style.display = 'none';
+                    document.getElementById('searchResultsWrapper').style.display = '';
+
+                    searchTimeout = setTimeout(() => {
+                        performSearch(query);
+                    }, 350);
+                }
+            });
+
+            globalSearchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    handleGlobalSearchClear();
+                }
+            });
+        }
+
+        window.handleGlobalSearchClear = function() {
+            if (globalSearchInput) {
+                globalSearchInput.value = '';
+                globalSearchInput.focus();
+            }
+            if (globalSearchClearBtn) {
+                globalSearchClearBtn.style.display = 'none';
+            }
+
+            if (currentNavTab === 'jellyfin') {
+                clearJellyfinSearch(false);
+            } else if (currentNavTab === 'search') {
+                document.getElementById('searchRecommendationsSection').style.display = '';
+                document.getElementById('searchResultsWrapper').style.display = 'none';
+                resultsGrid.innerHTML = '';
+                resultsSummary.textContent = '';
+            }
+        };
+
+        async function performSearch(query) {
+            resultsSummary.textContent = t('search.searching');
+            try {
+                const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                const data = await res.json();
+                renderResults(data.results, query);
+                resultsSummary.textContent = t('search.results_found', { count: data.total });
+            } catch (err) {
+                resultsSummary.textContent = t('common.error');
+            }
+        }
+
+        function formatDuration(sec) {
+            if (!sec || isNaN(sec) || !isFinite(sec) || sec < 0) return '0:00';
+            const m = Math.floor(sec / 60);
+            const s = Math.floor(sec % 60);
+            return `${m}:${s < 10 ? '0' : ''}${s}`;
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        function escapeJs(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/\\/g, '\\\\')
+                .replace(/'/g, "\\'")
+                .replace(/"/g, '&quot;')
+                .replace(/\n/g, ' ')
+                .replace(/\r/g, '');
+        }
+
+        async function navigateToArtist(artistName, artistId = '') {
+            if (!artistName && !artistId) return;
+            if (currentNavTab !== 'jellyfin') {
+                switchNavTab('jellyfin', false);
+            }
+            if (artistId) {
+                openArtistDetail(artistId, true);
+                return;
+            }
+            try {
+                const res = await fetch(`/api/jellyfin/artists?limit=10&q=${encodeURIComponent(artistName)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const artists = data.artists || [];
+                    const exact = artists.find(a => (a.name || '').trim().toLowerCase() === artistName.trim().toLowerCase()) || artists[0];
+                    if (exact && exact.id) {
+                        openArtistDetail(exact.id, true);
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.warn('Error navigating to artist:', e);
+            }
+            if (globalSearchInput) globalSearchInput.value = artistName;
+            performJellyfinLiveSearch(artistName);
+        }
+        window.navigateToArtist = navigateToArtist;
+
+        async function navigateToAlbum(albumName, albumId = '') {
+            if (!albumName && !albumId) return;
+            if (currentNavTab !== 'jellyfin') {
+                switchNavTab('jellyfin', false);
+            }
+            if (albumId) {
+                openAlbumDetail(albumId, true);
+                return;
+            }
+            try {
+                const res = await fetch(`/api/jellyfin/albums?limit=10&q=${encodeURIComponent(albumName)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const albums = data.albums || [];
+                    const exact = albums.find(a => (a.name || '').trim().toLowerCase() === albumName.trim().toLowerCase()) || albums[0];
+                    if (exact && exact.id) {
+                        openAlbumDetail(exact.id, true);
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.warn('Error navigating to album:', e);
+            }
+            if (globalSearchInput) globalSearchInput.value = albumName;
+            performJellyfinLiveSearch(albumName);
+        }
+        window.navigateToAlbum = navigateToAlbum;
+
+        function playSvg() {
+            return `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+        }
+
+        function pauseSvg() {
+            return `<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+        }
+
+        function soundWaveBarsHtml(isPaused = false) {
+            return `
+                <div class="sound-wave-anim ${isPaused ? 'paused' : ''}">
+                    <div class="bar bar-1"></div>
+                    <div class="bar bar-2"></div>
+                    <div class="bar bar-3"></div>
+                    <div class="bar bar-4"></div>
+                </div>
+            `;
+        }
+
+        function checkSvg() {
+            return `<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
+        }
+
+        function crossSvg() {
+            return `<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`;
+        }
+
+        // Render Search Results with Circular Progress & In-Jellyfin Badge
+        function renderResults(tracks, currentQuery = '') {
+            if (!tracks || tracks.length === 0) {
+                resultsGrid.innerHTML = `<div class="empty-state"><p>${t('search.no_results', { query: escapeHtml(currentQuery || globalSearchInput.value || '') })}</p></div>`;
+                return;
+            }
+
+            tracksStore.clear();
+            resultsGrid.innerHTML = tracks.map((track) => {
+                tracksStore.set(track.id, track);
+                const isPlaying = !isPlayingFullTrack && currentPlayingTrackId === track.id && !globalAudio.paused;
+                const inJf = track.in_jellyfin;
+                const dlBtnClass = inJf ? 'btn-download btn-in-jellyfin' : 'btn-download';
+                const dlBtnLabel = inJf ? t('search.in_library') : t('search.download_btn');
+                const dlBtnIcon = inJf ? `<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>` : `<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>`;
+                const dlBtnAction = inJf ? `showTrackInJellyfin('${track.id}')` : `executeDownload('${track.id}')`;
+                return `
+                <div class="track-card" id="card-${track.id}">
+                    <div class="cover-wrapper ${isPlaying ? 'playing' : ''}" id="cover-${track.id}" onclick="toggleTrackPreview('${track.id}')">
+                        <img class="cover-img" src="${track.cover_url || ''}" alt="Cover">
+                        <div class="circular-overlay">
+                            <svg class="progress-ring">
+                                <circle class="progress-ring__circle-bg" cx="24" cy="24" r="20"></circle>
+                                <circle class="progress-ring__circle" id="circle-${track.id}" cx="24" cy="24" r="20"></circle>
+                            </svg>
+                            <div class="play-center-btn" id="btn-icon-${track.id}">
+                                ${isPlaying ? soundWaveBarsHtml(false) : playSvg()}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="track-info">
+                        <div class="track-title" title="${escapeHtml(track.title)}">${escapeHtml(track.title)}${inJf ? '<span class="inline-jf-tag">Jellyfin</span>' : ''}</div>
+                        <div class="track-subtitle" title="${escapeHtml(track.artist)} - ${escapeHtml(track.album)}">
+                            <span class="clickable-artist" onclick="event.stopPropagation(); navigateToArtist('${escapeJs(track.artist)}', '${escapeJs(track.artist_id || '')}')">${escapeHtml(track.artist)}</span>
+                            <span class="sub-sep">-</span>
+                            <span class="clickable-album" onclick="event.stopPropagation(); navigateToAlbum('${escapeJs(track.album)}', '${escapeJs(track.album_id || '')}')">${escapeHtml(track.album)}</span>
+                        </div>
+                    </div>
+                    <div>
+                        <button class="${dlBtnClass}" onclick="${dlBtnAction}">
+                            ${dlBtnIcon}
+                            <span>${dlBtnLabel}</span>
+                        </button>
+                    </div>
+                    <div class="track-duration">${formatDuration(track.duration)}</div>
+                </div>
+            `}).join('');
+        }
+
+        // Circular Preview Logic
+        const CIRCUMFERENCE = 2 * Math.PI * 20;
+
+        window.toggleTrackPreview = async function(trackId) {
+            const track = tracksStore.get(trackId);
+            if (!track || !track.preview_url) {
+                showAlertPopup("Anteprima non disponibile", "Questa traccia non fornisce un'anteprima audio.");
+                return;
+            }
+
+            isPlayingFullTrack = false;
+            currentPlayingJellyfinTrack = null;
+            currentFullTrackIndex = -1;
+            closeLyricsView();
+
+            if (currentPlayingTrackId === trackId && !globalAudio.paused) {
+                globalAudio.pause();
+                updateTrackUI(trackId, false);
+                updateLiquidPlayUI(false);
+            } else {
+                if (currentPlayingTrackId && currentPlayingTrackId !== trackId) {
+                    updateTrackUI(currentPlayingTrackId, false);
+                    resetCircle(currentPlayingTrackId);
+                }
+                currentPlayingTrackId = trackId;
+                liquidTitle.textContent = track.title || t('player.default_title');
+                liquidArtist.textContent = [track.artist, track.album].filter(Boolean).join(' — ') || t('player.default_artist');
+                liquidSubtext.textContent = t('player.preview_source');
+                liquidFormatBadge.textContent = 'PREVIEW';
+                playerSourceLabel.textContent = t('player.preview_source');
+                playerSourceTag.classList.remove('is-jellyfin');
+                if (track.cover_url) {
+                    liquidCoverImg.src = track.cover_url;
+                    liquidCoverImg.style.display = 'block';
+                    liquidCoverPlaceholder.style.display = 'none';
+                } else {
+                    liquidCoverImg.style.display = 'none';
+                    liquidCoverPlaceholder.style.display = 'flex';
+                }
+                liquidCurrentTime.textContent = '0:00';
+                liquidDuration.textContent = track.duration ? formatDuration(track.duration) : '0:00';
+                liquidSongSlider.value = 0;
+                document.body.classList.add('has-active-player');
+                liquidBottomBar.classList.add('active');
+                globalAudio.src = track.preview_url;
+                updateTrackUI(trackId, true);
+                try {
+                    await globalAudio.play();
+                    updateLiquidPlayUI(true);
+                    recordPlayback(track, 'preview');
+                } catch (error) {
+                    updateTrackUI(trackId, false);
+                    updateLiquidPlayUI(false);
+                    showAlertPopup(t('common.error'), t('player.playback_error'));
+                }
+            }
+        };
+
+        // Time updates for preview & liquid bar & Apple lyrics sync
+        globalAudio.addEventListener('timeupdate', () => {
+            if (!globalAudio.duration) return;
+
+            if (!isPlayingFullTrack && currentPlayingTrackId) {
+                const progress = globalAudio.currentTime / globalAudio.duration;
+                const offset = CIRCUMFERENCE - (progress * CIRCUMFERENCE);
+                const circle = document.getElementById(`circle-${currentPlayingTrackId}`);
+                if (circle) circle.style.strokeDashoffset = offset;
+            }
+
+            if (isPlayingFullTrack || currentPlayingTrackId) {
+                const totalDur = (isFinite(globalAudio.duration) && globalAudio.duration > 0)
+                    ? globalAudio.duration
+                    : (currentPlayingJellyfinTrack?.duration_sec || tracksStore.get(currentPlayingTrackId)?.duration || 0);
+
+                if (!isSeeking) {
+                    liquidCurrentTime.textContent = formatDuration(globalAudio.currentTime);
+                    if (totalDur > 0) {
+                        liquidDuration.textContent = formatDuration(totalDur);
+                        liquidSongSlider.value = (globalAudio.currentTime / totalDur) * 100;
+                    }
+                }
+                if (isPlayingFullTrack) updateSyncedLyricsRealtime();
+            }
+        });
+
+        globalAudio.addEventListener('loadedmetadata', () => {
+            if (!isPlayingFullTrack && currentPlayingTrackId && globalAudio.duration) {
+                liquidDuration.textContent = formatDuration(globalAudio.duration);
+            }
+        });
+
+        globalAudio.addEventListener('ended', () => {
+            updateLiquidPlayUI(false);
+            if (!isPlayingFullTrack && currentPlayingTrackId) {
+                updateTrackUI(currentPlayingTrackId, false);
+                resetCircle(currentPlayingTrackId);
+                currentPlayingTrackId = null;
+            } else if (isPlayingFullTrack) {
+                playNextTrack();
+            }
+        });
+
+        globalAudio.addEventListener('pause', () => {
+            document.body.classList.add('audio-paused');
+            const bottomCoverContainer = document.getElementById('liquidCoverContainer');
+            if (bottomCoverContainer) bottomCoverContainer.classList.remove('is-playing');
+            const bottomWave = document.getElementById('bottomBarSoundWave');
+            if (bottomWave) bottomWave.classList.add('paused');
+
+            document.querySelectorAll('.sound-wave-anim').forEach(w => w.classList.add('paused'));
+        });
+
+        globalAudio.addEventListener('play', () => {
+            document.body.classList.remove('audio-paused');
+            initAudioVisualizer();
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume().catch(() => {});
+            }
+            startVisualizerLoop();
+
+            const bottomCoverContainer = document.getElementById('liquidCoverContainer');
+            if (bottomCoverContainer) bottomCoverContainer.classList.add('is-playing');
+            const bottomWave = document.getElementById('bottomBarSoundWave');
+            if (bottomWave) bottomWave.classList.remove('paused');
+
+            document.querySelectorAll('.sound-wave-anim').forEach(w => w.classList.remove('paused'));
+            document.body.classList.add('has-active-player');
+            if (liquidBottomBar) liquidBottomBar.classList.add('active');
+        });
+
+        globalAudio.addEventListener('error', (e) => {
+            console.warn("Global audio error:", globalAudio.error);
+            if (currentPlayingJellyfinTrack && !globalAudio.src.includes('format=mp3')) {
+                console.log("Retrying Jellyfin stream with MP3 fallback...");
+                globalAudio.src = `${currentPlayingJellyfinTrack.stream_url}?format=mp3`;
+                globalAudio.play().then(() => updateLiquidPlayUI(true)).catch(() => updateLiquidPlayUI(false));
+            } else {
+                updateLiquidPlayUI(false);
+            }
+        });
+
+        function updateTrackUI(trackId, isPlaying) {
+            const coverWrapper = document.getElementById(`cover-${trackId}`);
+            const btnIcon = document.getElementById(`btn-icon-${trackId}`);
+            if (coverWrapper) {
+                if (isPlaying) coverWrapper.classList.add('playing');
+                else coverWrapper.classList.remove('playing');
+            }
+            if (btnIcon) {
+                btnIcon.innerHTML = isPlaying ? soundWaveBarsHtml(false) : playSvg();
+            }
+        }
+
+        function resetCircle(trackId) {
+            const circle = document.getElementById(`circle-${trackId}`);
+            if (circle) circle.style.strokeDashoffset = CIRCUMFERENCE;
+        }
+
+        // Show existing track in Jellyfin library
+        window.showTrackInJellyfin = function(trackId) {
+            const track = tracksStore.get(trackId);
+            if (!track) return;
+
+            switchNavTab('jellyfin', true);
+            const searchTarget = track.title || '';
+            if (globalSearchInput) {
+                globalSearchInput.value = searchTarget;
+                if (globalSearchClearBtn) {
+                    globalSearchClearBtn.style.display = searchTarget.length > 0 ? 'flex' : 'none';
+                }
+            }
+            performJellyfinLiveSearch(searchTarget);
+        };
+
+        // Execute Download on server
+        window.executeDownload = async function(trackId) {
+            const track = tracksStore.get(trackId);
+            if (!track) return;
+
+            if (track.in_jellyfin) {
+                window.showTrackInJellyfin(trackId);
+                return;
+            }
+
+            const selectedPlId = playlistSelect.value || null;
+            const selectedPlName = playlistSelect.options[playlistSelect.selectedIndex]?.text || null;
+
+            try {
+                const res = await fetch('/api/download', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        track: track,
+                        playlist_id: selectedPlId,
+                        playlist_name: selectedPlName
+                    })
+                });
+
+                if (res.ok) {
+                    fetchJobs();
+                    switchNavTab('downloads');
+                } else {
+                    showAlertPopup("Errore Download", "Impossibile avviare il download sul server.");
+                }
+            } catch (err) {
+                showAlertPopup("Errore Connessione", "Impossibile contattare il server.");
+            }
+        };
+
+        // Load Downloaded Library strictly from disk
+        async function loadDownloadedLibrary() {
+            try {
+                const res = await fetch('/api/library/downloaded');
+                if (!res.ok) throw new Error();
+                downloadedTracksList = await res.json();
+                sidebarLibraryBadge.textContent = downloadedTracksList.length;
+
+                if (downloadedTracksList.length === 0) {
+                    libraryList.innerHTML = `<div class="empty-state"><p>Nessun brano trovato sul disco. I brani scaricati appariranno qui.</p></div>`;
+                    return;
+                }
+
+                // Render library items WITHOUT individual lyrics button (lyrics moved to bottom bar)
+                libraryList.innerHTML = downloadedTracksList.map((item, idx) => `
+                    <div class="library-card">
+                        <div>
+                            <div style="font-weight: 600; font-size: 1.05rem;">${escapeHtml(item.title)}</div>
+                            <div style="font-size: 0.88rem; color: var(--text-secondary); margin-top:2px;">
+                                ${escapeHtml(item.artist)} - ${escapeHtml(item.album)}
+                            </div>
+                        </div>
+
+                        <div>
+                            <span class="lrc-badge ${item.has_lrc ? 'present' : 'missing'}">
+                                ${item.has_lrc ? checkSvg() + ' Testo LRC' : crossSvg() + ' Senza LRC'}
+                            </span>
+                        </div>
+
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); font-variant-numeric: tabular-nums;">
+                            ${item.size_mb} MB
+                        </div>
+
+                        <div>
+                            <button class="btn-icon" onclick="playFullTrackFromLibrary(${idx})" title="Riproduci Brano">
+                                ${playSvg()} Ascolta
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                // Ignore
+            }
+        }
+
+        // Liquid Bottom Bar Player Logic
+        window.playFullTrackFromLibrary = async function(index) {
+            if (index < 0 || index >= downloadedTracksList.length) return;
+            currentFullTrackIndex = index;
+            currentPlayingJellyfinTrack = null;
+            currentJellyfinTrackIndex = -1;
+            const track = downloadedTracksList[index];
+
+            if (currentPlayingTrackId) {
+                updateTrackUI(currentPlayingTrackId, false);
+                resetCircle(currentPlayingTrackId);
+                currentPlayingTrackId = null;
+            }
+
+            // Reset Jellyfin cover to placeholder
+            liquidCoverImg.style.display = 'none';
+            liquidCoverPlaceholder.style.display = 'flex';
+            document.querySelectorAll('.jellyfin-track-row').forEach(r => r.classList.remove('is-playing'));
+
+            isPlayingFullTrack = true;
+            liquidTitle.textContent = track.title;
+            liquidArtist.innerHTML = `<span class="clickable-artist" onclick="event.stopPropagation(); navigateToArtist('${escapeJs(track.artist)}', '${escapeJs(track.artist_id || '')}')">${escapeHtml(track.artist || '')}</span> <span class="sub-sep">-</span> <span class="clickable-album" onclick="event.stopPropagation(); navigateToAlbum('${escapeJs(track.album)}', '${escapeJs(track.album_id || '')}')">${escapeHtml(track.album || '')}</span>`;
+            const total = downloadedTracksList.length;
+            if (liquidSubtext) liquidSubtext.textContent = `Track ${index + 1} of ${total}`;
+            if (playerQueueCount) playerQueueCount.textContent = Math.max(0, total - index - 1);
+            const isFlac = track.path && track.path.toLowerCase().endsWith('.flac');
+            if (liquidFormatBadge) liquidFormatBadge.textContent = isFlac ? 'FLAC' : 'MP3';
+            if (playerSourceLabel) playerSourceLabel.textContent = isFlac ? 'Local FLAC' : 'Local MP3';
+            if (playerSourceTag) playerSourceTag.classList.remove('is-jellyfin');
+
+            document.body.classList.add('has-active-player');
+            liquidBottomBar.classList.add('active');
+
+            globalAudio.src = track.stream_url;
+            await globalAudio.play();
+            updateLiquidPlayUI(true);
+            recordPlayback(track, 'downloaded');
+
+            // Pre-fetch lyrics in background for this song
+            loadLyricsForCurrentTrack(false);
+        };
+
+        // Play Jellyfin Track
+        window.playJellyfinTrack = function(index) {
+            if (index < 0 || index >= currentJellyfinTracksList.length) return;
+            currentJellyfinTrackIndex = index;
+            const track = currentJellyfinTracksList[index];
+            currentPlayingJellyfinTrack = track;
+            currentFullTrackIndex = -1;
+
+            if (currentPlayingTrackId) {
+                updateTrackUI(currentPlayingTrackId, false);
+                resetCircle(currentPlayingTrackId);
+                currentPlayingTrackId = null;
+            }
+
+            isPlayingFullTrack = true;
+            liquidTitle.textContent = track.title;
+            liquidArtist.innerHTML = `<span class="clickable-artist" onclick="event.stopPropagation(); navigateToArtist('${escapeJs(track.artist)}', '${escapeJs(track.artist_id || '')}')">${escapeHtml(track.artist || '')}</span> <span class="sub-sep">-</span> <span class="clickable-album" onclick="event.stopPropagation(); navigateToAlbum('${escapeJs(track.album)}', '${escapeJs(track.album_id || '')}')">${escapeHtml(track.album || '')}</span>`;
+            const total = currentJellyfinTracksList.length;
+            if (liquidSubtext) liquidSubtext.textContent = `Track ${index + 1} of ${total}`;
+            if (playerQueueCount) playerQueueCount.textContent = Math.max(0, total - index - 1);
             const isFlac = track.path && track.path.toLowerCase().endsWith('.flac');
             if (liquidFormatBadge) liquidFormatBadge.textContent = isFlac ? 'FLAC' : 'MP3';
             if (playerSourceLabel) playerSourceLabel.textContent = isFlac ? 'Jellyfin FLAC' : 'Jellyfin MP3';
@@ -4509,7 +6855,7 @@ Total output lines: 8404
                 return `
                     <div class="jelly-card" onclick="openPlaylistDetail('${pl.id}')">
                         <div class="jelly-card-thumb-wrap">
-                            <img class="jelly-card-thumb" src="${coverSrc}" alt="Cover" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 24 24\\' fill=\\'%23fa2d48\\'><path d=\\'M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z\\'/></svg>';">
+                            <img class="jelly-card-thumb" src="${coverSrc}" alt="Cover" onerror="this.onerror=null;this.style.display='none';">
                         </div>
                         <div class="jelly-card-title" title="${escapeHtml(pl.name)}">${escapeHtml(pl.name)}</div>
                         <div class="jelly-card-sub">${pl.track_count} ${t('common.tracks')}</div>
@@ -4550,7 +6896,7 @@ Total output lines: 8404
             track.innerHTML = albums.map(alb => `
                 <div class="jelly-card" onclick="openAlbumDetail('${alb.id}')">
                     <div class="jelly-card-thumb-wrap">
-                        <img class="jelly-card-thumb" src="${alb.cover_url}" alt="Cover" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 24 24\\' fill=\\'%23888899\\'><path d=\\'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14.5c-2.49 0-4.5-2.01-4.5-4.5S9.51 7.5 12 7.5s4.5 2.01 4.5 4.5-2.01 4.5-4.5 4.5zm0-5.5c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1z\\'/></svg>'">
+                        <img class="jelly-card-thumb" src="${alb.cover_url}" alt="Cover" onerror="this.onerror=null;this.style.display='none';">
                     </div>
                     <div class="jelly-card-title" title="${escapeHtml(alb.name)}">${escapeHtml(alb.name)}</div>
                     <div class="jelly-card-sub" title="${escapeHtml(alb.artist)}">${escapeHtml(alb.artist)}${alb.year ? ` • ${alb.year}` : ''}</div>
@@ -4589,7 +6935,7 @@ Total output lines: 8404
             track.innerHTML = artists.map(art => `
                 <div class="jelly-card" onclick="openArtistDetail('${art.id}')">
                     <div class="jelly-card-thumb-wrap">
-                        <img class="jelly-card-thumb" src="${art.cover_url}" alt="Avatar" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 24 24\\' fill=\\'%23888899\\'><path d=\\'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z\\'/></svg>'">
+                        <img class="jelly-card-thumb" src="${art.cover_url}" alt="Avatar" onerror="this.onerror=null;this.style.display='none';">
                     </div>
                     <div class="jelly-card-title" style="text-align:center;" title="${escapeHtml(art.name)}">${escapeHtml(art.name)}</div>
                     <div class="jelly-card-sub" style="text-align:center;">Artista</div>
@@ -4816,7 +7162,7 @@ Total output lines: 8404
                 return `
                     <div class="jellyfin-track-row ${isPlayingNow ? 'is-playing' : ''}" id="jf-row-${track.id}">
                         <div class="jellyfin-cover-wrap" onclick="playJellyfinTrack(${idx})">
-                            <img class="jellyfin-cover-img" src="${track.cover_url}" alt="Cover" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 24 24\\' fill=\\'%23888899\\'><path d=\\'M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z\\'/></svg>'">
+                            <img class="jellyfin-cover-img" src="${track.cover_url}" alt="Cover" onerror="this.onerror=null;this.style.display='none';">
                             <div class="jellyfin-play-overlay">
                                 ${isCurrent ? soundWaveBarsHtml(!isPlayingNow) : playSvg()}
                             </div>
@@ -5411,7 +7757,7 @@ Total output lines: 8404
                     return `
                         <div class="jellyfin-track-row ${isPlayingNow ? 'is-playing' : ''}" id="jf-row-${track.id}">
                             <div class="jellyfin-cover-wrap" onclick="playJellyfinTrack(${idx})">
-                                <img class="jellyfin-cover-img" src="${track.cover_url}" alt="Cover" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 24 24\\' fill=\\'%23888899\\'><path d=\\'M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z\\'/></svg>'">
+                                <img class="jellyfin-cover-img" src="${track.cover_url}" alt="Cover" onerror="this.onerror=null;this.style.display='none';">
                                 <div class="jellyfin-play-overlay">
                                     ${isCurrent ? soundWaveBarsHtml(!isPlayingNow) : playSvg()}
                                 </div>
@@ -5979,7 +8325,7 @@ Total output lines: 8404
                 grid.innerHTML = items.map(alb => `
                     <div class="jelly-card" onclick="openAlbumDetail('${alb.id}')" style="cursor:pointer;">
                         <div class="jelly-card-thumb-wrap">
-                            <img class="jelly-card-thumb" src="${alb.cover_url}" alt="Cover" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 24 24\\' fill=\\'%23888899\\'><path d=\\'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14.5c-2.49 0-4.5-2.01-4.5-4.5S9.51 7.5 12 7.5s4.5 2.01 4.5 4.5-2.01 4.5-4.5 4.5zm0-5.5c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1z\\'/></svg>'">
+                            <img class="jelly-card-thumb" src="${alb.cover_url}" alt="Cover" onerror="this.onerror=null;this.style.display='none';">
                         </div>
                         <div class="jelly-card-title" title="${escapeHtml(alb.name)}">${escapeHtml(alb.name)}</div>
                         <div class="jelly-card-sub" title="${escapeHtml(alb.artist)}">${escapeHtml(alb.artist)}${alb.year ? ` • ${alb.year}` : ''}</div>
@@ -5989,7 +8335,7 @@ Total output lines: 8404
                 grid.innerHTML = items.map(art => `
                     <div class="jelly-card" onclick="openArtistDetail('${art.id}')" style="cursor:pointer;">
                         <div class="jelly-card-thumb-wrap">
-                            <img class="jelly-card-thumb" src="${art.cover_url}" alt="Avatar" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 24 24\\' fill=\\'%23888899\\'><path d=\\'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z\\'/></svg>'">
+                            <img class="jelly-card-thumb" src="${art.cover_url}" alt="Avatar" onerror="this.onerror=null;this.style.display='none';">
                         </div>
                         <div class="jelly-card-title" style="text-align:center;" title="${escapeHtml(art.name)}">${escapeHtml(art.name)}</div>
                         <div class="jelly-card-sub" style="text-align:center;">${t('jellyfin.card_artist')}</div>
