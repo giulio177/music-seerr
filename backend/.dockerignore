@@ -1,0 +1,15 @@
+# Do not bake credentials, user data, development environments, or local media into the image.
+.env
+.env.*
+config.json
+data/
+music/
+venv/
+__pycache__/
+*.py[cod]
+*.sqlite3
+*.db
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.git/

@@ -1,0 +1,37 @@
+# Public repository allowlist: publish only the runtime app and its deployment file.
+/*
+!/README.md
+!/.gitignore
+!/docker-compose.yml
+!/backend/
+/backend/*
+!/backend/Dockerfile
+!/backend/.dockerignore
+!/backend/requirements.txt
+!/backend/app/
+/backend/app/*
+!/backend/app/**/*.py
+!/backend/app/**/
+!/backend/app/static/
+!/backend/app/static/index.html
+!/backend/app/static/locales/
+/backend/app/static/locales/*
+!/backend/app/static/locales/*.json
+
+# Never include local state, credentials, generated files, or media.
+**/__pycache__/
+**/*.py[cod]
+**/.env
+**/.env.*
+**/config.json
+**/data/
+**/*.sqlite3
+**/*.db
+**/venv/
+**/music/
+**/*.mp3
+**/*.flac
+**/*.m4a
+**/*.lrc
+**/*.md
+!/README.md

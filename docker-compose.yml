@@ -1,0 +1,43 @@
+services:
+  music-seerr:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: music-seerr:alpha
+    container_name: music-seerr
+    restart: unless-stopped
+    init: true
+    ports:
+      - "${MUSIC_SEERR_BIND:-0.0.0.0}:8000:8000"
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8000
+      DEBUG: "false"
+      FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-127.0.0.1}
+      MUSIC_OUTPUT_DIR: /music
+      MUSIC_SEERR_CONFIG: /app/data/config.json
+      JELLYFIN_URL: ${JELLYFIN_URL:-http://host.docker.internal:8096}
+    volumes:
+      - ./music:/music
+      - ./backend/data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    user: "10001:10001"
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 45s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
