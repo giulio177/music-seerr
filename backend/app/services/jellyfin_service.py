@@ -5,7 +5,6 @@ from app.config import settings
 from app.models.schemas import JellyfinPlaylist
 
 class JellyfinService:
-    _transcode_cache: dict = {}
     _user_scope: ContextVar = ContextVar("jellyfin_user_scope", default="__global_fallback__")
 
     @classmethod
@@ -23,42 +22,14 @@ class JellyfinService:
 
     @classmethod
     async def get_stream_url(cls, item_id: str, force_mp3: bool = False) -> str:
-        """Restituisce l'URL di streaming ottimale: direct play (static=true) per formati compatibili, oppure stream.mp3 per Hi-Res 24-bit / formati speciali"""
+        """Return direct play immediately; the player retries with MP3 if the browser cannot decode it."""
         if not settings.JELLYFIN_URL or not settings.JELLYFIN_API_KEY:
             return ""
 
         base = f"{settings.JELLYFIN_URL.rstrip('/')}/Audio/{item_id}"
         if force_mp3:
             return f"{base}/stream.mp3?api_key={settings.JELLYFIN_API_KEY}"
-
-        needs_transcode = cls._transcode_cache.get(item_id)
-        if needs_transcode is None:
-            user_id = cls.get_scoped_user_id()
-            url = f"{settings.JELLYFIN_URL.rstrip('/')}/Users/{user_id}/Items/{item_id}" if user_id else f"{settings.JELLYFIN_URL.rstrip('/')}/Items/{item_id}"
-            needs_transcode = False
-            try:
-                async with httpx.AsyncClient(timeout=3.0) as client:
-                    res = await client.get(url, headers=cls._headers())
-                    if res.status_code == 200:
-                        data = res.json()
-                        ms = data.get("MediaSources", [{}])[0]
-                        streams = ms.get("MediaStreams", [])
-                        audio_stream = next((s for s in streams if s.get("Type") == "Audio"), {})
-                        bit_depth = audio_stream.get("BitDepth") or 16
-                        codec = (audio_stream.get("Codec") or "").lower()
-                        container = (ms.get("Container") or "").lower()
-                        # Browser HTML5 Audio + Web Audio API supportano nativamente FLAC 16-bit, MP3, AAC, OGG
-                        # Tracce Hi-Res a 24-bit o codec non nativi richiedono transcodifica MP3 trasparente
-                        if bit_depth > 16 or container not in ("mp3", "flac", "m4a", "aac", "ogg") or codec not in ("mp3", "flac", "aac", "vorbis", "opus"):
-                            needs_transcode = True
-            except Exception as e:
-                print(f"[JellyfinService] Errore verifica transcode item {item_id}: {e}")
-            cls._transcode_cache[item_id] = needs_transcode
-
-        if needs_transcode:
-            return f"{base}/stream.mp3?api_key={settings.JELLYFIN_API_KEY}"
-        else:
-            return f"{base}/stream?static=true&api_key={settings.JELLYFIN_API_KEY}"
+        return f"{base}/stream?static=true&api_key={settings.JELLYFIN_API_KEY}"
 
     @staticmethod
     def _headers(api_key: Optional[str] = None) -> dict:

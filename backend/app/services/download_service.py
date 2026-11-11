@@ -23,6 +23,9 @@ def sanitize_filename(name: str) -> str:
     return (safe[:150] or "Unknown")
 
 class DownloadManager:
+    MAX_ACTIVE_JOBS = 500
+    ACTIVE_STATUSES = {"pending", "downloading", "tagging", "jellyfin_sync"}
+
     def __init__(self):
         self.jobs: Dict[str, DownloadJob] = {}
         self._download_slots = asyncio.Semaphore(2)
@@ -54,7 +57,8 @@ class DownloadManager:
         return self.jobs.get(job_id)
 
     def list_jobs(self, owner_id: Optional[str] = None, include_all: bool = False, user_id: Optional[str] = None):
-        jobs = list(self.jobs.values())
+        # Completed work belongs in persistent download history, not the live queue.
+        jobs = [job for job in self.jobs.values() if job.status in self.ACTIVE_STATUSES | {"failed", "interrupted"}]
         if include_all:
             if user_id:
                 return [job for job in jobs if job.owner_user_id == user_id]
@@ -62,9 +66,9 @@ class DownloadManager:
         return [job for job in jobs if job.owner_user_id == owner_id]
 
     async def create_job(self, track: TrackItem, playlist_id: Optional[str] = None, playlist_name: Optional[str] = None, owner: Optional[dict] = None, playlist_user_id: Optional[str] = None) -> DownloadJob:
-        active = sum(job.status in {"pending", "downloading", "tagging", "jellyfin_sync"} for job in self.jobs.values())
-        if active >= 10:
-            raise HTTPException(status_code=429, detail="Coda download piena: attendi il completamento di un brano.")
+        active = sum(job.status in self.ACTIVE_STATUSES for job in self.jobs.values())
+        if active >= self.MAX_ACTIVE_JOBS:
+            raise HTTPException(status_code=429, detail="La coda ha raggiunto il limite di 500 download. Attendi che vengano completati alcuni brani.")
         owner = owner or {"id": "guest:unknown", "name": "Guest", "is_admin": False}
         job_id = str(uuid.uuid4())
         job = DownloadJob(

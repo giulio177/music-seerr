@@ -908,7 +908,7 @@
             background: var(--bg-surface);
             border: 1px solid var(--border-glass);
             border-radius: 16px;
-            padding: 16px 20px;
+            padding: 12px 16px;
         }
 
         .job-header {
@@ -934,6 +934,11 @@
         .job-status-badge.failed,
         .job-status-badge.interrupted { background: #ff3b30; color: white; }
         .job-status-badge.retried { background: rgba(255,255,255,.14); color: var(--text-secondary); }
+        .job-track-heading { display:flex; align-items:center; gap:12px; min-width:0; }
+        .job-track-artwork, .history-record-artwork { width:48px; height:48px; flex:0 0 48px; border-radius:10px; object-fit:cover; background:rgba(255,255,255,.06); }
+        .job-track-copy { min-width:0; }
+        .job-track-title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .job-track-subtitle { margin-top:3px; font-size:.78rem; font-weight:400; color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
         .progress-bar-bg {
             background: rgba(255, 255, 255, 0.1);
@@ -1074,8 +1079,9 @@
             .history-toolbar { align-items: stretch; }
             .history-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
             .history-tab { padding: 8px 6px; font-size: .75rem; }
-            .history-record { grid-template-columns: minmax(0,1fr); gap: 7px; padding: 13px; }
-            .history-record-meta { text-align: left; white-space: normal; }
+            .history-record { grid-template-columns: 42px minmax(0,1fr); gap: 7px 10px; padding: 12px; }
+            .history-record-artwork { width:42px; height:42px; flex-basis:42px; grid-row:span 2; }
+            .history-record-meta { grid-column:2; text-align: left; white-space: normal; }
             .recs-header { padding: 14px; }
         }
 
@@ -2566,7 +2572,7 @@
         .history-tab { border: 1px solid transparent; border-radius: 10px; padding: 9px 13px; color: var(--text-secondary); background: transparent; cursor: pointer; font-weight: 600; transition: .18s ease; }
         .history-tab:hover { color: #fff; background: rgba(255,255,255,.055); }
         .history-tab.active { color: #fff; border-color: rgba(255,255,255,.1); background: rgba(255,255,255,.085); box-shadow: inset 0 1px 0 rgba(255,255,255,.04); }
-        .history-record { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 12px 20px; padding: 15px 17px; margin-bottom: 9px; border: 1px solid rgba(255,255,255,.075); border-radius: 14px; background: linear-gradient(115deg, rgba(255,255,255,.035), rgba(255,255,255,.012)); }
+        .history-record { display: grid; grid-template-columns: 48px minmax(0,1fr) auto; align-items: center; gap: 12px 14px; padding: 12px 15px; margin-bottom: 9px; border: 1px solid rgba(255,255,255,.075); border-radius: 14px; background: linear-gradient(115deg, rgba(255,255,255,.035), rgba(255,255,255,.012)); }
         .history-record-title { color: #fff; font-weight: 650; overflow-wrap: anywhere; }
         .history-record-subtitle { margin-top: 4px; color: var(--text-secondary); font-size: .83rem; line-height: 1.4; }
         .history-record-meta { color: var(--text-secondary); font-size: .78rem; text-align: right; white-space: nowrap; }
@@ -2945,6 +2951,8 @@
         .csv-tabs {
             display: inline-flex;
             gap: 4px;
+            max-width: 100%;
+            overflow-x: auto;
             background: rgba(0, 0, 0, 0.35);
             padding: 4px;
             border-radius: 10px;
@@ -3020,6 +3028,13 @@
         .csv-item-row.status-to_download {
             border-left: 3px solid #f87171;
         }
+        .csv-item-row.status-not_in_csv { border-left:3px solid #c084fc; }
+        .csv-item-main { display:grid; grid-template-columns:48px 24px minmax(0,1fr); align-items:center; gap:10px; min-width:0; flex:1; }
+        .csv-item-artwork { width:48px; height:48px; border-radius:9px; object-fit:cover; background:rgba(255,255,255,.06); }
+        .csv-item-copy { min-width:0; overflow:hidden; }
+        .csv-item-title { font-size:.88rem; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .csv-item-match-title { margin-top:2px; font-size:.72rem; color:#c4b5fd; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .csv-item-subtitle { margin-top:3px; font-size:.76rem; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
         .csv-status-badge {
             font-size: 0.72rem;
@@ -3046,6 +3061,16 @@
             color: #f87171;
             background: rgba(248, 113, 113, 0.12);
             border: 1px solid rgba(248, 113, 113, 0.25);
+        }
+        .csv-status-badge.not_in_csv { color:#c084fc; background:rgba(192,132,252,.11); border:1px solid rgba(192,132,252,.24); }
+
+        @media (max-width: 600px) {
+            .csv-item-row { align-items:flex-start; flex-wrap:wrap; gap:8px; padding:9px; }
+            .csv-item-main { grid-template-columns:38px 20px minmax(0,1fr); gap:7px; }
+            .csv-item-artwork { width:38px; height:38px; }
+            .csv-item-row > div:last-child { width:100%; justify-content:flex-end; flex-wrap:wrap; }
+            .csv-status-badge { white-space:normal; text-align:center; }
+            .csv-tab-btn { white-space:nowrap; padding:6px 9px; }
         }
 
         .csv-btn-action {
@@ -4168,6 +4193,9 @@
                     <button class="csv-tab-btn" id="csvTabToDownload" onclick="setCsvFilterTab('to_download')">
                         <span data-i18n="jellyfin.csv_tab_to_download">Da Scaricare</span> (<span id="csvCountToDownload">0</span>)
                     </button>
+                    <button class="csv-tab-btn" id="csvTabNotInCsv" onclick="setCsvFilterTab('not_in_csv')">
+                        <span data-i18n="jellyfin.csv_tab_not_in_csv">In Playlist, non nel CSV</span> (<span id="csvCountNotInCsv">0</span>)
+                    </button>
                 </div>
 
                 <div class="csv-actions-group">
@@ -4621,7 +4649,7 @@
                 search: { page_eyebrow: "Discover", page_description: "Find a track, preview it, and send it to your library.", recommendations_title: "Picked for you", recommendations_subtitle: "Based on artists in your Jellyfin library", recommendations_loading: "Loading recommendations…", recommendations_empty: "No recommendations are available yet.", recommendations_error: "Could not load recommendations.", recommendations_based_on: "Based on: {artists}", page_title: "Search Music", input_placeholder: "Search songs to download to NAS...", filter_target_playlist: "Add to Playlist:", none_library_only: "None (Library Only)", empty_initial: "Search for a song to preview and download directly to your server with 1 click.", searching: "Searching...", download_btn: "Download", in_library: "In Library", downloading: "Downloading...", results_found: "{count} tracks found", no_results: "No results found for \"{query}\"." },
                 history: { views_label: "Activity views", eyebrow: "Your activity", page_title: "Activity", page_description: "Track downloads and recent listening in one place.", queue: "Queue", downloads: "Download history", plays: "Listening history", queue_empty: "No downloads in progress.", downloads_empty: "No downloads have been recorded for this account yet.", plays_empty: "No listening activity has been recorded for this account yet.", recorded: "Added {date}", status_pending: "Queued", status_downloading: "Downloading", status_tagging: "Adding metadata", status_jellyfin_sync: "Syncing Jellyfin", status_completed: "Completed", status_failed: "Failed", status_interrupted: "Interrupted by server restart", status_retried: "Retry queued" },
                 users: { scope_all: "Show all users", scope_mine: "Show my data", admin_controls_title: "Administrator visibility", admin_controls_description: "Choose whether to show controls for viewing other users’ activity and playlists.", show_admin_controls: "Show cross-user controls in the interface", playlist_owner: "Owned by {user}", owner_unknown: "Owner unknown", recommendations_for: "Recommendations for {user}", select_user: "Choose a Jellyfin user", filter_user: "Filter by user", all_users: "All users", preference_error: "Could not save this preference." },
-                jellyfin: { page_title: "Jellyfin Library", shelf_tracks: "Tracks in your library", loading_tracks: "Loading tracks from Jellyfin…", no_tracks: "No tracks found in the Jellyfin library.", error_loading_library: "Could not load tracks. Check the Jellyfin connection in Settings.", input_placeholder: "Search tracks in your Jellyfin library...", status_connected: "Connected to Jellyfin", status_disconnected: "Disconnected from Jellyfin", status_refresh_tooltip: "Reload library data from Jellyfin", tracks_in_library: "tracks in Jellyfin library", shelf_playlists: "Playlists", shelf_albums: "Albums", shelf_artists: "Artists", card_artist: "Artist", back_to_albums: "Back to all Albums", back_to_artists: "Back to all Artists", back_to_playlists: "Back to Playlists", back_to_library: "Back to Jellyfin Library", badge_album: "ALBUM", badge_artist: "ARTIST", badge_playlist: "PLAYLIST", lyrics_ok: "Lyrics OK", no_lyrics: "No Lyrics", with_lyrics: "{count} with Lyrics", without_lyrics: "{count} without Lyrics", all_lyrics_present: "All lyrics present", download_missing_lyrics: "Download {count} Missing Lyrics", downloading_lyrics: "Downloading lyrics {current}/{total}...", download_lrc: "Download LRC", lyrics_saved: "Lyrics Saved", lyrics_unavailable: "Lyrics unavailable", loading_album_tracks: "Loading album tracks...", loading_artist_tracks: "Loading artist tracks...", loading_playlist_tracks: "Loading playlist tracks...", error_loading_tracks: "Error loading tracks.", search_in_progress: "Searching Jellyfin library...", search_results_count: "{count} tracks found", search_no_results: "No tracks found for \"{query}\".", all_albums: "All Albums", all_artists: "All Artists", no_items_found: "No items found.", sync_csv_btn: "Sync CSV", csv_modal_title: "Pair Playlist CSV", csv_modal_desc: "Compare an exported CSV sheet with this playlist: identify existing tracks, library tracks to add, and tracks to download.", csv_current: "Paired CSV:", csv_no_file: "No CSV file paired", csv_upload_btn: "Upload CSV", csv_tab_all: "All", csv_tab_in_playlist: "In Playlist", csv_tab_in_library: "In Library", csv_tab_to_download: "To Download", csv_btn_add_all: "Add All Library Tracks to Playlist", csv_btn_download_all: "Queue All Missing for Download", csv_btn_add: "Add to Playlist", csv_btn_download: "Download", csv_matching: "Matching tracks with Jellyfin library...", csv_owner_label: "Playlist owner", csv_owner_help: "As administrator, choose the account that owns this playlist. Jellyfin will verify it can access the playlist.", csv_owner_select: "Select a Jellyfin account", csv_owner_required: "Select the playlist owner to continue.", csv_owner_load_error: "Unable to load Jellyfin accounts." },
+                jellyfin: { page_title: "Jellyfin Library", shelf_tracks: "Tracks in your library", loading_tracks: "Loading tracks from Jellyfin…", no_tracks: "No tracks found in the Jellyfin library.", error_loading_library: "Could not load tracks. Check the Jellyfin connection in Settings.", input_placeholder: "Search tracks in your Jellyfin library...", status_connected: "Connected to Jellyfin", status_disconnected: "Disconnected from Jellyfin", status_refresh_tooltip: "Reload library data from Jellyfin", tracks_in_library: "tracks in Jellyfin library", shelf_playlists: "Playlists", shelf_albums: "Albums", shelf_artists: "Artists", card_artist: "Artist", back_to_albums: "Back to all Albums", back_to_artists: "Back to all Artists", back_to_playlists: "Back to Playlists", back_to_library: "Back to Jellyfin Library", badge_album: "ALBUM", badge_artist: "ARTIST", badge_playlist: "PLAYLIST", lyrics_ok: "Lyrics OK", no_lyrics: "No Lyrics", with_lyrics: "{count} with Lyrics", without_lyrics: "{count} without Lyrics", all_lyrics_present: "All lyrics present", download_missing_lyrics: "Download {count} Missing Lyrics", downloading_lyrics: "Downloading lyrics {current}/{total}...", download_lrc: "Download LRC", lyrics_saved: "Lyrics Saved", lyrics_unavailable: "Lyrics unavailable", loading_album_tracks: "Loading album tracks...", loading_artist_tracks: "Loading artist tracks...", loading_playlist_tracks: "Loading playlist tracks...", error_loading_tracks: "Error loading tracks.", search_in_progress: "Searching Jellyfin library...", search_results_count: "{count} tracks found", search_no_results: "No tracks found for \"{query}\".", all_albums: "All Albums", all_artists: "All Artists", no_items_found: "No items found.", sync_csv_btn: "Sync CSV", csv_modal_title: "Pair Playlist CSV", csv_modal_desc: "Compare an exported CSV sheet with this playlist: identify existing tracks, library tracks to add, and tracks to download.", csv_current: "Paired CSV:", csv_no_file: "No CSV file paired", csv_upload_btn: "Upload CSV", csv_tab_all: "All", csv_tab_in_playlist: "In Playlist", csv_tab_in_library: "In Library", csv_tab_to_download: "To Download", csv_tab_not_in_csv: "In Playlist, not in CSV", csv_jellyfin_title: "Jellyfin title: {title}", csv_btn_add_all: "Add All Library Tracks to Playlist", csv_btn_download_all: "Queue All Missing for Download", csv_btn_add: "Add to Playlist", csv_btn_download: "Download", csv_matching: "Matching tracks with Jellyfin library...", csv_owner_label: "Playlist owner", csv_owner_help: "As administrator, choose the account that owns this playlist. Jellyfin will verify it can access the playlist.", csv_owner_select: "Select a Jellyfin account", csv_owner_required: "Select the playlist owner to continue.", csv_owner_load_error: "Unable to load Jellyfin accounts." },
                 player: { now_playing: "Now Playing", default_title: "Track Title", default_artist: "Artist", prev_track: "Previous", play_pause: "Play / Pause", next_track: "Next", synced_lyrics: "Synchronized Lyrics", close_player: "Close Player", preview_source: "Preview", playback_error: "Audio playback failed. Please try another track." },
                 lyrics_modal: { close: "Close Lyrics", no_synced_lyrics: "No synchronized lyrics found for this track." },
                 downloads: { page_title: "Download Queue", empty: "No active downloads in queue.", status_pending: "Pending", status_downloading: "Downloading...", status_completed: "Completed", status_failed: "Failed", clear_completed: "Clear Completed" },
@@ -4636,7 +4664,7 @@
                 search: { page_eyebrow: "Scopri", page_description: "Trova un brano, ascoltane l’anteprima e aggiungilo alla tua libreria.", recommendations_title: "Scelti per te", recommendations_subtitle: "Basati sugli artisti nella tua libreria Jellyfin", recommendations_loading: "Caricamento dei consigliati…", recommendations_empty: "Non ci sono ancora brani consigliati.", recommendations_error: "Impossibile caricare i consigliati.", recommendations_based_on: "Basati su: {artists}", page_title: "Cerca Musica", input_placeholder: "Cerca brani da scaricare sul NAS...", filter_target_playlist: "Aggiungi a Playlist:", none_library_only: "Nessuna (Solo Libreria)", empty_initial: "Cerca una canzone per ascoltare l'anteprima circolare e scaricarla sul server con 1 click.", searching: "Ricerca in corso...", download_btn: "Scarica", in_library: "In Libreria", downloading: "Download in corso...", results_found: "{count} brani trovati", no_results: "Nessun brano trovato per \"{query}\"." },
                 history: { views_label: "Viste attività", eyebrow: "La tua attività", page_title: "Attività", page_description: "Consulta download e ascolti recenti in un unico posto.", queue: "Coda", downloads: "Cronologia download", plays: "Cronologia ascolti", queue_empty: "Nessun download in corso.", downloads_empty: "Non ci sono ancora download registrati per questo account.", plays_empty: "Non ci sono ancora ascolti registrati per questo account.", recorded: "Aggiunto il {date}", status_pending: "In coda", status_downloading: "Download in corso", status_tagging: "Tag in aggiornamento", status_jellyfin_sync: "Sincronizzazione Jellyfin", status_completed: "Completato", status_failed: "Non riuscito", status_interrupted: "Interrotto dal riavvio del server", status_retried: "Nuovo tentativo in coda" },
                 users: { scope_all: "Mostra tutti gli utenti", scope_mine: "Mostra i miei dati", admin_controls_title: "Visibilità amministratore", admin_controls_description: "Scegli se mostrare i controlli per consultare le attività e le playlist degli altri utenti.", show_admin_controls: "Mostra i controlli per gli altri utenti", playlist_owner: "Di {user}", owner_unknown: "Proprietario sconosciuto", recommendations_for: "Consigliati per {user}", select_user: "Scegli un utente Jellyfin", filter_user: "Filtra per utente", all_users: "Tutti gli utenti", preference_error: "Impossibile salvare questa preferenza." },
-                jellyfin: { page_title: "Libreria Jellyfin", shelf_tracks: "Brani nella libreria", loading_tracks: "Caricamento brani da Jellyfin…", no_tracks: "Nessun brano trovato nella libreria Jellyfin.", error_loading_library: "Impossibile caricare i brani. Verifica la connessione Jellyfin nelle Impostazioni.", input_placeholder: "Cerca brani nella tua libreria Jellyfin...", status_connected: "Connesso a Jellyfin", status_disconnected: "Disconnesso da Jellyfin", status_refresh_tooltip: "Ricarica i dati da Jellyfin", tracks_in_library: "brani nella libreria Jellyfin", shelf_playlists: "Playlist", shelf_albums: "Album", shelf_artists: "Artisti", card_artist: "Artista", back_to_albums: "Torna a tutti gli Album", back_to_artists: "Torna a tutti gli Artisti", back_to_playlists: "Torna alle Playlist", back_to_library: "Torna alla Libreria Jellyfin", badge_album: "ALBUM", badge_artist: "ARTISTA", badge_playlist: "PLAYLIST", lyrics_ok: "Lyrics OK", no_lyrics: "No Lyrics", with_lyrics: "{count} con Lyrics", without_lyrics: "{count} senza Lyrics", all_lyrics_present: "Tutte le lyrics presenti", download_missing_lyrics: "Scarica {count} Lyrics Mancanti", downloading_lyrics: "Download testi in corso {current}/{total}...", download_lrc: "Scarica LRC", lyrics_saved: "Testo Salvato", lyrics_unavailable: "Testo non disponibile", loading_album_tracks: "Caricamento tracce dell'album...", loading_artist_tracks: "Caricamento brani dell'artista...", loading_playlist_tracks: "Caricamento brani della playlist...", error_loading_tracks: "Errore nel caricamento delle tracce.", search_in_progress: "Ricerca in corso su Jellyfin...", search_results_count: "{count} brani trovati", search_no_results: "Nessun brano trovato per \"{query}\".", all_albums: "Tutti gli Album", all_artists: "Tutti gli Artisti", no_items_found: "Nessun elemento trovato.", sync_csv_btn: "Accoppia CSV", csv_modal_title: "Accoppiamento Playlist CSV", csv_modal_desc: "Confronta un foglio CSV con questa playlist: scopri i brani già presenti, quelli in libreria da aggiungere e quelli da scaricare.", csv_current: "CSV accoppiato:", csv_no_file: "Nessun file CSV accoppiato", csv_upload_btn: "Carica CSV", csv_tab_all: "Tutti", csv_tab_in_playlist: "In Playlist", csv_tab_in_library: "In Libreria", csv_tab_to_download: "Da Scaricare", csv_btn_add_all: "Aggiungi Tutti alla Playlist", csv_btn_download_all: "Metti Tutti in Coda Download", csv_btn_add: "Aggiungi", csv_btn_download: "Scarica", csv_matching: "Confronto con la libreria Jellyfin in corso...", csv_owner_label: "Proprietario della playlist", csv_owner_help: "Da amministratore, scegli l’account proprietario. Jellyfin verificherà che possa accedere alla playlist.", csv_owner_select: "Seleziona un account Jellyfin", csv_owner_required: "Seleziona il proprietario della playlist per continuare.", csv_owner_load_error: "Impossibile caricare gli account Jellyfin." },
+                jellyfin: { page_title: "Libreria Jellyfin", shelf_tracks: "Brani nella libreria", loading_tracks: "Caricamento brani da Jellyfin…", no_tracks: "Nessun brano trovato nella libreria Jellyfin.", error_loading_library: "Impossibile caricare i brani. Verifica la connessione Jellyfin nelle Impostazioni.", input_placeholder: "Cerca brani nella tua libreria Jellyfin...", status_connected: "Connesso a Jellyfin", status_disconnected: "Disconnesso da Jellyfin", status_refresh_tooltip: "Ricarica i dati da Jellyfin", tracks_in_library: "brani nella libreria Jellyfin", shelf_playlists: "Playlist", shelf_albums: "Album", shelf_artists: "Artisti", card_artist: "Artista", back_to_albums: "Torna a tutti gli Album", back_to_artists: "Torna a tutti gli Artisti", back_to_playlists: "Torna alle Playlist", back_to_library: "Torna alla Libreria Jellyfin", badge_album: "ALBUM", badge_artist: "ARTISTA", badge_playlist: "PLAYLIST", lyrics_ok: "Lyrics OK", no_lyrics: "No Lyrics", with_lyrics: "{count} con Lyrics", without_lyrics: "{count} senza Lyrics", all_lyrics_present: "Tutte le lyrics presenti", download_missing_lyrics: "Scarica {count} Lyrics Mancanti", downloading_lyrics: "Download testi in corso {current}/{total}...", download_lrc: "Scarica LRC", lyrics_saved: "Testo Salvato", lyrics_unavailable: "Testo non disponibile", loading_album_tracks: "Caricamento tracce dell'album...", loading_artist_tracks: "Caricamento brani dell'artista...", loading_playlist_tracks: "Caricamento brani della playlist...", error_loading_tracks: "Errore nel caricamento delle tracce.", search_in_progress: "Ricerca in corso su Jellyfin...", search_results_count: "{count} brani trovati", search_no_results: "Nessun brano trovato per \"{query}\".", all_albums: "Tutti gli Album", all_artists: "Tutti gli Artisti", no_items_found: "Nessun elemento trovato.", sync_csv_btn: "Accoppia CSV", csv_modal_title: "Accoppiamento Playlist CSV", csv_modal_desc: "Confronta un foglio CSV con questa playlist: scopri i brani già presenti, quelli in libreria da aggiungere e quelli da scaricare.", csv_current: "CSV accoppiato:", csv_no_file: "Nessun file CSV accoppiato", csv_upload_btn: "Carica CSV", csv_tab_all: "Tutti", csv_tab_in_playlist: "In playlist", csv_tab_in_library: "In libreria", csv_tab_to_download: "Da scaricare", csv_tab_not_in_csv: "In playlist, non nel CSV", csv_jellyfin_title: "Titolo Jellyfin: {title}", csv_btn_add_all: "Aggiungi Tutti alla Playlist", csv_btn_download_all: "Metti Tutti in Coda Download", csv_btn_add: "Aggiungi", csv_btn_download: "Scarica", csv_matching: "Confronto con la libreria Jellyfin in corso...", csv_owner_label: "Proprietario della playlist", csv_owner_help: "Da amministratore, scegli l’account proprietario. Jellyfin verificherà che possa accedere alla playlist.", csv_owner_select: "Seleziona un account Jellyfin", csv_owner_required: "Seleziona il proprietario della playlist per continuare.", csv_owner_load_error: "Impossibile caricare gli account Jellyfin." },
                 player: { now_playing: "In Riproduzione", default_title: "Titolo Brano", default_artist: "Artista", prev_track: "Precedente", play_pause: "Play / Pausa", next_track: "Successivo", synced_lyrics: "Testi Sincronizzati (Lyrics)", close_player: "Chiudi Player", preview_source: "Anteprima", playback_error: "Riproduzione audio non riuscita. Prova un altro brano." },
                 lyrics_modal: { close: "Chiudi Testi", no_synced_lyrics: "Nessun testo sincronizzato disponibile per questo brano." },
                 downloads: { page_title: "Coda di Download", empty: "Nessun download in coda o attivo.", status_pending: "In attesa", status_downloading: "Download...", status_completed: "Completato", status_failed: "Fallito", clear_completed: "Pulisci Completati" },
@@ -4773,6 +4801,37 @@
         let jobsPollingInterval = null;
         let currentDownloadsView = 'queue';
         let currentAdminActivityUser = '';
+        const jellyfinRequestCache = new Map();
+
+        function copyJsonValue(value) {
+            return value == null ? value : JSON.parse(JSON.stringify(value));
+        }
+
+        async function fetchJellyfinCachedJson(key, url, ttl = 90000) {
+            const cacheKey = `${currentAppUser?.id || 'guest'}:${key}`;
+            const cached = jellyfinRequestCache.get(cacheKey);
+            if (cached && cached.expiresAt > Date.now()) {
+                return copyJsonValue(cached.promise ? await cached.promise : cached.data);
+            }
+            const entry = { expiresAt: Date.now() + ttl, data: null, promise: null };
+            entry.promise = fetch(url, { cache: 'no-store' }).then(async response => {
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.detail || t('common.error'));
+                entry.data = data;
+                entry.promise = null;
+                entry.expiresAt = Date.now() + ttl;
+                return data;
+            }).catch(error => {
+                jellyfinRequestCache.delete(cacheKey);
+                throw error;
+            });
+            jellyfinRequestCache.set(cacheKey, entry);
+            return copyJsonValue(await entry.promise);
+        }
+
+        function invalidateJellyfinCachedJson(key) {
+            jellyfinRequestCache.delete(`${currentAppUser?.id || 'guest'}:${key}`);
+        }
         let setupStep = 1;
         let setupUsers = [];
         let setupAuthenticatedUser = null;
@@ -5084,6 +5143,7 @@
             currentAppUser = data.authenticated ? data.user : null;
             if (previousUserId && currentAppUser?.id !== previousUserId) {
                 identityChanged = true;
+                jellyfinRequestCache.clear();
                 adminAllUsersMode = false;
                 currentAdminActivityUser = '';
                 recsLoaded = false;
@@ -5261,7 +5321,7 @@
                         ? [track.artist, entry.playlist_name].filter(Boolean).join(' · ')
                         : [track.artist, track.album].filter(Boolean).join(' · ');
                     const owner = adminAllUsersMode ? '<span class="history-user-tag">' + escapeHtml(entry.user_name || '') + '</span>' : '';
-                    return '<article class="history-record"><div><div class="history-record-title">' + escapeHtml(track.title || '') +
+                    return '<article class="history-record"><img class="history-record-artwork" src="' + escapeHtml(track.cover_url || '') + '" alt="" loading="lazy" onerror="this.onerror=null;this.style.visibility=\'hidden\';"><div><div class="history-record-title">' + escapeHtml(track.title || '') +
                         '</div><div class="history-record-subtitle">' + escapeHtml(detail) + '</div>' + owner +
                         '</div><div class="history-record-meta">' + escapeHtml(status) + '<br>' + escapeHtml(date) + '</div></article>';
                 }).join('');
@@ -6717,6 +6777,7 @@
 
         function initJellyfinHub(force = false) {
             loadJellyTotalTracks();
+            if (force) jellyfinRequestCache.clear();
             if (force || jellyPlaylistsList.length === 0) loadJellyPlaylists();
             if (force || jellyAlbumsList.length === 0) loadJellyAlbums();
             if (force || jellyArtistsList.length === 0) loadJellyArtists();
@@ -6835,9 +6896,7 @@
             const track = document.getElementById('jellyPlaylistsTrack');
             if (track) track.innerHTML = `<div class="empty-state"><p>${t('common.loading')}</p></div>`;
             try {
-                const res = await fetch('/api/jellyfin/playlists');
-                if (!res.ok) throw new Error();
-                jellyPlaylistsList = await res.json();
+                jellyPlaylistsList = await fetchJellyfinCachedJson('playlists', '/api/jellyfin/playlists', 120000);
                 updateJellyfinHubStatus(true);
                 const countBadge = document.getElementById('countPlaylists');
                 if (countBadge) countBadge.textContent = jellyPlaylistsList.length;
@@ -6876,9 +6935,7 @@
             const track = document.getElementById('jellyAlbumsTrack');
             if (track) track.innerHTML = `<div class="empty-state"><p>${t('common.loading')}</p></div>`;
             try {
-                const res = await fetch('/api/jellyfin/albums?limit=250');
-                if (!res.ok) throw new Error();
-                const data = await res.json();
+                const data = await fetchJellyfinCachedJson('albums:250', '/api/jellyfin/albums?limit=250', 180000);
                 jellyAlbumsList = data.albums || [];
                 updateJellyfinHubStatus(true);
                 const countBadge = document.getElementById('countAlbums');
@@ -6916,9 +6973,7 @@
             const track = document.getElementById('jellyArtistsTrack');
             if (track) track.innerHTML = `<div class="empty-state"><p>${t('common.loading')}</p></div>`;
             try {
-                const res = await fetch('/api/jellyfin/artists?limit=250');
-                if (!res.ok) throw new Error();
-                const data = await res.json();
+                const data = await fetchJellyfinCachedJson('artists:250', '/api/jellyfin/artists?limit=250', 180000);
                 jellyArtistsList = data.artists || [];
                 updateJellyfinHubStatus(true);
                 const countBadge = document.getElementById('countArtists');
@@ -7023,8 +7078,7 @@
             }
 
             try {
-                const res = await fetch(`/api/jellyfin/album/${albumId}/tracks`);
-                const data = await res.json();
+                const data = await fetchJellyfinCachedJson(`album:${albumId}`, `/api/jellyfin/album/${encodeURIComponent(albumId)}/tracks`);
                 const alb = data.album || {};
                 currentDetailTracks = data.tracks || [];
                 currentJellyfinTracksList = currentDetailTracks;
@@ -7063,8 +7117,7 @@
             }
 
             try {
-                const res = await fetch(`/api/jellyfin/artist/${artistId}/tracks`);
-                const data = await res.json();
+                const data = await fetchJellyfinCachedJson(`artist:${artistId}`, `/api/jellyfin/artist/${encodeURIComponent(artistId)}/tracks`);
                 const art = data.artist || {};
                 currentDetailTracks = data.tracks || [];
                 currentJellyfinTracksList = currentDetailTracks;
@@ -7106,8 +7159,7 @@
             }
 
             try {
-                const res = await fetch(`/api/jellyfin/playlist/${playlistId}/tracks`);
-                const data = await res.json();
+                const data = await fetchJellyfinCachedJson(`playlist:${playlistId}`, `/api/jellyfin/playlist/${encodeURIComponent(playlistId)}/tracks`);
                 const pl = data.playlist || {};
                 currentDetailTracks = data.tracks || [];
                 currentJellyfinTracksList = currentDetailTracks;
@@ -7487,10 +7539,12 @@
                 const countPl = document.getElementById('csvCountInPlaylist');
                 const countLib = document.getElementById('csvCountInLibrary');
                 const countDl = document.getElementById('csvCountToDownload');
+                const countNotInCsv = document.getElementById('csvCountNotInCsv');
                 if (countAll) countAll.textContent = totalTracks;
                 if (countPl) countPl.textContent = counts.in_playlist;
                 if (countLib) countLib.textContent = counts.in_library;
                 if (countDl) countDl.textContent = counts.to_download;
+                if (countNotInCsv) countNotInCsv.textContent = data.not_in_csv_count || 0;
 
                 const btnAddAll = document.getElementById('btnCsvAddAllLibrary');
                 const btnDlAll = document.getElementById('btnCsvDownloadAll');
@@ -7517,6 +7571,7 @@
             else if (tab === 'in_playlist') document.getElementById('csvTabInPlaylist')?.classList.add('active');
             else if (tab === 'in_library') document.getElementById('csvTabInLibrary')?.classList.add('active');
             else if (tab === 'to_download') document.getElementById('csvTabToDownload')?.classList.add('active');
+            else if (tab === 'not_in_csv') document.getElementById('csvTabNotInCsv')?.classList.add('active');
             renderCsvList();
         }
         window.setCsvFilterTab = setCsvFilterTab;
@@ -7525,8 +7580,8 @@
             const container = document.getElementById('csvTracksContainer');
             if (!container || !currentCsvMatchData) return;
 
-            let items = currentCsvMatchData.results || [];
-            if (currentCsvTab !== 'all') {
+            let items = currentCsvTab === 'not_in_csv' ? (currentCsvMatchData.not_in_csv || []) : (currentCsvMatchData.results || []);
+            if (currentCsvTab !== 'all' && currentCsvTab !== 'not_in_csv') {
                 items = items.filter(it => it.status === currentCsvTab);
             }
 
@@ -7542,38 +7597,45 @@
                     ? `<span class="csv-status-badge in_playlist">${t('jellyfin.csv_tab_in_playlist')}</span>`
                     : (status === 'in_library')
                     ? `<span class="csv-status-badge in_library">${t('jellyfin.csv_tab_in_library')}</span>`
+                    : status === 'not_in_csv'
+                    ? `<span class="csv-status-badge not_in_csv">${t('jellyfin.csv_tab_not_in_csv')}</span>`
                     : `<span class="csv-status-badge to_download">${t('jellyfin.csv_tab_to_download')}</span>`;
 
                 let actionHtml = '';
                 if (status === 'in_library' && match && match.id) {
                     actionHtml = `
-                        <button class="csv-btn-action add-library" id="btn-csv-add-${idx}" onclick="addSingleTrackToPlaylist('${match.id}', ${idx})">
+                        <button class="csv-btn-action add-library" id="btn-csv-add-${item.csv_index}" onclick="addSingleTrackToPlaylist('${match.id}', ${item.csv_index})">
                             <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:currentColor;"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
                             <span>${t('jellyfin.csv_btn_add')}</span>
                         </button>
                     `;
                 } else if (status === 'to_download') {
                     actionHtml = `
-                        <button class="csv-btn-action download-track" id="btn-csv-dl-${idx}" onclick="queueSingleDownloadFromCsv('${escapeJs(item.title)}', '${escapeJs(item.artist)}', '${escapeJs(item.album || '')}', ${idx})">
+                        <button class="csv-btn-action download-track" id="btn-csv-dl-${item.csv_index}" onclick="queueSingleDownloadFromCsv('${escapeJs(item.title)}', '${escapeJs(item.artist)}', '${escapeJs(item.album || '')}', ${item.csv_index})">
                             <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:currentColor;"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
                             <span>${t('jellyfin.csv_btn_download')}</span>
                         </button>
                     `;
                 }
 
+                const sourceIdx = item.csv_index ?? idx;
                 const artistId = match ? (match.artist_id || '') : '';
                 const albumId = match ? (match.album_id || '') : '';
+                const matchedTitle = match?.title || item.matched_title;
+                const imageUrl = item.cover_url || match?.cover_url || '';
+                const matchTitleHtml = matchedTitle && status !== 'to_download'
+                    ? `<div class="csv-item-match-title">${escapeHtml(t('jellyfin.csv_jellyfin_title', { title: matchedTitle }))}</div>` : '';
 
                 return `
-                    <div class="csv-item-row status-${status}" id="csv-row-${idx}">
-                        <div style="display:flex; align-items:center; gap:12px; min-width:0; flex:1;">
-                            <span style="font-size:0.75rem; color:var(--text-secondary); width:24px; text-align:right;">${item.csv_index || (idx + 1)}</span>
-                            <div style="min-width:0; overflow:hidden;">
-                                <div style="font-size:0.88rem; font-weight:600; color:#ffffff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                                    ${escapeHtml(item.title)}
-                                </div>
-                                <div style="font-size:0.76rem; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                                    <span class="clickable-artist" onclick="event.stopPropagation(); navigateToArtist('${escapeJs(item.artist)}', '${escapeJs(artistId)}')">${escapeHtml(item.artist || 'Artista')}</span>
+                    <div class="csv-item-row status-${status}" id="csv-row-${sourceIdx}">
+                        <div class="csv-item-main">
+                            <img class="csv-item-artwork" src="${escapeHtml(imageUrl)}" alt="" loading="lazy" onerror="this.onerror=null;this.style.visibility='hidden';">
+                            <span style="font-size:0.75rem; color:var(--text-secondary); text-align:right;">${item.csv_index !== undefined && status !== 'not_in_csv' ? item.csv_index + 1 : idx + 1}</span>
+                            <div class="csv-item-copy">
+                                <div class="csv-item-title">${escapeHtml(item.title || '')}</div>
+                                ${matchTitleHtml}
+                                <div class="csv-item-subtitle">
+                                    <span class="clickable-artist" onclick="event.stopPropagation(); navigateToArtist('${escapeJs(item.artist || '')}', '${escapeJs(artistId)}')">${escapeHtml(item.artist || 'Artista')}</span>
                                     ${item.album ? `<span class="sub-sep">-</span><span class="clickable-album" onclick="event.stopPropagation(); navigateToAlbum('${escapeJs(item.album)}', '${escapeJs(albumId)}')">${escapeHtml(item.album)}</span>` : ''}
                                 </div>
                             </div>
@@ -7604,9 +7666,10 @@
                 });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.detail || 'Add error');
+                invalidateJellyfinCachedJson(`playlist:${targetId}`);
 
                 if (currentCsvMatchData && currentCsvMatchData.results) {
-                    const it = currentCsvMatchData.results[rowIdx];
+                const it = currentCsvMatchData.results.find(result => result.csv_index === rowIdx);
                     if (it) {
                         it.status = 'in_playlist';
                         if (currentCsvMatchData.counts) {
@@ -7651,6 +7714,7 @@
                 });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.detail || 'Batch add error');
+                invalidateJellyfinCachedJson(`playlist:${targetId}`);
 
                 showAlertPopup(t('common.success'), `${data.added_count || itemIds.length} brani aggiunti alla playlist!`, true);
                 await runPlaylistCsvMatch(targetId);
@@ -7673,6 +7737,7 @@
             }
 
             const plName = document.getElementById('detailTitle')?.textContent || 'Playlist';
+            const csvTrack = currentCsvMatchData?.results?.find(item => item.csv_index === rowIdx);
             try {
                 const res = await fetch(`/api/jellyfin/playlist/${targetId}/queue-downloads`, {
                     method: 'POST',
@@ -7680,7 +7745,7 @@
                     body: JSON.stringify({
                         playlist_name: plName,
                         owner_user_id: csvOwnerPayload(),
-                        tracks: [{ title, artist, album }]
+                        tracks: [{ title, artist, album, cover_url: csvTrack?.cover_url || '' }]
                     })
                 });
                 const data = await res.json();
@@ -7708,7 +7773,7 @@
             }
 
             const plName = document.getElementById('detailTitle')?.textContent || 'Playlist';
-            const tracksPayload = toDlItems.map(it => ({ title: it.title, artist: it.artist, album: it.album }));
+            const tracksPayload = toDlItems.map(it => ({ title: it.title, artist: it.artist, album: it.album, cover_url: it.cover_url || '' }));
 
             try {
                 const res = await fetch(`/api/jellyfin/playlist/${targetId}/queue-downloads`, {
@@ -7821,8 +7886,8 @@
             list.innerHTML = `<div class="empty-state"><p>Ricerca in corso su Jellyfin...</p></div>`;
 
             try {
-                const res = await fetch(`/api/jellyfin/library/tracks?limit=100&q=${encodeURIComponent(query)}`);
-                const data = await res.json();
+                const url = `/api/jellyfin/library/tracks?limit=100&q=${encodeURIComponent(query)}`;
+                const data = await fetchJellyfinCachedJson(`search:${query.trim().toLowerCase()}`, url, 30000);
                 currentJellyfinTracksList = data.tracks || [];
                 countLabel.textContent = `${data.total} brani trovati`;
 
@@ -7962,7 +8027,10 @@
             downloadsList.innerHTML = jobs.slice().reverse().map(j => `
                 <div class="job-item">
                     <div class="job-header">
-                        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:300px;">${escapeHtml(j.track.title)}</span>
+                        <div class="job-track-heading">
+                            <img class="job-track-artwork" src="${escapeHtml(j.track.cover_url || '')}" alt="" loading="lazy" onerror="this.onerror=null;this.style.visibility='hidden';">
+                            <div class="job-track-copy"><div class="job-track-title">${escapeHtml(j.track.title)}</div><div class="job-track-subtitle">${escapeHtml([j.track.artist, j.track.album].filter(Boolean).join(' · '))}</div></div>
+                        </div>
                         <span class="job-status-badge ${j.status}">${t('history.status_' + j.status)}</span>
                     </div>
                     ${adminAllUsersMode ? `<span class="history-user-tag">${escapeHtml(j.owner_name || '')}</span>` : ''}
@@ -8315,9 +8383,7 @@
         // === JELLYFIN TOTAL TRACKS COUNT ===
         async function loadJellyTotalTracks() {
             try {
-                const res = await fetch('/api/jellyfin/library/tracks?limit=1');
-                if (!res.ok) throw new Error();
-                const data = await res.json();
+                const data = await fetchJellyfinCachedJson('library-total', '/api/jellyfin/library/tracks?limit=1', 120000);
                 const total = data.total || 0;
                 const formatted = total.toLocaleString(currentLanguage === 'it' ? 'it-IT' : 'en-US');
                 const heroEl = document.getElementById('heroTotalTracksCount');

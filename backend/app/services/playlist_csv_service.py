@@ -4,7 +4,9 @@ import json
 import re
 import io
 import time
+import asyncio
 from typing import Optional, List, Dict, Any
+from fastapi import HTTPException
 from app.services.jellyfin_service import JellyfinService
 from app.services.search_service import SearchService
 from app.services.download_service import download_manager
@@ -172,7 +174,8 @@ class PlaylistCSVService:
                     "summary": {"total": 0, "in_playlist": 0, "in_library": 0, "to_download": 0},
                     "in_playlist": [],
                     "in_library": [],
-                    "to_download": []
+                    "to_download": [],
+                    "not_in_csv": []
                 }
             with open(csv_path, "r", encoding="utf-8") as f:
                 csv_content = f.read()
@@ -183,7 +186,8 @@ class PlaylistCSVService:
                 "summary": {"total": 0, "in_playlist": 0, "in_library": 0, "to_download": 0},
                 "in_playlist": [],
                 "in_library": [],
-                "to_download": []
+                "to_download": [],
+                "not_in_csv": []
             }
 
         # 1. Fetch current tracks in the target playlist
@@ -260,6 +264,41 @@ class PlaylistCSVService:
             record["matched_track"] = None
             to_download.append(record)
 
+        # Attach artwork to missing CSV tracks so the matcher remains visual.
+        artwork_slots = asyncio.Semaphore(6)
+
+        async def add_artwork(record):
+            async with artwork_slots:
+                candidates = await SearchService.search_deezer(
+                    f"{record.get('artist', '')} {record.get('title', '')}".strip(), limit=5
+                )
+            if not candidates:
+                return
+            target_title = _normalize_str(record.get("title"))
+            target_artist = _normalize_str(record.get("artist"))
+            best = max(
+                candidates,
+                key=lambda track: (
+                    2 if _normalize_str(track.title) == target_title else 0,
+                    1 if target_artist and target_artist in _normalize_str(track.artist) else 0,
+                ),
+            )
+            record["cover_url"] = best.cover_url
+            record["matched_title"] = best.title
+
+        await asyncio.gather(*(add_artwork(record) for record in to_download), return_exceptions=True)
+
+        # Include playlist entries absent from the CSV as a separate, read-only group.
+        csv_keys = {
+            (_normalize_str(item.get("title")), _normalize_str(item.get("artist")))
+            for item in csv_tracks
+        }
+        not_in_csv = [
+            {**track, "status": "not_in_csv", "csv_index": index}
+            for index, track in enumerate(playlist_tracks, start=1)
+            if (_normalize_str(track.get("title")), _normalize_str(track.get("artist"))) not in csv_keys
+        ]
+
         all_results = sorted(in_playlist + in_library + to_download, key=lambda x: x["csv_index"])
         counts = {
             "in_playlist": len(in_playlist),
@@ -275,6 +314,8 @@ class PlaylistCSVService:
                 **counts
             },
             "results": all_results,
+            "not_in_csv": not_in_csv,
+            "not_in_csv_count": len(not_in_csv),
             "in_playlist": in_playlist,
             "in_library": in_library,
             "to_download": to_download
@@ -294,31 +335,30 @@ class PlaylistCSVService:
 
     @classmethod
     async def queue_tracks_download(cls, playlist_id: str, playlist_name: str, tracks: List[Dict[str, str]], owner: dict, playlist_user_id: Optional[str] = None) -> Dict[str, Any]:
-        queued = 0
-        for item in tracks:
+        requested = [item for item in tracks if item.get("title", "").strip()]
+        if len(requested) > download_manager.MAX_ACTIVE_JOBS:
+            raise HTTPException(status_code=413, detail="Puoi inviare al massimo 500 brani in una singola operazione.")
+        active = sum(job.status in download_manager.ACTIVE_STATUSES for job in download_manager.jobs.values())
+        if active + len(requested) > download_manager.MAX_ACTIVE_JOBS:
+            raise HTTPException(status_code=429, detail="La coda può contenere al massimo 500 download attivi. Attendi che si liberino alcuni posti.")
+
+        def build_track(item):
             title = item.get("title", "").strip()
             artist = item.get("artist", "").strip()
             album = item.get("album", "").strip()
-            if not title:
-                continue
+            safe_id = re.sub(r'[^a-zA-Z0-9]', '_', f"{artist}_{title}")[:32]
+            return TrackItem(
+                id=safe_id or f"csv_{len(title)}",
+                title=title,
+                artist=artist or "Artista",
+                album=album or "Album",
+                duration=max(0, int(item.get("duration") or 0)),
+                cover_url=item.get("cover_url") or None,
+                source="csv"
+            )
 
-            # Search Deezer / iTunes for best metadata match
-            query = f"{artist} {title}".strip()
-            search_results = await SearchService.search(query=query, limit=1)
-            if search_results and len(search_results) > 0:
-                matched_track = search_results[0]
-            else:
-                # Synthetic TrackItem
-                safe_id = re.sub(r'[^a-zA-Z0-9]', '_', f"{artist}_{title}")[:32]
-                matched_track = TrackItem(
-                    id=safe_id,
-                    title=title,
-                    artist=artist or "Artista",
-                    album=album or "Album",
-                    duration=0,
-                    source="deezer"
-                )
-
+        matched_tracks = [build_track(item) for item in requested]
+        for item, matched_track in zip(requested, matched_tracks):
             await download_manager.create_job(
                 track=matched_track,
                 playlist_id=playlist_id,
@@ -326,6 +366,6 @@ class PlaylistCSVService:
                 owner=owner,
                 playlist_user_id=playlist_user_id or owner.get("id")
             )
-            queued += 1
+        queued = len(matched_tracks)
 
         return {"queued": queued}

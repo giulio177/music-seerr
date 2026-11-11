@@ -422,25 +422,45 @@ async def stream_jellyfin_track(item_id: str, request: Request, format: Optional
 
 @app.get("/api/jellyfin/image/{item_id}")
 async def get_jellyfin_image(item_id: str, request: Request):
-    """Proxy copertina da Jellyfin"""
-    from fastapi.responses import RedirectResponse
+    """Proxy Jellyfin artwork so browsers never need to resolve the container hostname."""
     require_jellyfin_user(request)
     if not settings.JELLYFIN_URL or not settings.JELLYFIN_API_KEY:
         raise HTTPException(status_code=400, detail="Jellyfin non configurato")
-    image_url = f"{settings.JELLYFIN_URL.rstrip('/')}/Items/{item_id}/Images/Primary?maxWidth=300&maxHeight=300&api_key={settings.JELLYFIN_API_KEY}"
-    return RedirectResponse(url=image_url)
+    image_url = f"{settings.JELLYFIN_URL.rstrip('/')}/Items/{item_id}/Images/Primary"
+    return await _proxy_jellyfin_image(image_url, params={"maxWidth": 300, "maxHeight": 300})
 
 @app.get("/api/jellyfin/user-image/{user_id}")
 async def get_jellyfin_user_image(user_id: str, request: Request):
-    """Proxy avatar utente da Jellyfin"""
-    from fastapi.responses import RedirectResponse
+    """Proxy a Jellyfin user artwork using server-side API credentials."""
     principal = require_app_user(request)
     if user_id != principal.get("id") and not principal.get("is_admin"):
         raise HTTPException(status_code=403, detail="Non puoi visualizzare il profilo di un altro utente.")
-    if not settings.JELLYFIN_URL:
+    if not settings.JELLYFIN_URL or not settings.JELLYFIN_API_KEY:
         raise HTTPException(status_code=400, detail="Jellyfin non configurato")
     image_url = f"{settings.JELLYFIN_URL.rstrip('/')}/Users/{user_id}/Images/Primary"
-    return RedirectResponse(url=image_url)
+    return await _proxy_jellyfin_image(image_url)
+
+
+async def _proxy_jellyfin_image(image_url: str, params: Optional[dict] = None) -> Response:
+    """Fetch Jellyfin images inside the backend network and cache them briefly in the browser."""
+    import httpx
+    try:
+        async with httpx.AsyncClient(timeout=12.0, follow_redirects=True) as client:
+            image = await client.get(image_url, params=params, headers=JellyfinService._headers())
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail="Impossibile recuperare l'immagine da Jellyfin.") from exc
+    if image.status_code != 200:
+        return Response(status_code=image.status_code, headers={"Cache-Control": "private, max-age=60"})
+    content_type = image.headers.get("content-type", "image/jpeg")
+    if not content_type.startswith("image/"):
+        raise HTTPException(status_code=502, detail="Jellyfin ha restituito un contenuto non immagine.")
+    if len(image.content) > 8 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Immagine Jellyfin troppo grande.")
+    return Response(
+        content=image.content,
+        media_type=content_type,
+        headers={"Cache-Control": "private, max-age=300", "X-Content-Type-Options": "nosniff"},
+    )
 
 # === SETUP & AUTH ENDPOINTS ===
 
