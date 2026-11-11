@@ -102,7 +102,7 @@ class JellyfinService:
         """Autentica l'utente con username e password Jellyfin tramite /Users/AuthenticateByName"""
         url = (jellyfin_url or settings.JELLYFIN_URL).rstrip('/')
         if not url:
-            return {"success": False, "message": "Jellyfin URL non configurato."}
+            return {"success": False, "message": "Jellyfin URL is not configured."}
 
         auth_endpoint = f"{url}/Users/AuthenticateByName"
         authorization = 'MediaBrowser Client="MusicSeerr", Device="Web", DeviceId="MusicSeerr-Web", Version="1.0.0"'
@@ -144,17 +144,17 @@ class JellyfinService:
                         server_message = None
                     return {
                         "success": False,
-                        "message": server_message or "Nome utente o password errati."
+                        "message": server_message or "Incorrect username or password."
                     }
                 else:
                     return {
                         "success": False,
-                        "message": f"Errore autenticazione Jellyfin: HTTP {res.status_code}"
+                        "message": f"Jellyfin authentication failed: HTTP {res.status_code}"
                     }
             except Exception as e:
                 return {
                     "success": False,
-                    "message": f"Impossibile contattare il server Jellyfin: {str(e)}"
+                    "message": f"Could not contact the Jellyfin server: {str(e)}"
                 }
 
     @classmethod
@@ -297,6 +297,43 @@ class JellyfinService:
                 print(f"[JellyfinService] Errore add_to_playlist: {e}")
                 return False
 
+    @classmethod
+    async def remove_from_playlist(cls, playlist_id: str, entry_id: str, user_id: Optional[str] = None) -> bool:
+        """Remove one playlist entry. Jellyfin expects the playlist entry ID, not the audio item ID."""
+        if not settings.JELLYFIN_API_KEY or not settings.JELLYFIN_URL:
+            return False
+        url = f"{settings.JELLYFIN_URL.rstrip('/')}/Playlists/{playlist_id}/Items"
+        params = {"entryIds": entry_id}
+        if user_id:
+            params["userId"] = user_id
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            try:
+                res = await client.delete(url, params=params, headers=cls._headers())
+                return res.status_code in (200, 204)
+            except Exception as e:
+                print(f"[JellyfinService] Error removing playlist entry: {e}")
+                return False
+
+    @classmethod
+    async def set_favorite(cls, item_id: str, user_id: str, favorite: bool) -> bool:
+        """Set a Jellyfin favorite for the verified user."""
+        if not settings.JELLYFIN_API_KEY or not settings.JELLYFIN_URL:
+            return False
+        url = f"{settings.JELLYFIN_URL.rstrip('/')}/Users/{user_id}/FavoriteItems/{item_id}"
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            try:
+                accessible = await client.get(
+                    f"{settings.JELLYFIN_URL.rstrip('/')}/Users/{user_id}/Items/{item_id}",
+                    headers=cls._headers()
+                )
+                if accessible.status_code != 200:
+                    return False
+                res = await (client.post if favorite else client.delete)(url, headers=cls._headers())
+                return res.status_code in (200, 204)
+            except Exception as e:
+                print(f"[JellyfinService] Error updating favorite: {e}")
+                return False
+
     @staticmethod
     def _format_track_item(item: dict) -> dict:
         item_id = item.get("Id")
@@ -307,7 +344,7 @@ class JellyfinService:
         duration_formatted = f"{mins}:{secs:02d}"
 
         artists = item.get("Artists", [])
-        artist_name = ", ".join(artists) if artists else item.get("AlbumArtist", "Artista Sconosciuto")
+        artist_name = ", ".join(artists) if artists else item.get("AlbumArtist", "Unknown artist")
 
         artist_id = None
         artist_items = item.get("ArtistItems", [])
@@ -320,7 +357,7 @@ class JellyfinService:
 
         return {
             "id": item_id,
-            "title": item.get("Name", "Senza Titolo"),
+            "title": item.get("Name", "Untitled track"),
             "artist": artist_name,
             "artists": artists,
             "artist_id": artist_id,
@@ -329,6 +366,8 @@ class JellyfinService:
             "duration": duration_formatted,
             "duration_sec": total_sec,
             "has_lyrics": item.get("HasLyrics", False),
+            "is_favorite": bool((item.get("UserData") or {}).get("IsFavorite")),
+            "playlist_entry_id": item.get("PlaylistItemId"),
             "path": item.get("Path", ""),
             "stream_url": f"/api/jellyfin/stream/{item_id}",
             "cover_url": f"/api/jellyfin/image/{item_id}"
@@ -349,7 +388,7 @@ class JellyfinService:
             return {"total": 0, "tracks": []}
 
         user_id = user_id if user_id is not None else cls.get_scoped_user_id()
-        fields = "HasLyrics,Path,Artists,Album,RunTimeTicks,PrimaryImageAspectRatio,AlbumId,ArtistItems,AlbumArtists,ParentId"
+        fields = "HasLyrics,UserData,Path,Artists,Album,RunTimeTicks,PrimaryImageAspectRatio,AlbumId,ArtistItems,AlbumArtists,ParentId"
 
         async with httpx.AsyncClient(timeout=10.0) as client:
             headers = cls._headers()
@@ -464,8 +503,8 @@ class JellyfinService:
                 for it in items:
                     albums.append({
                         "id": it.get("Id"),
-                        "name": it.get("Name", "Album Sconosciuto"),
-                        "artist": it.get("AlbumArtist") or (it.get("Artists", [""])[0] if it.get("Artists") else "Artista Sconosciuto"),
+                        "name": it.get("Name", "Unknown album"),
+                        "artist": it.get("AlbumArtist") or (it.get("Artists", [""])[0] if it.get("Artists") else "Unknown artist"),
                         "year": it.get("ProductionYear"),
                         "cover_url": f"/api/jellyfin/image/{it.get('Id')}"
                     })
@@ -527,7 +566,7 @@ class JellyfinService:
                 for it in items:
                     artists.append({
                         "id": it.get("Id"),
-                        "name": it.get("Name", "Artista Sconosciuto"),
+                        "name": it.get("Name", "Unknown artist"),
                         "cover_url": f"/api/jellyfin/image/{it.get('Id')}"
                     })
                 return {"total": total, "artists": artists}
@@ -551,7 +590,7 @@ class JellyfinService:
             if res.status_code == 200:
                 items = res.json().get("Items", [])
                 tracks = [cls._format_track_item(it) for it in items]
-                artist_name = tracks[0]["artist"] if tracks else "Artista"
+                artist_name = tracks[0]["artist"] if tracks else "Artist"
                 artist_info = {
                     "id": artist_id,
                     "name": artist_name,
@@ -568,7 +607,7 @@ class JellyfinService:
         url = f"{settings.JELLYFIN_URL.rstrip('/')}/Playlists/{playlist_id}/Items"
         params = {
             "userId": user_id,
-            "fields": "HasLyrics,Path,Artists,Album,RunTimeTicks,IndexNumber,AlbumId,ArtistItems,AlbumArtists,ParentId"
+            "fields": "HasLyrics,UserData,PlaylistItemId,Path,Artists,Album,RunTimeTicks,IndexNumber,AlbumId,ArtistItems,AlbumArtists,ParentId"
         }
         async with httpx.AsyncClient(timeout=10.0) as client:
             res = await client.get(url, headers=cls._headers(), params=params)
@@ -654,7 +693,7 @@ class JellyfinService:
         if not lyrics or (not lyrics.get("synced") and not lyrics.get("plain")):
             return {
                 "success": False,
-                "message": f"Nessun testo trovato online per '{title} - {artist}'."
+                "message": f"No lyrics found online for '{title} - {artist}'."
             }
 
         synced_text = lyrics.get("synced")
@@ -726,5 +765,5 @@ class JellyfinService:
         else:
             return {
                 "success": False,
-                "message": f"Impossibile salvare la lyrics su Jellyfin o disco per '{title}'."
+                "message": f"Could not save lyrics to Jellyfin or disk for '{title}'."
             }

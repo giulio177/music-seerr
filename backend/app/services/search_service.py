@@ -30,9 +30,9 @@ class SearchService:
                     results.append(
                         TrackItem(
                             id=f"deezer:{item.get('id')}",
-                            title=item.get("title", "Sconosciuto"),
-                            artist=item.get("artist", {}).get("name", "Artista Sconosciuto"),
-                            album=item.get("album", {}).get("title", "Album Sconosciuto"),
+                            title=item.get("title", "Unknown track"),
+                            artist=item.get("artist", {}).get("name", "Unknown artist"),
+                            album=item.get("album", {}).get("title", "Unknown album"),
                             duration=item.get("duration", 0),
                             cover_url=cover,
                             preview_url=preview if preview else None,
@@ -70,9 +70,9 @@ class SearchService:
                     results.append(
                         TrackItem(
                             id=f"itunes:{item.get('trackId')}",
-                            title=item.get("trackName", "Sconosciuto"),
-                            artist=item.get("artistName", "Artista Sconosciuto"),
-                            album=item.get("collectionName", "Album Sconosciuto"),
+                            title=item.get("trackName", "Unknown track"),
+                            artist=item.get("artistName", "Unknown artist"),
+                            album=item.get("collectionName", "Unknown album"),
                             duration=duration_sec,
                             cover_url=artwork,
                             preview_url=preview if preview else None,

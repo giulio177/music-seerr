@@ -1919,6 +1919,25 @@
             fill: currentColor;
         }
 
+        .jelly-track-menu-button {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            border: 1px solid var(--border-glass);
+            background: rgba(255,255,255,.055);
+            color: var(--text-primary);
+            display: inline-grid;
+            place-items: center;
+            cursor: pointer;
+            flex: 0 0 auto;
+        }
+        .jelly-track-menu-button:hover { background: rgba(255,255,255,.13); }
+        .track-actions-box { text-align: left; max-width: 460px; }
+        .track-actions-box h2 { margin: 0 0 8px; }
+        .track-actions-box p { color: var(--text-secondary); margin: 0 0 18px; }
+        .track-actions-list { display: grid; gap: 10px; }
+        .track-actions-list > button { width: 100%; text-align: left; }
+
         /* Liquid Cover Wrapper with Equalizer Overlay */
         .liquid-cover-wrap {
             position: relative;
@@ -3547,7 +3566,7 @@
     <div id="appBootScreen" aria-live="polite" aria-busy="true">
         <div class="brand-logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 3v10.4a3.6 3.6 0 1 1-2-3.23V7.1l8-2.15v9.05a3.6 3.6 0 1 1-2-3.23V7.58l-4 1.08V3z"/><path d="M4.7 9.1v5.8M2 10.7v2.6" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" opacity=".9"/></svg></div>
         <div class="app-boot-spinner" aria-hidden="true"></div>
-        <span data-i18n="auth.checking_session">Verifica della sessione…</span>
+        <span data-i18n="auth.checking_session">Checking session…</span>
     </div>
 
     <!-- MODERN SIDEBAR (LEFT BAR) -->
@@ -3598,7 +3617,7 @@
                     <div class="sidebar-user-name" id="sidebarUserName">Ospite</div>
                     <div class="sidebar-user-role" id="sidebarUserRole">Jellyfin</div>
                 </div>
-                <button type="button" class="sidebar-user-logout-btn" id="sidebarUserLogoutBtn" onclick="event.stopPropagation(); logoutUser();" title="Disconnetti" data-i18n-title="auth.logout">
+                <button type="button" class="sidebar-user-logout-btn" id="sidebarUserLogoutBtn" onclick="event.stopPropagation(); logoutUser();" title="Sign Out" data-i18n-title="auth.logout">
                     <svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
                 </button>
             </div>
@@ -3619,7 +3638,7 @@
             <div class="top-search-wrapper" id="topSearchWrapper">
                 <svg class="top-search-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                 <input type="text" id="globalSearchInput" class="top-search-bar" data-i18n-placeholder="search.input_placeholder" placeholder="Search songs to download to NAS..." autocomplete="off">
-                <button type="button" id="globalSearchClearBtn" class="top-search-clear-btn" style="display:none;" onclick="handleGlobalSearchClear()" data-i18n-title="common.cancel" title="Cancella ricerca">
+                <button type="button" id="globalSearchClearBtn" class="top-search-clear-btn" style="display:none;" onclick="handleGlobalSearchClear()" data-i18n-title="common.cancel" title="Clear search">
                     <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
                 </button>
             </div>
@@ -3645,6 +3664,10 @@
                             <option value="" data-i18n="search.none_library_only">None (Library Only)</option>
                         </select>
                     </div>
+                    <label id="downloadPlaylistOwnerWrap" class="playlist-selector-group" style="display:none;" for="downloadPlaylistOwnerSelect">
+                        <span data-i18n="search.playlist_owner">Playlist owner:</span>
+                        <select id="downloadPlaylistOwnerSelect" class="form-input"></select>
+                    </label>
                     <button type="button" class="btn-secondary admin-scope-toggle" id="searchAdminScopeToggle" style="display:none;" onclick="toggleAdminAllUsersMode()" data-i18n="users.scope_all">Show all users</button>
                     <div id="resultsSummary" style="font-size: 0.9rem; color: var(--text-secondary);"></div>
                 </div>
@@ -3694,7 +3717,7 @@
                         <!-- Total tracks label on the LEFT -->
                         <div class="jelly-hero-tracks-info">
                             <span class="jelly-hero-tracks-count" id="heroTotalTracksCount">...</span>
-                            <span class="jelly-hero-tracks-label" data-i18n="jellyfin.tracks_in_library">brani nella libreria Jellyfin</span>
+                            <span class="jelly-hero-tracks-label" data-i18n="jellyfin.tracks_in_library">tracks in Jellyfin library</span>
                         </div>
 
                         <!-- Connected to Jellyfin bold colored text on the RIGHT -->
@@ -3722,7 +3745,7 @@
                                 <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
                             </button>
                             <div id="jellyPlaylistsTrack" class="jelly-shelf-track" onscroll="updateShelfArrows('jellyPlaylistsTrack')">
-                                <div class="empty-state"><p>Caricamento playlist da Jellyfin...</p></div>
+                                <div class="empty-state"><p>Loading playlists from Jellyfin...</p></div>
                             </div>
                             <button class="shelf-arrow-edge right" id="arrowRight_jellyPlaylistsTrack" onclick="scrollShelf('jellyPlaylistsTrack', 520)" title="Scorri a destra">
                                 <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
@@ -3736,7 +3759,7 @@
                             <div class="jelly-shelf-title-wrap">
                                 <div class="jelly-shelf-title">
                                     <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14.5c-2.49 0-4.5-2.01-4.5-4.5S9.51 7.5 12 7.5s4.5 2.01 4.5 4.5-2.01 4.5-4.5 4.5zm0-5.5c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1z"/></svg>
-                                    <span data-i18n="jellyfin.shelf_albums">Album</span>
+                                    <span data-i18n="jellyfin.shelf_albums">Albums</span>
                                 </div>
                                 <span class="jelly-shelf-count" id="countAlbums">0</span>
                             </div>
@@ -3750,7 +3773,7 @@
                                 <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
                             </button>
                             <div id="jellyAlbumsTrack" class="jelly-shelf-track" onscroll="updateShelfArrows('jellyAlbumsTrack')">
-                                <div class="empty-state"><p>Caricamento album da Jellyfin...</p></div>
+                                <div class="empty-state"><p>Loading albums from Jellyfin...</p></div>
                             </div>
                             <button class="shelf-arrow-edge right" id="arrowRight_jellyAlbumsTrack" onclick="scrollShelf('jellyAlbumsTrack', 520)" title="Scorri a destra">
                                 <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
@@ -3778,7 +3801,7 @@
                                 <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
                             </button>
                             <div id="jellyArtistsTrack" class="jelly-shelf-track artists-track" onscroll="updateShelfArrows('jellyArtistsTrack')">
-                                <div class="empty-state"><p>Caricamento artisti da Jellyfin...</p></div>
+                                <div class="empty-state"><p>Loading artists from Jellyfin...</p></div>
                             </div>
                             <button class="shelf-arrow-edge right" id="arrowRight_jellyArtistsTrack" onclick="scrollShelf('jellyArtistsTrack', 520)" title="Scorri a destra">
                                 <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
@@ -3793,9 +3816,9 @@
                         <div style="display:flex; align-items:center; gap:14px;">
                             <button class="btn-subtle-back" onclick="closeJellyfinAllView()">
                                 <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
-                                <span data-i18n="jellyfin.back_to_library">Torna alla Libreria</span>
+                                <span data-i18n="jellyfin.back_to_library">Back to the library</span>
                             </button>
-                            <h2 id="jellyfinAllViewTitle" style="font-size:1.35rem; font-weight:700; color:#ffffff;">Tutti gli Album</h2>
+                            <h2 id="jellyfinAllViewTitle" style="font-size:1.35rem; font-weight:700; color:#ffffff;">All Albums</h2>
                             <span id="jellyfinAllViewBadge" class="jelly-shelf-count">0</span>
                         </div>
                         <div class="jelly-filter-search-box">
@@ -3810,7 +3833,7 @@
                 <div id="jellyfinDetailView" style="display:none;">
                     <button class="btn-subtle-back" onclick="handleDetailBack()">
                         <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
-                        <span id="detailBackLabel">Torna alla libreria</span>
+                        <span id="detailBackLabel">Back to the library</span>
                     </button>
 
                     <!-- Hero Card -->
@@ -3821,7 +3844,7 @@
                         <div class="jelly-detail-info">
                             <span class="jelly-detail-type" id="detailTypeBadge">ALBUM</span>
                             <h1 class="jelly-detail-title" id="detailTitle">Titolo</h1>
-                            <p class="jelly-detail-sub" id="detailSubtitle">Artista • 0 brani</p>
+                            <p class="jelly-detail-sub" id="detailSubtitle">Artist · 0 tracks</p>
                             <div class="jelly-detail-stats">
                                 <span id="detailLyricsOkBadge" class="jelly-stat-badge ok">0 con Lyrics</span>
                                 <span id="detailLyricsMissingBadge" class="jelly-stat-badge missing">0 senza Lyrics</span>
@@ -3830,7 +3853,7 @@
                         <div class="jelly-detail-actions">
                             <button class="btn-batch-lyrics" id="btnBatchDownloadLyrics" onclick="startBatchLyricsDownload()">
                                 <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
-                                <span id="batchDownloadLabel">Scarica Lyrics Mancanti</span>
+                                <span id="batchDownloadLabel">Download Missing Lyrics</span>
                             </button>
                             <button class="btn-batch-lyrics" id="btnPlaylistCsv" onclick="openPlaylistCsvModal()" style="display:none; background: rgba(59, 130, 246, 0.18); border-color: rgba(59, 130, 246, 0.35); color: #60a5fa;" title="Accoppia foglio CSV">
                                 <svg viewBox="0 0 24 24" style="fill:currentColor; width:16px; height:16px;"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
@@ -3892,10 +3915,10 @@
                 <div class="settings-card">
                     <div class="settings-card-title">
                         <svg viewBox="0 0 24 24"><path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg>
-                        <span data-i18n="settings.language_section_title">Lingua &amp; Traduzioni</span>
+                        <span data-i18n="settings.language_section_title">Language &amp; Translations</span>
                     </div>
                     <div class="settings-card-desc" data-i18n="settings.language_section_desc">
-                        Seleziona la lingua dell'interfaccia di Music Seerr.
+                        Select the Music Seerr interface language.
                     </div>
 
                     <div class="form-group" style="margin-bottom:0;">
@@ -3911,63 +3934,63 @@
                 <div class="settings-card" id="adminStorageSettingsCard">
                     <div class="settings-card-title">
                         <svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
-                        <span data-i18n="settings.music_dir_title">Cartella della Libreria Musicale</span>
+                        <span data-i18n="settings.music_dir_title">Music Library Folder</span>
                     </div>
                     <div class="settings-card-desc" data-i18n="settings.music_dir_desc">
-                        Percorso del disco in cui salvare i brani scaricati e i file .lrc dei testi.
+                        Path where Music Seerr stores downloaded audio and synchronized .lrc lyrics.
                     </div>
 
                     <!-- Jellyfin Detected Library Path Quick Bar -->
                     <div id="jellyfinDetectedDirBox" style="display:none; align-items:center; justify-content:space-between; background:rgba(147, 51, 234, 0.08); border:1px solid rgba(147, 51, 234, 0.2); border-radius:10px; padding:10px 14px; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
                         <div style="font-size:0.84rem; color:#d8b4fe;">
-                            <strong>Rilevato da Jellyfin:</strong> <code id="jellyfinDetectedPathBadge" style="background:rgba(0,0,0,0.3); padding:2px 6px; border-radius:4px; font-size:0.8rem;"></code>
+                            <strong>Detected by Jellyfin:</strong> <code id="jellyfinDetectedPathBadge" style="background:rgba(0,0,0,0.3); padding:2px 6px; border-radius:4px; font-size:0.8rem;"></code>
                         </div>
-                        <button type="button" class="btn-secondary" style="padding:4px 10px; font-size:0.75rem; border-radius:6px;" onclick="applyJellyfinDetectedPath()">Usa questo percorso</button>
+                        <button type="button" class="btn-secondary" style="padding:4px 10px; font-size:0.75rem; border-radius:6px;" onclick="applyJellyfinDetectedPath()">Use this path</button>
                     </div>
 
                     <div class="form-group" style="margin-bottom:8px;">
-                        <label for="settingsMusicDir" data-i18n="settings.music_dir_label">Percorso Cartella sul Server:</label>
+                        <label for="settingsMusicDir" data-i18n="settings.music_dir_label">Server Folder Path:</label>
                         <input type="text" id="settingsMusicDir" class="form-input" placeholder="/home/giulio/Desktop/Music NAS/music oppure /music" oninput="checkPathComparison()">
-                        <p style="font-size:0.76rem; color:var(--text-secondary); margin-top:5px;">Assicurati che questo percorso corrisponda al montaggio dei volumi definito nel container o sul NAS.</p>
+                        <p style="font-size:0.76rem; color:var(--text-secondary); margin-top:5px;">Make sure this path matches the volume mount configured in Docker or on the NAS.</p>
                     </div>
 
                     <div id="dirStatusBadge"></div>
                 </div>
 
-                <!-- Collegamento Jellyfin -->
+                <!-- Jellyfin Integration -->
                 <div class="settings-card settings-card-wide" id="adminJellyfinSettingsCard">
                     <div class="settings-card-title">
                         <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
-                        <span data-i18n="settings.jellyfin_section_title">Integrazione Jellyfin</span>
+                        <span data-i18n="settings.jellyfin_section_title">Jellyfin Integration</span>
                     </div>
                     <div class="settings-card-desc" data-i18n="settings.jellyfin_section_desc">
-                        Collega il tuo server Jellyfin per permettere l'aggiornamento automatico della libreria dopo ogni download e la selezione rapida delle playlist.
+                        Connect your Jellyfin server for library updates after downloads and playlist selection.
                     </div>
 
                     <div class="form-group">
-                        <label for="settingsJellyfinUrl" data-i18n="settings.jellyfin_url_label">URL Server Jellyfin:</label>
+                        <label for="settingsJellyfinUrl" data-i18n="settings.jellyfin_url_label">Jellyfin Server URL:</label>
                         <input type="text" id="settingsJellyfinUrl" class="form-input" placeholder="http://192.168.1.100:8096 oppure http://localhost:8096">
                     </div>
 
                     <div class="form-group">
-                        <label for="settingsJellyfinApiKey" data-i18n="settings.jellyfin_api_key_label">Chiave API Jellyfin (API Key):</label>
-                        <input type="password" id="settingsJellyfinApiKey" class="form-input" placeholder="Incolla l'API Key generata da Jellyfin">
+                        <label for="settingsJellyfinApiKey" data-i18n="settings.jellyfin_api_key_label">Jellyfin API Key:</label>
+                        <input type="password" id="settingsJellyfinApiKey" class="form-input" placeholder="Paste the API key generated by Jellyfin">
                         <p style="font-size:0.75rem; color:var(--text-secondary); margin-top:4px;" data-i18n="settings.jellyfin_api_key_help">Generabile in: Jellyfin Dashboard &gt; Avanzate &gt; Chiavi API.</p>
                     </div>
 
                     <div class="form-group">
-                        <label for="settingsJellyfinUserId" data-i18n="settings.jellyfin_user_id_label">User ID (Opzionale per Playlist utente):</label>
-                        <input type="text" id="settingsJellyfinUserId" class="form-input" placeholder="ID utente Jellyfin (GUID)">
+                        <label for="settingsJellyfinUserId" data-i18n="settings.jellyfin_user_id_label">User ID (Optional, for user playlists):</label>
+                        <input type="text" id="settingsJellyfinUserId" class="form-input" placeholder="Jellyfin user ID (GUID)">
                     </div>
 
                     <div id="jellyfinStatusBadge" style="margin-top: 14px; margin-bottom: 8px;"></div>
 
                     <div style="display:flex; gap:12px; margin-top: 16px; flex-wrap:wrap;">
                         <button class="btn-secondary" onclick="testJellyfin()" data-i18n="settings.btn_test_connection">
-                            Verifica Connessione
+                            Test Connection
                         </button>
                         <button class="btn-primary" onclick="saveAllSettings()" data-i18n="settings.btn_save_settings">
-                            Salva Impostazioni
+                            Save Settings
                         </button>
                     </div>
                 </div>
@@ -3976,10 +3999,10 @@
                 <div class="settings-card settings-card-wide">
                     <div class="settings-card-title">
                         <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                        <span data-i18n="settings.users_section_title">Gestione Utenti &amp; Sessione Jellyfin</span>
+                        <span data-i18n="settings.users_section_title">Jellyfin Users &amp; Session</span>
                     </div>
                     <div class="settings-card-desc" data-i18n="settings.users_section_desc">
-                        Gestisci la sessione attiva di Jellyfin o cambia account.
+                        Manage your active Jellyfin session or switch accounts.
                     </div>
 
                     <!-- Current active user display -->
@@ -3996,13 +4019,13 @@
 
                     <div class="settings-actions">
                         <button type="button" class="btn-secondary" onclick="openLoginModal()" data-i18n="auth.switch_user">
-                            Cambia Account
+                            Switch Account
                         </button>
                         <button type="button" class="btn-secondary" onclick="openSetupWizard()" data-i18n="settings.btn_rerun_setup">
-                            Riavvia Procedura di Set-up
+                            Rerun Setup Wizard
                         </button>
                         <button type="button" class="btn-secondary" style="color:#f87171; border-color:rgba(239,68,68,0.3);" onclick="logoutUser()" data-i18n="settings.btn_logout">
-                            Disconnetti
+                            Sign Out
                         </button>
                     </div>
                 </div>
@@ -4030,10 +4053,10 @@
                 </div>
             </div>
             <div class="liquid-meta-texts">
-                <div class="liquid-title" id="liquidTitle">Nessun brano</div>
-                <div class="liquid-artist" id="liquidArtist">Seleziona un brano per iniziare</div>
+                <div class="liquid-title" id="liquidTitle" data-i18n="common.track_title">Track Title</div>
+                <div class="liquid-artist" id="liquidArtist">Select a track to start</div>
                 <div class="liquid-meta-subrow">
-                    <span class="liquid-subtext" id="liquidSubtext">Libreria</span>
+                    <span class="liquid-subtext" id="liquidSubtext">Library</span>
                     <span class="liquid-badge-capsule" id="liquidFormatBadge">MP3</span>
                 </div>
             </div>
@@ -4072,18 +4095,18 @@
         <!-- Right: Queue with Badge Count, Lyrics, Equalizer, Volume Slider, Source Tag -->
         <div class="liquid-right-actions">
             <!-- Queue button with badge count (Foto 1: yellow-green badge with remaining items) -->
-            <button class="liquid-btn-subtle" id="liquidQueueBtn" onclick="toggleQueueModal()" title="Coda di Riproduzione" style="position:relative;">
+            <button class="liquid-btn-subtle" id="liquidQueueBtn" onclick="toggleQueueModal()" title="Playback Queue" data-i18n-title="common.queue_title" style="position:relative;">
                 <svg viewBox="0 0 24 24"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
                 <span class="player-queue-badge" id="playerQueueCount">0</span>
             </button>
 
             <!-- Lyrics button (Musical note icon) -->
-            <button class="liquid-btn-subtle" id="liquidLyricsBtn" onclick="toggleCurrentPlayingLyrics()" title="Testi Sincronizzati (Lyrics)">
+            <button class="liquid-btn-subtle" id="liquidLyricsBtn" onclick="toggleCurrentPlayingLyrics()" title="Synchronized lyrics" data-i18n-title="player.synced_lyrics">
                 <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
             </button>
 
             <!-- Equalizer / Audio Info button (3 Faders) -->
-            <button class="liquid-btn-subtle" id="liquidAudioOptsBtn" onclick="toggleAudioInfoModal()" title="Info & Qualità Audio">
+            <button class="liquid-btn-subtle" id="liquidAudioOptsBtn" onclick="toggleAudioInfoModal()" title="Audio quality and details" data-i18n-title="common.audio_quality_info">
                 <svg viewBox="0 0 24 24"><path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/></svg>
             </button>
 
@@ -4102,7 +4125,7 @@
             </div>
 
             <!-- Close / Dismiss Player Button -->
-            <button class="liquid-btn-subtle" onclick="closeLiquidPlayer()" title="Chiudi Player" style="margin-left: 2px;">
+            <button class="liquid-btn-subtle" onclick="closeLiquidPlayer()" title="Close player" style="margin-left: 2px;">
                 <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
             </button>
         </div>
@@ -4112,7 +4135,7 @@
     <div id="playerQueueModal" class="alert-popup-overlay" style="display:none;" onclick="if(event.target===this) toggleQueueModal()">
         <div class="alert-popup-box" style="max-width: 480px; text-align: left; max-height: 70vh; display:flex; flex-direction:column;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-                <div style="font-size:1.15rem; font-weight:700; color:#fff;">Coda di Riproduzione</div>
+                <div style="font-size:1.15rem; font-weight:700; color:#fff;" data-i18n="common.queue_title">Playback Queue</div>
                 <button class="btn-icon" onclick="toggleQueueModal()">✕</button>
             </div>
             <div id="playerQueueModalList" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
@@ -4123,7 +4146,7 @@
     <div id="playerAudioInfoModal" class="alert-popup-overlay" style="display:none;" onclick="if(event.target===this) toggleAudioInfoModal()">
         <div class="alert-popup-box" style="max-width: 420px; text-align: left;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                <div style="font-size:1.15rem; font-weight:700; color:#fff;">Qualità &amp; Dettagli Audio</div>
+                <div style="font-size:1.15rem; font-weight:700; color:#fff;" data-i18n="common.audio_quality_info">Audio Quality &amp; Details</div>
                 <button class="btn-icon" onclick="toggleAudioInfoModal()">✕</button>
             </div>
             <div id="playerAudioInfoContent" style="font-size:0.88rem; color:#cbd5e1; line-height:1.7;">
@@ -4139,14 +4162,14 @@
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
                 <div>
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <h2 style="font-size: 1.25rem; font-weight: 700; color: #ffffff; margin: 0;" data-i18n="jellyfin.csv_modal_title">Accoppiamento Playlist CSV</h2>
+                        <h2 style="font-size: 1.25rem; font-weight: 700; color: #ffffff; margin: 0;" data-i18n="jellyfin.csv_modal_title">Playlist CSV Sync</h2>
                         <span id="csvModalBadge" class="csv-badge-info" style="display: none;">CSV</span>
                     </div>
                     <p style="font-size: 0.82rem; color: var(--text-secondary); margin: 4px 0 0 0;" data-i18n="jellyfin.csv_modal_desc">
-                        Confronta un foglio CSV con questa playlist: scopri i brani già presenti, quelli in libreria da aggiungere e quelli da scaricare.
+                        Compare this CSV with the playlist to find tracks already present, available in the library, and missing for download.
                     </p>
                 </div>
-                <button class="btn-icon" onclick="closePlaylistCsvModal()" title="Chiudi">✕</button>
+                <button class="btn-icon" onclick="closePlaylistCsvModal()" title="Close">✕</button>
             </div>
 
             <div id="csvOwnerPickerWrap" style="display:none; margin: 0 0 14px;">
@@ -4162,15 +4185,15 @@
                         <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
                     </div>
                     <div style="min-width: 0;">
-                        <div id="csvCurrentFilename" style="font-size: 0.88rem; font-weight: 600; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" data-i18n="jellyfin.csv_no_file">Nessun file CSV accoppiato</div>
-                        <div id="csvFileMetaSub" style="font-size: 0.75rem; color: var(--text-secondary);">Carica un file .csv esportato da Spotify, Apple Music o Soundiiz</div>
+                        <div id="csvCurrentFilename" style="font-size: 0.88rem; font-weight: 600; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" data-i18n="jellyfin.csv_no_file">No CSV file paired</div>
+                        <div id="csvFileMetaSub" style="font-size: 0.75rem; color: var(--text-secondary);">Export a playlist CSV from Spotify, Apple Music, or Soundiiz</div>
                     </div>
                 </div>
                 <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
                     <input type="file" id="csvFileInput" accept=".csv,text/csv,text/plain,application/vnd.ms-excel" style="display:none;" onchange="handleCsvFileSelected(event)">
                     <button class="btn-download" id="btnCsvUpload" onclick="const inp = document.getElementById('csvFileInput'); if (inp) { inp.value = ''; inp.click(); }" style="background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.18);">
                         <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
-                        <span data-i18n="jellyfin.csv_upload_btn">Carica CSV</span>
+                        <span data-i18n="jellyfin.csv_upload_btn">Upload CSV</span>
                     </button>
                     <button class="btn-download" id="btnCsvReMatch" onclick="runPlaylistCsvMatch()" style="display:none;" title="Rianalizza confronto">
                         <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
@@ -4182,16 +4205,16 @@
             <div class="csv-toolbar" id="csvToolbar" style="display: none;">
                 <div class="csv-tabs">
                     <button class="csv-tab-btn active" id="csvTabAll" onclick="setCsvFilterTab('all')">
-                        <span data-i18n="jellyfin.csv_tab_all">Tutti</span> (<span id="csvCountAll">0</span>)
+                        <span data-i18n="jellyfin.csv_tab_all">All</span> (<span id="csvCountAll">0</span>)
                     </button>
                     <button class="csv-tab-btn" id="csvTabInPlaylist" onclick="setCsvFilterTab('in_playlist')">
                         <span data-i18n="jellyfin.csv_tab_in_playlist">In Playlist</span> (<span id="csvCountInPlaylist">0</span>)
                     </button>
                     <button class="csv-tab-btn" id="csvTabInLibrary" onclick="setCsvFilterTab('in_library')">
-                        <span data-i18n="jellyfin.csv_tab_in_library">In Libreria</span> (<span id="csvCountInLibrary">0</span>)
+                        <span data-i18n="jellyfin.csv_tab_in_library">In Library</span> (<span id="csvCountInLibrary">0</span>)
                     </button>
                     <button class="csv-tab-btn" id="csvTabToDownload" onclick="setCsvFilterTab('to_download')">
-                        <span data-i18n="jellyfin.csv_tab_to_download">Da Scaricare</span> (<span id="csvCountToDownload">0</span>)
+                        <span data-i18n="jellyfin.csv_tab_to_download">To Download</span> (<span id="csvCountToDownload">0</span>)
                     </button>
                     <button class="csv-tab-btn" id="csvTabNotInCsv" onclick="setCsvFilterTab('not_in_csv')">
                         <span data-i18n="jellyfin.csv_tab_not_in_csv">In Playlist, non nel CSV</span> (<span id="csvCountNotInCsv">0</span>)
@@ -4201,11 +4224,11 @@
                 <div class="csv-actions-group">
                     <button class="btn-batch-lyrics" id="btnCsvAddAllLibrary" onclick="addAllMatchedLibraryToPlaylist()" style="display: none; background: rgba(34, 197, 94, 0.18); border-color: rgba(34, 197, 94, 0.35); color: #4ade80;">
                         <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-                        <span data-i18n="jellyfin.csv_btn_add_all">Aggiungi Tutti alla Playlist</span>
+                        <span data-i18n="jellyfin.csv_btn_add_all">Add All to Playlist</span>
                     </button>
                     <button class="btn-batch-lyrics" id="btnCsvDownloadAll" onclick="queueAllDownloadsFromCsv()" style="display: none; background: rgba(239, 68, 68, 0.18); border-color: rgba(239, 68, 68, 0.35); color: #f87171;">
                         <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-                        <span data-i18n="jellyfin.csv_btn_download_all">Metti Tutti in Coda Download</span>
+                        <span data-i18n="jellyfin.csv_btn_download_all">Queue All for Download</span>
                     </button>
                 </div>
             </div>
@@ -4213,7 +4236,7 @@
             <!-- Track List Container -->
             <div id="csvTracksContainer" class="csv-list-container">
                 <div class="empty-state" style="padding: 40px 20px;">
-                    <p data-i18n="jellyfin.csv_no_file">Carica un file CSV per iniziare il confronto con la libreria Jellyfin.</p>
+                    <p data-i18n="jellyfin.csv_no_file">Upload a CSV file to compare it with your Jellyfin library.</p>
                 </div>
             </div>
         </div>
@@ -4224,8 +4247,8 @@
     <div id="appleLyricsOverlay" class="apple-lyrics-overlay">
         <div class="apple-lyrics-header">
             <div class="apple-lyrics-title-group">
-                <h3 id="appleLyricsTitle">Titolo Brano</h3>
-                <p id="appleLyricsArtist">Artista</p>
+                <h3 id="appleLyricsTitle">Track Title</h3>
+                <p id="appleLyricsArtist">Artist</p>
             </div>
             <button class="btn-icon" onclick="closeLyricsView()">
                 <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
@@ -4252,15 +4275,15 @@
 
             <!-- Detected Users Pills -->
             <div id="loginUsersPillsContainer" style="display:none; margin-bottom: 20px;">
-                <div style="font-size:0.78rem; color:var(--text-secondary); margin-bottom:8px;" data-i18n="auth.select_account">Seleziona account:</div>
+                <div style="font-size:0.78rem; color:var(--text-secondary); margin-bottom:8px;" data-i18n="auth.select_account">Select account:</div>
                 <div id="loginUsersPillsList" class="login-users-pills"></div>
             </div>
 
             <!-- Form -->
             <form id="loginForm" onsubmit="handleLoginSubmit(event)" style="display:flex; flex-direction:column; gap:16px;">
                 <div class="form-group" style="text-align:left; margin:0;">
-                    <label for="loginUsername" data-i18n="auth.username_label">Nome Utente</label>
-                    <input type="text" id="loginUsername" class="form-input" required autocomplete="username" data-i18n-placeholder="auth.username_placeholder" placeholder="Inserisci il nome utente Jellyfin">
+                    <label for="loginUsername" data-i18n="auth.username_label">Username</label>
+                    <input type="text" id="loginUsername" class="form-input" required autocomplete="username" data-i18n-placeholder="auth.username_placeholder" placeholder="Enter your Jellyfin username">
                 </div>
                 <div class="form-group" style="text-align:left; margin:0;">
                     <label for="loginPassword" data-i18n="auth.password_label">Password</label>
@@ -4288,17 +4311,17 @@
                     </div>
                     <div>
                         <h2 id="setupWizardTitle" style="font-size:1.25rem; font-weight:700; color:#fff; margin:0;" data-i18n="setup.wizard_title">Configurazione Guidata Music Seerr</h2>
-                        <p style="font-size:0.8rem; color:var(--text-secondary); margin:2px 0 0 0;" data-i18n="setup.wizard_subtitle">Completa questi rapidi passaggi per collegare Jellyfin e impostare la tua libreria musicale.</p>
+                        <p style="font-size:0.8rem; color:var(--text-secondary); margin:2px 0 0 0;" data-i18n="setup.wizard_subtitle">Complete these quick steps to connect Jellyfin and configure your music library.</p>
                     </div>
                 </div>
-                <button type="button" class="btn-icon" id="closeSetupWizardBtn" onclick="closeSetupWizard()" title="Chiudi" style="display:none;">✕</button>
+                <button type="button" class="btn-icon" id="closeSetupWizardBtn" onclick="closeSetupWizard()" title="Close" style="display:none;">✕</button>
             </div>
 
             <!-- Steps Nav Bar -->
             <div class="setup-steps-bar">
                 <div class="setup-step-pill active" id="setupStepPill1">
                     <span class="step-num">1</span>
-                    <span class="step-txt" data-i18n="setup.step_server">1. Server Jellyfin</span>
+                    <span class="step-txt" data-i18n="setup.step_server">1. Jellyfin server</span>
                 </div>
                 <div class="setup-step-pill" id="setupStepPill2">
                     <span class="step-num">2</span>
@@ -4306,7 +4329,7 @@
                 </div>
                 <div class="setup-step-pill" id="setupStepPill3">
                     <span class="step-num">3</span>
-                    <span class="step-txt" data-i18n="setup.step_user">3. Utente Jellyfin</span>
+                    <span class="step-txt" data-i18n="setup.step_user">3. Jellyfin User</span>
                 </div>
                 <div class="setup-step-pill" id="setupStepPill4">
                     <span class="step-num">4</span>
@@ -4316,18 +4339,18 @@
 
             <!-- Step Content Container -->
             <div class="setup-step-content">
-                <!-- STEP 1: Server Jellyfin -->
+                <!-- STEP 1: Jellyfin server -->
                 <div class="setup-step-panel active" id="setupStepPanel1">
                     <p style="font-size:0.88rem; color:var(--text-secondary); margin-bottom:16px;" data-i18n="setup.server_desc">Inserisci l'indirizzo del server Jellyfin e l'API Key per stabilire la connessione.</p>
                     
                     <div class="form-group">
-                        <label for="setupJellyfinUrl" data-i18n="settings.jellyfin_url_label">URL Server Jellyfin:</label>
+                        <label for="setupJellyfinUrl" data-i18n="settings.jellyfin_url_label">Jellyfin Server URL:</label>
                         <input type="text" id="setupJellyfinUrl" class="form-input" placeholder="http://192.168.1.100:8096 oppure http://localhost:8096">
                     </div>
 
                     <div class="form-group">
-                        <label for="setupJellyfinApiKey" data-i18n="settings.jellyfin_api_key_label">Chiave API Jellyfin (API Key):</label>
-                        <input type="password" id="setupJellyfinApiKey" class="form-input" placeholder="Incolla l'API Key generata da Jellyfin">
+                        <label for="setupJellyfinApiKey" data-i18n="settings.jellyfin_api_key_label">Jellyfin API Key:</label>
+                        <input type="password" id="setupJellyfinApiKey" class="form-input" placeholder="Paste the API key generated by Jellyfin">
                         <p style="font-size:0.75rem; color:var(--text-secondary); margin-top:4px;" data-i18n="settings.jellyfin_api_key_help">Generabile in: Jellyfin Dashboard &gt; Avanzate &gt; Chiavi API.</p>
                     </div>
 
@@ -4341,13 +4364,13 @@
                     <!-- Detected path from Jellyfin -->
                     <div id="setupDetectedPathBox" style="display:none; align-items:center; justify-content:space-between; background:rgba(147, 51, 234, 0.1); border:1px solid rgba(147, 51, 234, 0.25); border-radius:10px; padding:12px 14px; margin-bottom:14px; gap:8px;">
                         <div style="font-size:0.84rem; color:#d8b4fe;">
-                            <strong>Rilevato da Jellyfin:</strong> <code id="setupDetectedPathCode" style="background:rgba(0,0,0,0.3); padding:2px 6px; border-radius:4px;"></code>
+                            <strong>Detected by Jellyfin:</strong> <code id="setupDetectedPathCode" style="background:rgba(0,0,0,0.3); padding:2px 6px; border-radius:4px;"></code>
                         </div>
                         <button type="button" class="btn-secondary" style="padding:6px 12px; font-size:0.78rem; border-radius:8px;" onclick="applySetupDetectedPath()" data-i18n="setup.use_detected_path">Usa Percorso Rilevato</button>
                     </div>
 
                     <div class="form-group">
-                        <label for="setupMusicDir" data-i18n="settings.music_dir_label">Percorso Cartella sul Server:</label>
+                        <label for="setupMusicDir" data-i18n="settings.music_dir_label">Server Folder Path:</label>
                         <input type="text" id="setupMusicDir" class="form-input" placeholder="/home/giulio/Desktop/Music NAS/music oppure /music">
                     </div>
 
@@ -4356,16 +4379,16 @@
 
                 <!-- STEP 3: Utente Jellyfin -->
                 <div class="setup-step-panel" id="setupStepPanel3" style="display:none;">
-                    <p style="font-size:0.88rem; color:var(--text-secondary); margin-bottom:16px;" data-i18n="setup.user_desc">Accedi con username e password Jellyfin per verificare i privilegi dell'utente.</p>
+                    <p style="font-size:0.88rem; color:var(--text-secondary); margin-bottom:16px;" data-i18n="setup.user_desc">Sign in with your Jellyfin username and password to verify user access.</p>
 
                     <!-- Detected users selector -->
                     <div id="setupUsersPickerContainer" style="display:none; margin-bottom:16px;">
-                        <div style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:8px;" data-i18n="auth.select_account">Seleziona account:</div>
+                        <div style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:8px;" data-i18n="auth.select_account">Select account:</div>
                         <div id="setupUsersPickerList" class="login-users-pills"></div>
                     </div>
 
                     <div class="form-group">
-                        <label for="setupUsername" data-i18n="auth.username_label">Nome Utente:</label>
+                        <label for="setupUsername" data-i18n="auth.username_label">Username:</label>
                         <input type="text" id="setupUsername" class="form-input" autocomplete="username" placeholder="Username Jellyfin">
                     </div>
 
@@ -4379,11 +4402,11 @@
 
                 <!-- STEP 4: Completamento -->
                 <div class="setup-step-panel" id="setupStepPanel4" style="display:none;">
-                    <p style="font-size:0.88rem; color:var(--text-secondary); margin-bottom:16px;" data-i18n="setup.finish_desc">Verifica il riepilogo e inizia a usare Music Seerr.</p>
+                    <p style="font-size:0.88rem; color:var(--text-secondary); margin-bottom:16px;" data-i18n="setup.finish_desc">Review the summary and start using Music Seerr.</p>
 
                     <div class="setup-summary-card">
                         <div class="setup-summary-row">
-                            <span class="setup-summary-label" data-i18n="setup.summary_server">Server Jellyfin:</span>
+                            <span class="setup-summary-label" data-i18n="setup.summary_server">Jellyfin server:</span>
                             <span class="setup-summary-val" id="setupSummaryServer">-</span>
                         </div>
                         <div class="setup-summary-row">
@@ -4391,7 +4414,7 @@
                             <span class="setup-summary-val" id="setupSummaryDir">-</span>
                         </div>
                         <div class="setup-summary-row">
-                            <span class="setup-summary-label" data-i18n="setup.summary_user">Utente Attivo:</span>
+                            <span class="setup-summary-label" data-i18n="setup.summary_user">Active User:</span>
                             <span class="setup-summary-val" id="setupSummaryUser">-</span>
                         </div>
                         <div class="setup-summary-row">
@@ -4409,7 +4432,7 @@
                 <div style="margin-left:auto; display:flex; gap:10px;">
                     <button type="button" class="btn-secondary" id="setupTestBtn" onclick="testCurrentSetupStep()" data-i18n="setup.btn_test_server">Test Connection</button>
                     <button type="button" class="btn-primary" id="setupNextBtn" onclick="nextSetupStep()" data-i18n="setup.btn_next">Passaggio Successivo</button>
-                    <button type="button" class="btn-primary" id="setupFinishBtn" onclick="finishSetupWizard()" style="display:none;" data-i18n="setup.btn_finish">Completa e Avvia Music Seerr</button>
+                    <button type="button" class="btn-primary" id="setupFinishBtn" onclick="finishSetupWizard()" style="display:none;" data-i18n="setup.btn_finish">Complete and Start Music Seerr</button>
                 </div>
             </div>
         </div>
@@ -4424,6 +4447,24 @@
             <div class="alert-popup-title" id="alertPopupTitle">Avviso</div>
             <div class="alert-popup-msg" id="alertPopupMsg">Messaggio</div>
             <button class="alert-popup-btn" onclick="closeAlertPopup()">Ho Capito</button>
+        </div>
+    </div>
+
+    <div id="trackActionsModal" class="alert-popup-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="trackActionsTitle" onclick="if(event.target===this) closeTrackActions()">
+        <div class="alert-popup-box track-actions-box">
+            <h2 id="trackActionsTitle"></h2>
+            <p id="trackActionsSubtitle"></p>
+            <div class="track-actions-list">
+                <select id="trackOwnerPicker" class="form-input" style="display:none;" aria-label="Choose playlist owner" data-i18n-aria-label="jellyfin.select_playlist_owner"></select>
+                <div id="trackAddPlaylistGroup" style="display:flex; gap:8px;">
+                    <select id="trackTargetPlaylist" class="form-input" aria-label="Choose a playlist" data-i18n-aria-label="jellyfin.select_playlist" onchange="updateTrackTargetOwnerPicker()"></select>
+                    <button type="button" class="btn-jelly-action" onclick="addTrackToSelectedPlaylist()" data-i18n="jellyfin.add_to_playlist">Add</button>
+                </div>
+                <select id="trackTargetOwnerPicker" class="form-input" style="display:none;" aria-label="Choose the target playlist owner" data-i18n-aria-label="jellyfin.select_playlist_owner"></select>
+                <button type="button" class="btn-jelly-action" id="trackRemovePlaylistButton" style="display:none;" onclick="removeTrackFromCurrentPlaylist()" data-i18n="jellyfin.remove_from_playlist">Remove from playlist</button>
+                <button type="button" class="btn-jelly-action" id="trackFavoriteButton" onclick="toggleTrackFavorite()"></button>
+            </div>
+            <button type="button" class="alert-popup-btn" style="margin-top:16px;" onclick="closeTrackActions()" data-i18n="common.cancel">Cancel</button>
         </div>
     </div>
 
@@ -4641,37 +4682,7 @@
         let currentLanguage = safeLocalStorageGet('app_language') || 'en';
         let localeData = {};
 
-        const embeddedLocales = {
-            en: {
-                app: { name: "Music Seerr", subtitle: "Self-hosted Music & Lyrics Downloader for Jellyfin" },
-                nav: { search: "Search Music", jellyfin: "Jellyfin Library", downloads: "Activity", settings: "Settings" },
-                common: { save: "Save", saved: "Saved", cancel: "Cancel", loading: "Loading...", error: "Error", success: "Success", ok: "OK", got_it: "Got It", sync: "Sync", syncing: "Syncing...", tracks: "tracks", songs: "songs", all: "All", filter: "Filter...", retry: "Retry" },
-                search: { page_eyebrow: "Discover", page_description: "Find a track, preview it, and send it to your library.", recommendations_title: "Picked for you", recommendations_subtitle: "Based on artists in your Jellyfin library", recommendations_loading: "Loading recommendations…", recommendations_empty: "No recommendations are available yet.", recommendations_error: "Could not load recommendations.", recommendations_based_on: "Based on: {artists}", page_title: "Search Music", input_placeholder: "Search songs to download to NAS...", filter_target_playlist: "Add to Playlist:", none_library_only: "None (Library Only)", empty_initial: "Search for a song to preview and download directly to your server with 1 click.", searching: "Searching...", download_btn: "Download", in_library: "In Library", downloading: "Downloading...", results_found: "{count} tracks found", no_results: "No results found for \"{query}\"." },
-                history: { views_label: "Activity views", eyebrow: "Your activity", page_title: "Activity", page_description: "Track downloads and recent listening in one place.", queue: "Queue", downloads: "Download history", plays: "Listening history", queue_empty: "No downloads in progress.", downloads_empty: "No downloads have been recorded for this account yet.", plays_empty: "No listening activity has been recorded for this account yet.", recorded: "Added {date}", status_pending: "Queued", status_downloading: "Downloading", status_tagging: "Adding metadata", status_jellyfin_sync: "Syncing Jellyfin", status_completed: "Completed", status_failed: "Failed", status_interrupted: "Interrupted by server restart", status_retried: "Retry queued" },
-                users: { scope_all: "Show all users", scope_mine: "Show my data", admin_controls_title: "Administrator visibility", admin_controls_description: "Choose whether to show controls for viewing other users’ activity and playlists.", show_admin_controls: "Show cross-user controls in the interface", playlist_owner: "Owned by {user}", owner_unknown: "Owner unknown", recommendations_for: "Recommendations for {user}", select_user: "Choose a Jellyfin user", filter_user: "Filter by user", all_users: "All users", preference_error: "Could not save this preference." },
-                jellyfin: { page_title: "Jellyfin Library", shelf_tracks: "Tracks in your library", loading_tracks: "Loading tracks from Jellyfin…", no_tracks: "No tracks found in the Jellyfin library.", error_loading_library: "Could not load tracks. Check the Jellyfin connection in Settings.", input_placeholder: "Search tracks in your Jellyfin library...", status_connected: "Connected to Jellyfin", status_disconnected: "Disconnected from Jellyfin", status_refresh_tooltip: "Reload library data from Jellyfin", tracks_in_library: "tracks in Jellyfin library", shelf_playlists: "Playlists", shelf_albums: "Albums", shelf_artists: "Artists", card_artist: "Artist", back_to_albums: "Back to all Albums", back_to_artists: "Back to all Artists", back_to_playlists: "Back to Playlists", back_to_library: "Back to Jellyfin Library", badge_album: "ALBUM", badge_artist: "ARTIST", badge_playlist: "PLAYLIST", lyrics_ok: "Lyrics OK", no_lyrics: "No Lyrics", with_lyrics: "{count} with Lyrics", without_lyrics: "{count} without Lyrics", all_lyrics_present: "All lyrics present", download_missing_lyrics: "Download {count} Missing Lyrics", downloading_lyrics: "Downloading lyrics {current}/{total}...", download_lrc: "Download LRC", lyrics_saved: "Lyrics Saved", lyrics_unavailable: "Lyrics unavailable", loading_album_tracks: "Loading album tracks...", loading_artist_tracks: "Loading artist tracks...", loading_playlist_tracks: "Loading playlist tracks...", error_loading_tracks: "Error loading tracks.", search_in_progress: "Searching Jellyfin library...", search_results_count: "{count} tracks found", search_no_results: "No tracks found for \"{query}\".", all_albums: "All Albums", all_artists: "All Artists", no_items_found: "No items found.", sync_csv_btn: "Sync CSV", csv_modal_title: "Pair Playlist CSV", csv_modal_desc: "Compare an exported CSV sheet with this playlist: identify existing tracks, library tracks to add, and tracks to download.", csv_current: "Paired CSV:", csv_no_file: "No CSV file paired", csv_upload_btn: "Upload CSV", csv_tab_all: "All", csv_tab_in_playlist: "In Playlist", csv_tab_in_library: "In Library", csv_tab_to_download: "To Download", csv_tab_not_in_csv: "In Playlist, not in CSV", csv_jellyfin_title: "Jellyfin title: {title}", csv_btn_add_all: "Add All Library Tracks to Playlist", csv_btn_download_all: "Queue All Missing for Download", csv_btn_add: "Add to Playlist", csv_btn_download: "Download", csv_matching: "Matching tracks with Jellyfin library...", csv_owner_label: "Playlist owner", csv_owner_help: "As administrator, choose the account that owns this playlist. Jellyfin will verify it can access the playlist.", csv_owner_select: "Select a Jellyfin account", csv_owner_required: "Select the playlist owner to continue.", csv_owner_load_error: "Unable to load Jellyfin accounts." },
-                player: { now_playing: "Now Playing", default_title: "Track Title", default_artist: "Artist", prev_track: "Previous", play_pause: "Play / Pause", next_track: "Next", synced_lyrics: "Synchronized Lyrics", close_player: "Close Player", preview_source: "Preview", playback_error: "Audio playback failed. Please try another track." },
-                lyrics_modal: { close: "Close Lyrics", no_synced_lyrics: "No synchronized lyrics found for this track." },
-                downloads: { page_title: "Download Queue", empty: "No active downloads in queue.", status_pending: "Pending", status_downloading: "Downloading...", status_completed: "Completed", status_failed: "Failed", clear_completed: "Clear Completed" },
-                auth: { role_admin: "Administrator", role_user: "User", role_guest: "Guest access", continue_guest: "Continue as Guest", checking_session: "Checking your session…" },
-                setup: { server_fields_required: "Enter the Jellyfin server URL and API key.", storage_path_required: "Enter the music storage directory to continue.", btn_skip_guest: "Skip (Continue as Guest)", user_skipped: "You will continue as a guest." },
-                settings: { page_title: "Settings", overview: "Manage your library, Jellyfin connection, account, and language.", guest_name: "Guest", language_section_title: "Language & Translations", language_section_desc: "Select the application language. All text is connected to our Crowdin localization project.", language_select_label: "Display Language:", crowdin_badge: "Crowdin Ready", crowdin_info: "Translations are synchronized with Crowdin. To add new languages or refine translations, join the project on Crowdin.", music_dir_title: "Music Library Folder", music_dir_desc: "Path where Music Seerr will save downloaded audio files and look for .lrc synchronized lyric files.", music_dir_label: "Server Folder Path:", docker_note_title: "Note for Docker / NAS environments:", docker_note_body: "When running in Docker, make sure this path matches the volume mount defined in docker-compose.yml (e.g. ./music:/music).", jellyfin_section_title: "Jellyfin Integration", jellyfin_section_desc: "Connect your Jellyfin server for instant library scanning, playlist selection, and audio playback.", jellyfin_url_label: "Jellyfin Server URL:", jellyfin_api_key_label: "Jellyfin API Key:", jellyfin_api_key_help: "Can be generated in: Jellyfin Dashboard > Advanced > API Keys.", jellyfin_user_id_label: "User ID (Optional, for user playlists):", btn_test_connection: "Test Connection", btn_save_settings: "Save Settings", testing_connection: "Testing connection...", saved_success: "Settings saved successfully!" }
-            },
-            it: {
-                app: { name: "Music Seerr", subtitle: "Scaricatore musicale self-hosted con testi sincronizzati per Jellyfin" },
-                nav: { search: "Cerca Musica", jellyfin: "Libreria Jellyfin", downloads: "Attività", settings: "Impostazioni" },
-                common: { save: "Salva", saved: "Salvato", cancel: "Annulla", loading: "Caricamento...", error: "Errore", success: "Successo", ok: "OK", got_it: "Ho Capito", sync: "Sincronizza", syncing: "Sincronizzazione...", tracks: "brani", songs: "canzoni", all: "Tutti", filter: "Filtra...", retry: "Riprova" },
-                search: { page_eyebrow: "Scopri", page_description: "Trova un brano, ascoltane l’anteprima e aggiungilo alla tua libreria.", recommendations_title: "Scelti per te", recommendations_subtitle: "Basati sugli artisti nella tua libreria Jellyfin", recommendations_loading: "Caricamento dei consigliati…", recommendations_empty: "Non ci sono ancora brani consigliati.", recommendations_error: "Impossibile caricare i consigliati.", recommendations_based_on: "Basati su: {artists}", page_title: "Cerca Musica", input_placeholder: "Cerca brani da scaricare sul NAS...", filter_target_playlist: "Aggiungi a Playlist:", none_library_only: "Nessuna (Solo Libreria)", empty_initial: "Cerca una canzone per ascoltare l'anteprima circolare e scaricarla sul server con 1 click.", searching: "Ricerca in corso...", download_btn: "Scarica", in_library: "In Libreria", downloading: "Download in corso...", results_found: "{count} brani trovati", no_results: "Nessun brano trovato per \"{query}\"." },
-                history: { views_label: "Viste attività", eyebrow: "La tua attività", page_title: "Attività", page_description: "Consulta download e ascolti recenti in un unico posto.", queue: "Coda", downloads: "Cronologia download", plays: "Cronologia ascolti", queue_empty: "Nessun download in corso.", downloads_empty: "Non ci sono ancora download registrati per questo account.", plays_empty: "Non ci sono ancora ascolti registrati per questo account.", recorded: "Aggiunto il {date}", status_pending: "In coda", status_downloading: "Download in corso", status_tagging: "Tag in aggiornamento", status_jellyfin_sync: "Sincronizzazione Jellyfin", status_completed: "Completato", status_failed: "Non riuscito", status_interrupted: "Interrotto dal riavvio del server", status_retried: "Nuovo tentativo in coda" },
-                users: { scope_all: "Mostra tutti gli utenti", scope_mine: "Mostra i miei dati", admin_controls_title: "Visibilità amministratore", admin_controls_description: "Scegli se mostrare i controlli per consultare le attività e le playlist degli altri utenti.", show_admin_controls: "Mostra i controlli per gli altri utenti", playlist_owner: "Di {user}", owner_unknown: "Proprietario sconosciuto", recommendations_for: "Consigliati per {user}", select_user: "Scegli un utente Jellyfin", filter_user: "Filtra per utente", all_users: "Tutti gli utenti", preference_error: "Impossibile salvare questa preferenza." },
-                jellyfin: { page_title: "Libreria Jellyfin", shelf_tracks: "Brani nella libreria", loading_tracks: "Caricamento brani da Jellyfin…", no_tracks: "Nessun brano trovato nella libreria Jellyfin.", error_loading_library: "Impossibile caricare i brani. Verifica la connessione Jellyfin nelle Impostazioni.", input_placeholder: "Cerca brani nella tua libreria Jellyfin...", status_connected: "Connesso a Jellyfin", status_disconnected: "Disconnesso da Jellyfin", status_refresh_tooltip: "Ricarica i dati da Jellyfin", tracks_in_library: "brani nella libreria Jellyfin", shelf_playlists: "Playlist", shelf_albums: "Album", shelf_artists: "Artisti", card_artist: "Artista", back_to_albums: "Torna a tutti gli Album", back_to_artists: "Torna a tutti gli Artisti", back_to_playlists: "Torna alle Playlist", back_to_library: "Torna alla Libreria Jellyfin", badge_album: "ALBUM", badge_artist: "ARTISTA", badge_playlist: "PLAYLIST", lyrics_ok: "Lyrics OK", no_lyrics: "No Lyrics", with_lyrics: "{count} con Lyrics", without_lyrics: "{count} senza Lyrics", all_lyrics_present: "Tutte le lyrics presenti", download_missing_lyrics: "Scarica {count} Lyrics Mancanti", downloading_lyrics: "Download testi in corso {current}/{total}...", download_lrc: "Scarica LRC", lyrics_saved: "Testo Salvato", lyrics_unavailable: "Testo non disponibile", loading_album_tracks: "Caricamento tracce dell'album...", loading_artist_tracks: "Caricamento brani dell'artista...", loading_playlist_tracks: "Caricamento brani della playlist...", error_loading_tracks: "Errore nel caricamento delle tracce.", search_in_progress: "Ricerca in corso su Jellyfin...", search_results_count: "{count} brani trovati", search_no_results: "Nessun brano trovato per \"{query}\".", all_albums: "Tutti gli Album", all_artists: "Tutti gli Artisti", no_items_found: "Nessun elemento trovato.", sync_csv_btn: "Accoppia CSV", csv_modal_title: "Accoppiamento Playlist CSV", csv_modal_desc: "Confronta un foglio CSV con questa playlist: scopri i brani già presenti, quelli in libreria da aggiungere e quelli da scaricare.", csv_current: "CSV accoppiato:", csv_no_file: "Nessun file CSV accoppiato", csv_upload_btn: "Carica CSV", csv_tab_all: "Tutti", csv_tab_in_playlist: "In playlist", csv_tab_in_library: "In libreria", csv_tab_to_download: "Da scaricare", csv_tab_not_in_csv: "In playlist, non nel CSV", csv_jellyfin_title: "Titolo Jellyfin: {title}", csv_btn_add_all: "Aggiungi Tutti alla Playlist", csv_btn_download_all: "Metti Tutti in Coda Download", csv_btn_add: "Aggiungi", csv_btn_download: "Scarica", csv_matching: "Confronto con la libreria Jellyfin in corso...", csv_owner_label: "Proprietario della playlist", csv_owner_help: "Da amministratore, scegli l’account proprietario. Jellyfin verificherà che possa accedere alla playlist.", csv_owner_select: "Seleziona un account Jellyfin", csv_owner_required: "Seleziona il proprietario della playlist per continuare.", csv_owner_load_error: "Impossibile caricare gli account Jellyfin." },
-                player: { now_playing: "In Riproduzione", default_title: "Titolo Brano", default_artist: "Artista", prev_track: "Precedente", play_pause: "Play / Pausa", next_track: "Successivo", synced_lyrics: "Testi Sincronizzati (Lyrics)", close_player: "Chiudi Player", preview_source: "Anteprima", playback_error: "Riproduzione audio non riuscita. Prova un altro brano." },
-                lyrics_modal: { close: "Chiudi Testi", no_synced_lyrics: "Nessun testo sincronizzato disponibile per questo brano." },
-                downloads: { page_title: "Coda di Download", empty: "Nessun download in coda o attivo.", status_pending: "In attesa", status_downloading: "Download...", status_completed: "Completato", status_failed: "Fallito", clear_completed: "Pulisci Completati" },
-                auth: { role_admin: "Amministratore", role_user: "Utente", role_guest: "Accesso ospite", continue_guest: "Continua come ospite", checking_session: "Verifica della sessione…" },
-                settings: { page_title: "Impostazioni", overview: "Gestisci libreria, connessione Jellyfin, account e lingua.", guest_name: "Ospite", language_section_title: "Lingua & Traduzioni", language_section_desc: "Seleziona la lingua dell'interfaccia. Tutti i testi sono collegati al progetto di localizzazione Crowdin.", language_select_label: "Lingua dell'applicazione:", crowdin_badge: "Crowdin Ready", crowdin_info: "Le traduzioni sono sincronizzate tramite Crowdin. Per aggiungere nuove lingue o migliorare i testi, partecipa al progetto su Crowdin.", music_dir_title: "Cartella della Libreria Musicale", music_dir_desc: "Definisci il percorso del disco sul quale Music Seerr salverà i brani scaricati e cercherà i file .lrc dei testi.", music_dir_label: "Percorso Cartella sul Server:", docker_note_title: "Nota per ambienti Docker / NAS:", docker_note_body: "Se esegui in Docker, assicurati che questo percorso corrisponda al montaggio dei volumi definito in docker-compose.yml (es: ./music:/music).", jellyfin_section_title: "Integrazione Jellyfin", jellyfin_section_desc: "Collega il tuo server Jellyfin per permettere l'aggiornamento automatico della libreria dopo ogni download e la selezione rapida delle playlist.", jellyfin_url_label: "URL Server Jellyfin:", jellyfin_api_key_label: "Chiave API Jellyfin (API Key):", jellyfin_api_key_help: "Generabile in: Jellyfin Dashboard > Avanzate > Chiavi API.", jellyfin_user_id_label: "User ID (Opzionale per Playlist utente):", btn_test_connection: "Verifica Connessione", btn_save_settings: "Salva Impostazioni", testing_connection: "Verifica in corso...", saved_success: "Impostazioni salvate con successo!" }
-            }
-        };
+        const embeddedLocales = {"en":{"app":{"name":"Music Seerr","subtitle":"Self-hosted Music & Lyrics Downloader for Jellyfin"},"nav":{"search":"Search Music","jellyfin":"Jellyfin Library","downloads":"Activity","settings":"Settings"},"common":{"save":"Save","saved":"Saved","cancel":"Cancel","loading":"Loading...","error":"Error","success":"Success","ok":"OK","got_it":"Got It","sync":"Sync","syncing":"Syncing...","tracks":"tracks","songs":"songs","all":"All","filter":"Filter...","retry":"Retry","play_track":"Play track","no_tracks_on_disk":"No tracks found on disk. Downloaded tracks will appear here.","queue_empty_player":"No tracks in the queue.","no_track_playing":"No track is currently playing.","track_metadata_title":"Track:","track_metadata_artist":"Artist:","track_metadata_album":"Album:","audio_format":"Audio format:","audio_source":"Source:","file_path":"File path:","start_track_for_lyrics":"Start a track before opening its lyrics.","lyrics_request_error":"An error occurred while requesting lyrics.","lyrics_save_error":"An error occurred while saving lyrics.","track_title":"Track Title","audio_quality_info":"Audio Quality & Details","check_synced_lyrics":"Checking for synchronized lyrics...","no_tracks_found":"No tracks found.","lyrics_file_saved":"The .lrc file was saved on the server at: {path}. Jellyfin has been refreshed.","lyrics_saved_to_jellyfin":"Synchronized lyrics were downloaded and saved to Jellyfin.","lyrics_downloaded":"Lyrics downloaded successfully.","session_unverified":"Session could not be verified.","queue_title":"Playback Queue","local":"Local","jellyfin":"Jellyfin","audio_format_lossless":"FLAC (lossless / high-resolution audio)","audio_format_standard":"MP3 (standard audio)","lrc_available":"LRC available","lrc_missing":"No LRC file","warning":"Warning","recently":"Recently"},"search":{"page_title":"Search music","input_placeholder":"Search songs to download to NAS...","filter_target_playlist":"Add to Playlist:","none_library_only":"None (Library Only)","empty_initial":"Search for a song to preview and download directly to your server with 1 click.","searching":"Searching...","download_btn":"Download","in_library":"In Library","downloading":"Downloading...","results_found":"{count} tracks found","no_results":"No results found for \"{query}\".","page_eyebrow":"Discover","page_description":"Find a track, preview it, and send it to your library.","recommendations_title":"Picked for you","recommendations_subtitle":"Based on artists in your Jellyfin library","recommendations_loading":"Loading recommendations…","recommendations_empty":"No recommendations are available yet.","recommendations_error":"Could not load recommendations.","recommendations_based_on":"Based on: {artists}","download_failed":"The server rejected the download request (HTTP {status}).","download_unauthorized":"Your session has expired. Sign in again and retry.","download_forbidden":"You do not have permission to modify this playlist.","download_playlist_owner":"Jellyfin did not identify this playlist owner. Ask an administrator to enable cross-user controls, select the owner, and retry.","download_queue_full":"The download queue is full. Try again when a slot is available.","download_connection_error":"Could not reach the Music Seerr server.","playlist_owner":"Playlist owner:","select_playlist_owner":"Choose the playlist owner","playlist_owner_required":"Choose the owner account before queuing this download."},"jellyfin":{"page_title":"Jellyfin Library","input_placeholder":"Search tracks in your Jellyfin library...","status_connected":"Connected to Jellyfin","status_disconnected":"Disconnected from Jellyfin","status_refresh_tooltip":"Reload library data from Jellyfin","tracks_in_library":"tracks in Jellyfin library","shelf_tracks":"Tracks in your library","loading_tracks":"Loading tracks from Jellyfin…","no_tracks":"No tracks found in the Jellyfin library.","error_loading_library":"Couldn't load tracks. Check the Jellyfin connection in Settings.","shelf_playlists":"Playlists","shelf_albums":"Albums","shelf_artists":"Artists","jump_to_playlists":"Playlists","jump_to_albums":"Albums","jump_to_artists":"Artists","card_artist":"Artist","back_to_albums":"Back to all Albums","back_to_artists":"Back to all Artists","back_to_playlists":"Back to Playlists","back_to_library":"Back to Jellyfin Library","badge_album":"ALBUM","badge_artist":"ARTIST","badge_playlist":"PLAYLIST","lyrics_ok":"Lyrics OK","no_lyrics":"No Lyrics","with_lyrics":"{count} with Lyrics","without_lyrics":"{count} without Lyrics","all_lyrics_present":"All lyrics present","download_missing_lyrics":"Download {count} Missing Lyrics","downloading_lyrics":"Downloading lyrics {current}/{total}...","download_lrc":"Download LRC","lyrics_saved":"Lyrics Saved","lyrics_unavailable":"Lyrics unavailable","loading_album_tracks":"Loading album tracks...","loading_artist_tracks":"Loading artist tracks...","loading_playlist_tracks":"Loading playlist tracks...","error_loading_tracks":"Error loading tracks.","search_in_progress":"Searching Jellyfin library...","search_results_count":"{count} tracks found","search_no_results":"No tracks found for \"{query}\".","all_albums":"All Albums","all_artists":"All Artists","no_items_found":"No items found.","sync_csv_btn":"Pair CSV","csv_modal_title":"Playlist CSV Sync","csv_modal_desc":"Pair an exported CSV playlist file to verify availability in your library and download missing songs.","csv_current":"Paired CSV: {filename}","csv_no_file":"No paired CSV file yet","csv_upload_btn":"Upload / Replace CSV","csv_tab_all":"All","csv_tab_in_playlist":"In Playlist","csv_tab_in_library":"In Library","csv_tab_to_download":"To Download","csv_btn_add_all":"Add All to Playlist","csv_btn_download_all":"Queue All for Download","csv_btn_add":"Add to Playlist","csv_btn_download":"Download","csv_matching":"Comparing CSV against Jellyfin library...","csv_owner_label":"Playlist owner","csv_owner_help":"As administrator, choose the account that owns this playlist. Jellyfin will verify it can access the playlist.","csv_owner_select":"Select a Jellyfin account","csv_owner_required":"Select the playlist owner to continue.","csv_owner_load_error":"Unable to load Jellyfin accounts.","csv_tab_not_in_csv":"In Playlist, not in CSV","csv_jellyfin_title":"Jellyfin title: {title}","track_actions":"Track actions","add_to_playlist":"Add","remove_from_playlist":"Remove from playlist","add_favorite":"Add to favorites","remove_favorite":"Remove from favorites","select_playlist":"Choose a playlist","playlists_unavailable":"Could not load playlists","select_playlist_owner":"Choose the playlist owner","track_added":"Track added to the playlist.","favorite_added":"Track added to favorites.","favorite_removed":"Track removed from favorites.","playlist_action_error":"Jellyfin rejected the playlist change (HTTP {status}).","favorite_action_error":"Jellyfin rejected the favorite change (HTTP {status}).","csv_open_playlist":"Open a Jellyfin playlist before pairing a CSV file.","csv_no_active_playlist":"No active playlist selected.","csv_uploaded":"Uploaded: {date} · {count} tracks","csv_uploading":"Loading {filename}...","csv_hint":"Export a playlist CSV from Spotify, Apple Music, or Soundiiz"},"player":{"now_playing":"Now Playing","default_title":"Track Title","default_artist":"Artist","prev_track":"Previous","play_pause":"Play / Pause","next_track":"Next","synced_lyrics":"Synchronized Lyrics","close_player":"Close Player","preview_source":"Preview","playback_error":"Audio playback failed. Please try another track."},"lyrics_modal":{"close":"Close Lyrics","no_synced_lyrics":"No synchronized lyrics found for this track."},"downloads":{"page_title":"Download Queue","empty":"No active downloads in queue.","status_pending":"Pending","status_downloading":"Downloading...","status_completed":"Completed","status_failed":"Failed","clear_completed":"Clear Completed"},"settings":{"page_title":"Settings","overview":"Manage your library, Jellyfin connection, account, and language.","guest_name":"Guest","language_section_title":"Language & Translations","language_section_desc":"Select the application language. All text is connected to our Crowdin localization project.","language_select_label":"Display Language:","crowdin_badge":"Crowdin Ready","crowdin_info":"Translations are synchronized with Crowdin. To add new languages or refine translations, join the project on Crowdin.","music_dir_title":"Music Library Folder","music_dir_desc":"Path where Music Seerr will save downloaded audio files and look for .lrc synchronized lyric files.","music_dir_label":"Server Folder Path:","jellyfin_detected_paths_title":"Jellyfin Monitored Storage Path","jellyfin_detected_paths_desc":"Jellyfin has no media upload API. It scans audio files directly from the server disk. Files downloaded by Music Seerr must go into this storage so Jellyfin can index them.","jellyfin_path_detected_label":"Monitored by Jellyfin:","jellyfin_path_not_detected":"No music path detected yet. Verify your Jellyfin connection.","btn_use_jellyfin_path":"Use Jellyfin Path","jellyfin_path_match_note":"Your local path matches the storage folder monitored by Jellyfin.","jellyfin_path_diff_warning":"Important: Jellyfin reads music from {path}. Because Jellyfin cannot receive files via API, this folder must point to the same physical storage (e.g. through a Docker volume mapping or an SMB/NFS network share).","docker_note_title":"Note for Docker / NAS environments:","docker_note_body":"When running in Docker, make sure this path matches the volume mount defined in docker-compose.yml (e.g. ./music:/music).","jellyfin_section_title":"Jellyfin Integration","jellyfin_section_desc":"Connect your Jellyfin server for instant library scanning, playlist selection, and audio playback.","jellyfin_url_label":"Jellyfin Server URL:","jellyfin_api_key_label":"Jellyfin API Key:","jellyfin_api_key_help":"Can be generated in: Jellyfin Dashboard > Advanced > API Keys.","jellyfin_user_id_label":"User ID (Optional, for user playlists):","btn_test_connection":"Test Connection","btn_save_settings":"Save Settings","testing_connection":"Testing connection...","saved_success":"Settings saved successfully!","users_section_title":"Jellyfin Users & Session","users_section_desc":"Manage the active Jellyfin session or switch accounts.","btn_rerun_setup":"Rerun App Setup Wizard","btn_logout":"Sign Out"},"auth":{"checking_session":"Checking your session…","login_title":"Jellyfin Sign In","login_subtitle":"Authenticate with your Jellyfin credentials to access Music Seerr.","select_account":"Select account:","username_label":"Username","username_placeholder":"Enter Jellyfin username","password_label":"Password","password_placeholder":"Enter Jellyfin password","btn_login":"Sign In","logging_in":"Signing in...","logged_in_as":"Logged in as","switch_user":"Switch Account","logout":"Sign Out","role_admin":"Administrator","role_user":"User","role_guest":"Guest access","continue_guest":"Continue as Guest","error_credentials":"Invalid username or password.","error_connection":"Cannot reach Jellyfin server. Please verify settings."},"setup":{"wizard_title":"Music Seerr Setup","wizard_subtitle":"Complete these quick steps to connect Jellyfin and configure your music library.","step_server":"1. Jellyfin Server","step_storage":"2. Music Storage","step_user":"3. Jellyfin User","step_finish":"4. Complete","server_desc":"Enter your Jellyfin server address and API key to establish connection.","storage_desc":"Set the folder where downloaded music files and lyrics will be saved.","user_desc":"Sign in with your Jellyfin username and password to verify user access.","finish_desc":"Review your configuration and start using Music Seerr.","btn_next":"Next Step","btn_back":"Back","btn_finish":"Complete Setup & Launch","btn_test_server":"Test Connection","testing_server":"Connecting...","server_verified":"Jellyfin server verified successfully!","server_error":"Failed to connect to Jellyfin server.","server_fields_required":"Enter the Jellyfin server URL and API key.","storage_path_required":"Enter the music storage directory to continue.","btn_skip_guest":"Skip (Continue as Guest)","user_skipped":"You will continue as a guest.","use_detected_path":"Use Detected Path","path_verified":"Storage path verified on server!","user_authenticated":"User successfully verified!","summary_server":"Jellyfin Server:","summary_storage":"Music Directory:","summary_user":"Active User:","summary_role":"Role:","wizard_modal_close":"Close Setup"},"history":{"eyebrow":"Your activity","page_title":"Activity","page_description":"Track downloads and recent listening in one place.","queue":"Queue","downloads":"Download history","plays":"Listening history","queue_empty":"No downloads in progress.","downloads_empty":"No downloads have been recorded for this account yet.","plays_empty":"No listening activity has been recorded for this account yet.","recorded":"Added {date}","status_pending":"Queued","status_downloading":"Downloading","status_tagging":"Adding metadata","status_jellyfin_sync":"Syncing Jellyfin","status_completed":"Completed","status_failed":"Failed","status_interrupted":"Interrupted by server restart","status_retried":"Retry queued","views_label":"Activity views"},"users":{"scope_all":"Show all users","scope_mine":"Show my data","admin_controls_title":"Administrator visibility","admin_controls_description":"Choose whether to show controls for viewing other users’ activity and playlists.","show_admin_controls":"Show cross-user controls in the interface","playlist_owner":"Owned by {user}","recommendations_for":"Recommendations for {user}","select_user":"Choose a Jellyfin user","preference_error":"Could not save this preference.","filter_user":"Filter by user","all_users":"All users","owner_unknown":"Owner unknown"}},"it":{"app":{"name":"Music Seerr","subtitle":"Scaricatore musicale self-hosted con testi sincronizzati per Jellyfin"},"nav":{"search":"Cerca Musica","jellyfin":"Libreria Jellyfin","downloads":"Attività","settings":"Impostazioni"},"common":{"save":"Salva","saved":"Salvato","cancel":"Annulla","loading":"Caricamento...","error":"Errore","success":"Successo","ok":"OK","got_it":"Ho Capito","sync":"Sincronizza","syncing":"Sincronizzazione...","tracks":"brani","songs":"canzoni","all":"Tutti","filter":"Filtra...","retry":"Riprova","play_track":"Riproduci brano","no_tracks_on_disk":"Nessun brano trovato sul disco. I brani scaricati appariranno qui.","queue_empty_player":"Nessun brano in coda.","no_track_playing":"Nessun brano attualmente in riproduzione.","track_metadata_title":"Brano:","track_metadata_artist":"Artista:","track_metadata_album":"Album:","audio_format":"Formato audio:","audio_source":"Sorgente:","file_path":"Percorso file:","start_track_for_lyrics":"Avvia prima un brano per aprirne il testo.","lyrics_request_error":"Si è verificato un errore durante la richiesta del testo.","lyrics_save_error":"Si è verificato un errore durante il salvataggio del testo.","track_title":"Titolo brano","audio_quality_info":"Qualità e dettagli audio","check_synced_lyrics":"Verifica del testo sincronizzato in corso...","no_tracks_found":"Nessun brano trovato.","lyrics_file_saved":"Il file .lrc è stato salvato sul server in: {path}. Jellyfin è stato aggiornato.","lyrics_saved_to_jellyfin":"Il testo sincronizzato è stato scaricato e salvato su Jellyfin.","lyrics_downloaded":"Testo scaricato correttamente.","session_unverified":"Impossibile verificare la sessione.","queue_title":"Coda di riproduzione","local":"Locale","jellyfin":"Jellyfin","audio_format_lossless":"FLAC (lossless / alta risoluzione)","audio_format_standard":"MP3 (audio standard)","lrc_available":"Testo LRC disponibile","lrc_missing":"Nessun file LRC","warning":"Attenzione","recently":"Recentemente"},"search":{"page_title":"Cerca musica","input_placeholder":"Cerca brani da scaricare sul NAS...","filter_target_playlist":"Aggiungi a Playlist:","none_library_only":"Nessuna (Solo Libreria)","empty_initial":"Cerca una canzone per ascoltare l'anteprima circolare e scaricarla sul server con 1 click.","searching":"Ricerca in corso...","download_btn":"Scarica","in_library":"In Libreria","downloading":"Download in corso...","results_found":"{count} brani trovati","no_results":"Nessun brano trovato per \"{query}\".","page_eyebrow":"Scopri","page_description":"Trova un brano, ascoltane l’anteprima e aggiungilo alla tua libreria.","recommendations_title":"Scelti per te","recommendations_subtitle":"Basati sugli artisti nella tua libreria Jellyfin","recommendations_loading":"Caricamento dei consigliati…","recommendations_empty":"Non ci sono ancora brani consigliati.","recommendations_error":"Impossibile caricare i consigliati.","recommendations_based_on":"Basati su: {artists}","download_failed":"Il server ha rifiutato la richiesta di download (HTTP {status}).","download_unauthorized":"La sessione è scaduta. Accedi di nuovo e riprova.","download_forbidden":"Non hai i permessi per modificare questa playlist.","download_playlist_owner":"Jellyfin non ha identificato il proprietario della playlist. Chiedi a un amministratore di abilitare i controlli tra utenti, selezionare il proprietario e riprovare.","download_queue_full":"La coda di download è piena. Riprova quando si libera un posto.","download_connection_error":"Impossibile raggiungere il server Music Seerr.","playlist_owner":"Proprietario della playlist:","select_playlist_owner":"Scegli il proprietario della playlist","playlist_owner_required":"Scegli l’account proprietario prima di accodare il download."},"jellyfin":{"page_title":"Libreria Jellyfin","input_placeholder":"Cerca brani nella tua libreria Jellyfin...","status_connected":"Connesso a Jellyfin","status_disconnected":"Disconnesso da Jellyfin","status_refresh_tooltip":"Ricarica i dati da Jellyfin","tracks_in_library":"brani nella libreria Jellyfin","shelf_tracks":"Brani nella libreria","loading_tracks":"Caricamento brani da Jellyfin…","no_tracks":"Nessun brano trovato nella libreria Jellyfin.","error_loading_library":"Impossibile caricare i brani. Verifica la connessione Jellyfin nelle Impostazioni.","shelf_playlists":"Playlist","shelf_albums":"Album","shelf_artists":"Artisti","jump_to_playlists":"Playlist","jump_to_albums":"Album","jump_to_artists":"Artisti","card_artist":"Artista","back_to_albums":"Torna a tutti gli Album","back_to_artists":"Torna a tutti gli Artisti","back_to_playlists":"Torna alle Playlist","back_to_library":"Torna alla Libreria Jellyfin","badge_album":"ALBUM","badge_artist":"ARTISTA","badge_playlist":"PLAYLIST","lyrics_ok":"Lyrics OK","no_lyrics":"No Lyrics","with_lyrics":"{count} con Lyrics","without_lyrics":"{count} senza Lyrics","all_lyrics_present":"Tutte le lyrics presenti","download_missing_lyrics":"Scarica {count} Lyrics Mancanti","downloading_lyrics":"Download testi in corso {current}/{total}...","download_lrc":"Scarica LRC","lyrics_saved":"Testo Salvato","lyrics_unavailable":"Testo non disponibile","loading_album_tracks":"Caricamento tracce dell'album...","loading_artist_tracks":"Caricamento brani dell'artista...","loading_playlist_tracks":"Caricamento brani della playlist...","error_loading_tracks":"Errore nel caricamento delle tracce.","search_in_progress":"Ricerca in corso su Jellyfin...","search_results_count":"{count} brani trovati","search_no_results":"Nessun brano trovato per \"{query}\".","all_albums":"Tutti gli Album","all_artists":"Tutti gli Artisti","no_items_found":"Nessun elemento trovato.","sync_csv_btn":"Associa CSV","csv_modal_title":"Sincronizza Playlist da CSV","csv_modal_desc":"Abbina un foglio CSV esportato per verificare la disponibilità dei brani nella tua libreria e scaricare quelli mancanti.","csv_current":"CSV abbinato: {filename}","csv_no_file":"Nessun CSV abbinato","csv_upload_btn":"Carica / Sostituisci CSV","csv_tab_all":"Tutti","csv_tab_in_playlist":"In playlist","csv_tab_in_library":"In libreria","csv_tab_to_download":"Da scaricare","csv_btn_add_all":"Aggiungi tutti alla Playlist","csv_btn_download_all":"Metti in coda tutti nel download","csv_btn_add":"Aggiungi","csv_btn_download":"Scarica","csv_matching":"Confronto del file CSV con la libreria in corso...","csv_owner_label":"Proprietario della playlist","csv_owner_help":"Da amministratore, scegli l’account proprietario. Jellyfin verificherà che possa accedere alla playlist.","csv_owner_select":"Seleziona un account Jellyfin","csv_owner_required":"Seleziona il proprietario della playlist per continuare.","csv_owner_load_error":"Impossibile caricare gli account Jellyfin.","csv_tab_not_in_csv":"In playlist, non nel CSV","csv_jellyfin_title":"Titolo Jellyfin: {title}","track_actions":"Azioni brano","add_to_playlist":"Aggiungi","remove_from_playlist":"Rimuovi dalla playlist","add_favorite":"Aggiungi ai preferiti","remove_favorite":"Rimuovi dai preferiti","select_playlist":"Scegli una playlist","playlists_unavailable":"Impossibile caricare le playlist","select_playlist_owner":"Scegli il proprietario della playlist","track_added":"Brano aggiunto alla playlist.","favorite_added":"Brano aggiunto ai preferiti.","favorite_removed":"Brano rimosso dai preferiti.","playlist_action_error":"Jellyfin ha rifiutato la modifica della playlist (HTTP {status}).","favorite_action_error":"Jellyfin ha rifiutato la modifica dei preferiti (HTTP {status}).","csv_open_playlist":"Apri una playlist Jellyfin prima di associare un file CSV.","csv_no_active_playlist":"Nessuna playlist attiva selezionata.","csv_uploaded":"Caricato: {date} · {count} brani","csv_uploading":"Caricamento di {filename}...","csv_hint":"Esporta una playlist CSV da Spotify, Apple Music o Soundiiz"},"player":{"now_playing":"In Riproduzione","default_title":"Titolo Brano","default_artist":"Artista","prev_track":"Precedente","play_pause":"Play / Pausa","next_track":"Successivo","synced_lyrics":"Testi Sincronizzati (Lyrics)","close_player":"Chiudi Player","preview_source":"Anteprima","playback_error":"Riproduzione audio non riuscita. Prova un altro brano."},"lyrics_modal":{"close":"Chiudi Testi","no_synced_lyrics":"Nessun testo sincronizzato disponibile per questo brano."},"downloads":{"page_title":"Coda di Download","empty":"Nessun download in coda o attivo.","status_pending":"In attesa","status_downloading":"Download...","status_completed":"Completato","status_failed":"Fallito","clear_completed":"Pulisci Completati"},"settings":{"page_title":"Impostazioni","overview":"Gestisci libreria, connessione Jellyfin, account e lingua.","guest_name":"Ospite","language_section_title":"Lingua & Traduzioni","language_section_desc":"Seleziona la lingua dell'interfaccia. Tutti i testi sono collegati al progetto di localizzazione Crowdin.","language_select_label":"Lingua dell'applicazione:","crowdin_badge":"Crowdin Ready","crowdin_info":"Le traduzioni sono sincronizzate tramite Crowdin. Per aggiungere nuove lingue o migliorare i testi, partecipa al progetto su Crowdin.","music_dir_title":"Cartella della Libreria Musicale","music_dir_desc":"Definisci il percorso del disco sul quale Music Seerr salverà i brani scaricati e cercherà i file .lrc dei testi.","music_dir_label":"Percorso Cartella sul Server:","jellyfin_detected_paths_title":"Percorso Storage Monitorato da Jellyfin","jellyfin_detected_paths_desc":"Jellyfin non supporta il caricamento di file audio via API. Indicizza direttamente i file dal disco del server. I brani scaricati da Music Seerr devono essere salvati in questo storage affinché Jellyfin possa leggerli.","jellyfin_path_detected_label":"Monitorato da Jellyfin:","jellyfin_path_not_detected":"Nessun percorso rilevato. Verifica la connessione a Jellyfin.","btn_use_jellyfin_path":"Usa percorso Jellyfin","jellyfin_path_match_note":"Il percorso impostato corrisponde alla cartella monitorata da Jellyfin.","jellyfin_path_diff_warning":"Importante: Jellyfin legge la musica da {path}. Poiché Jellyfin non può ricevere file tramite API, questa cartella deve corrispondere allo stesso storage fisico (es. tramite mapping volumi Docker o condivisione di rete SMB/NFS).","docker_note_title":"Nota per ambienti Docker / NAS:","docker_note_body":"Se esegui in Docker, assicurati che questo percorso corrisponda al montaggio dei volumi definito in docker-compose.yml (es: ./music:/music).","jellyfin_section_title":"Integrazione Jellyfin","jellyfin_section_desc":"Collega il tuo server Jellyfin per permettere l'aggiornamento automatico della libreria dopo ogni download e la selezione rapida delle playlist.","jellyfin_url_label":"URL Server Jellyfin:","jellyfin_api_key_label":"Chiave API Jellyfin (API Key):","jellyfin_api_key_help":"Generabile in: Jellyfin Dashboard > Avanzate > Chiavi API.","jellyfin_user_id_label":"User ID (Opzionale per Playlist utente):","btn_test_connection":"Verifica Connessione","btn_save_settings":"Salva Impostazioni","testing_connection":"Verifica in corso...","saved_success":"Impostazioni salvate con successo!","users_section_title":"Gestione Utenti & Sessione Jellyfin","users_section_desc":"Gestisci la sessione attiva di Jellyfin o cambia account.","btn_rerun_setup":"Riavvia Procedura di Set-up","btn_logout":"Disconnetti"},"auth":{"checking_session":"Verifica della sessione…","login_title":"Accedi con Jellyfin","login_subtitle":"Autenticati con le tue credenziali Jellyfin per accedere a Music Seerr.","select_account":"Seleziona account:","username_label":"Nome Utente","username_placeholder":"Inserisci il nome utente Jellyfin","password_label":"Password","password_placeholder":"Inserisci la password Jellyfin","btn_login":"Accedi","logging_in":"Accesso in corso...","logged_in_as":"Connesso come","switch_user":"Cambia Account","logout":"Disconnetti","role_admin":"Amministratore","role_user":"Utente","role_guest":"Accesso ospite","continue_guest":"Continua come ospite","error_credentials":"Nome utente o password non corretti.","error_connection":"Impossibile contattare il server Jellyfin. Verifica le impostazioni."},"setup":{"wizard_title":"Configurazione Guidata Music Seerr","wizard_subtitle":"Completa questi rapidi passaggi per collegare Jellyfin e impostare la tua libreria musicale.","step_server":"1. Server Jellyfin","step_storage":"2. Cartella Musica","step_user":"3. Utente Jellyfin","step_finish":"4. Completamento","server_desc":"Inserisci l'indirizzo del server Jellyfin e l'API Key per stabilire la connessione.","storage_desc":"Imposta la cartella in cui verranno salvati i file audio scaricati e i testi.","user_desc":"Accedi con username e password Jellyfin per verificare i privilegi dell'utente.","finish_desc":"Verifica il riepilogo e inizia a usare Music Seerr.","btn_next":"Passaggio Successivo","btn_back":"Indietro","btn_finish":"Completa e Avvia Music Seerr","btn_test_server":"Verifica Connessione","testing_server":"Connessione in corso...","server_verified":"Server Jellyfin verificato con successo!","server_error":"Impossibile connettersi al server Jellyfin.","server_fields_required":"Inserisci l'indirizzo del server Jellyfin e la chiave API.","storage_path_required":"Inserisci il percorso della cartella musicale per continuare.","btn_skip_guest":"Salta (Accedi come ospite)","user_skipped":"Continuerai come ospite.","use_detected_path":"Usa Percorso Rilevato","path_verified":"Percorso storage verificato sul server!","user_authenticated":"Utente verificato con successo!","summary_server":"Server Jellyfin:","summary_storage":"Cartella Musica:","summary_user":"Utente Attivo:","summary_role":"Ruolo:","wizard_modal_close":"Chiudi Set-up"},"history":{"eyebrow":"La tua attività","page_title":"Attività","page_description":"Consulta download e ascolti recenti in un unico posto.","queue":"Coda","downloads":"Cronologia download","plays":"Cronologia ascolti","queue_empty":"Nessun download in corso.","downloads_empty":"Non ci sono ancora download registrati per questo account.","plays_empty":"Non ci sono ancora ascolti registrati per questo account.","recorded":"Aggiunto il {date}","status_pending":"In coda","status_downloading":"Download in corso","status_tagging":"Tag in aggiornamento","status_jellyfin_sync":"Sincronizzazione Jellyfin","status_completed":"Completato","status_failed":"Non riuscito","views_label":"Viste attività","status_interrupted":"Interrotto dal riavvio del server","status_retried":"Nuovo tentativo in coda"},"users":{"scope_all":"Mostra tutti gli utenti","scope_mine":"Mostra i miei dati","admin_controls_title":"Visibilità amministratore","admin_controls_description":"Scegli se mostrare i controlli per consultare le attività e le playlist degli altri utenti.","show_admin_controls":"Mostra i controlli per gli altri utenti","playlist_owner":"Di {user}","recommendations_for":"Consigliati per {user}","select_user":"Scegli un utente Jellyfin","preference_error":"Impossibile salvare questa preferenza.","owner_unknown":"Proprietario sconosciuto","filter_user":"Filtra per utente","all_users":"Tutti gli utenti"}}};
 
         function t(key, params = {}) {
             const keys = key.split('.');
@@ -5137,7 +5148,7 @@
         async function refreshVerifiedSession() {
             let identityChanged = false;
             const response = await fetch('/api/auth/session', { credentials: 'same-origin', cache: 'no-store' });
-            if (!response.ok) throw new Error('Sessione non verificabile.');
+            if (!response.ok) throw new Error(t('common.session_unverified'));
             const data = await response.json();
             const previousUserId = currentAppUser?.id;
             currentAppUser = data.authenticated ? data.user : null;
@@ -5560,11 +5571,12 @@
                     const playlists = await res.json();
                     playlistSelect.innerHTML = `<option value="" data-i18n="search.none_library_only">${t('search.none_library_only')}</option>`;
                     if (jellyfinPlaylistFilter) {
-                        jellyfinPlaylistFilter.innerHTML = '<option value="">Tutte le Playlist & Brani</option>';
+                        jellyfinPlaylistFilter.innerHTML = '<option value="">Tutte le Playlist & Tracks</option>';
                     }
                     playlists.forEach(pl => {
                         const opt = document.createElement('option');
                         opt.value = pl.id;
+                        opt.dataset.ownerId = pl.owner_user_id || '';
                         const ownerLabel = allUsers ? ' · ' + t('users.playlist_owner', {user: pl.owner_name || t('users.owner_unknown')}) : '';
                         opt.textContent = pl.name + ownerLabel + ' (' + pl.track_count + ' ' + t('common.tracks') + ')';
                         playlistSelect.appendChild(opt);
@@ -5576,10 +5588,26 @@
                             jellyfinPlaylistFilter.appendChild(optJelly);
                         }
                     });
+                    playlistSelect.onchange = updateDownloadPlaylistOwnerPicker;
                 }
             } catch (err) {}
         }
         loadPlaylists();
+
+        async function updateDownloadPlaylistOwnerPicker() {
+            const wrap = document.getElementById('downloadPlaylistOwnerWrap');
+            const ownerSelect = document.getElementById('downloadPlaylistOwnerSelect');
+            const selected = playlistSelect.options[playlistSelect.selectedIndex];
+            const shouldChooseOwner = Boolean(currentAppUser?.is_admin && adminAllUsersMode && playlistSelect.value && !selected?.dataset.ownerId);
+            wrap.style.display = shouldChooseOwner ? '' : 'none';
+            if (!shouldChooseOwner) return;
+            ownerSelect.innerHTML = `<option value="">${t('search.select_playlist_owner')}</option>`;
+            try {
+                const response = await fetch('/api/admin/users');
+                const data = await response.json();
+                (data.users || []).forEach(user => ownerSelect.add(new Option(user.name, user.id)));
+            } catch (error) {}
+        }
 
         // --- UNIFIED GLOBAL TOP BAR SEARCH ---
         if (globalSearchInput) {
@@ -6002,7 +6030,13 @@
             }
 
             const selectedPlId = playlistSelect.value || null;
-            const selectedPlName = playlistSelect.options[playlistSelect.selectedIndex]?.text || null;
+            const selectedOption = playlistSelect.options[playlistSelect.selectedIndex];
+            const selectedPlName = selectedOption?.text || null;
+            const selectedOwnerId = selectedOption?.dataset.ownerId || document.getElementById('downloadPlaylistOwnerSelect')?.value || null;
+            if (selectedPlId && currentAppUser?.is_admin && adminAllUsersMode && !selectedOwnerId) {
+                showAlertPopup(t('common.error'), t('search.playlist_owner_required'));
+                return;
+            }
 
             try {
                 const res = await fetch('/api/download', {
@@ -6011,7 +6045,8 @@
                     body: JSON.stringify({
                         track: track,
                         playlist_id: selectedPlId,
-                        playlist_name: selectedPlName
+                        playlist_name: selectedPlName,
+                        owner_user_id: selectedOwnerId
                     })
                 });
 
@@ -6019,10 +6054,14 @@
                     fetchJobs();
                     switchNavTab('downloads');
                 } else {
-                    showAlertPopup("Errore Download", "Impossibile avviare il download sul server.");
+                    const messageKey = res.status === 401 ? 'search.download_unauthorized'
+                        : res.status === 403 ? 'search.download_forbidden'
+                        : res.status === 409 ? 'search.download_playlist_owner'
+                        : res.status === 429 ? 'search.download_queue_full' : 'search.download_failed';
+                    showAlertPopup(t('common.error'), t(messageKey, {status: res.status}));
                 }
             } catch (err) {
-                showAlertPopup("Errore Connessione", "Impossibile contattare il server.");
+                showAlertPopup(t('common.error'), t('search.download_connection_error'));
             }
         };
 
@@ -6035,7 +6074,7 @@
                 sidebarLibraryBadge.textContent = downloadedTracksList.length;
 
                 if (downloadedTracksList.length === 0) {
-                    libraryList.innerHTML = `<div class="empty-state"><p>Nessun brano trovato sul disco. I brani scaricati appariranno qui.</p></div>`;
+                    libraryList.innerHTML = `<div class="empty-state"><p>No tracks found on disk. Downloaded tracks will appear here.</p></div>`;
                     return;
                 }
 
@@ -6051,7 +6090,7 @@
 
                         <div>
                             <span class="lrc-badge ${item.has_lrc ? 'present' : 'missing'}">
-                                ${item.has_lrc ? checkSvg() + ' Testo LRC' : crossSvg() + ' Senza LRC'}
+                                ${item.has_lrc ? checkSvg() + ` ${t('common.lrc_available')}` : crossSvg() + ` ${t('common.lrc_missing')}`}
                             </span>
                         </div>
 
@@ -6060,7 +6099,7 @@
                         </div>
 
                         <div>
-                            <button class="btn-icon" onclick="playFullTrackFromLibrary(${idx})" title="Riproduci Brano">
+                            <button class="btn-icon" onclick="playFullTrackFromLibrary(${idx})" title="Play track">
                                 ${playSvg()} Ascolta
                             </button>
                         </div>
@@ -6353,7 +6392,7 @@
             const currentIdx = isJf ? currentJellyfinTrackIndex : currentFullTrackIndex;
 
             if (!queue || queue.length === 0) {
-                list.innerHTML = `<p style="color:var(--text-secondary); text-align:center; padding:20px;">Nessun brano in coda.</p>`;
+                list.innerHTML = `<p style="color:var(--text-secondary); text-align:center; padding:20px;">No tracks in the queue.</p>`;
                 return;
             }
 
@@ -6396,24 +6435,24 @@
             const track = isJf ? currentPlayingJellyfinTrack : (downloadedTracksList[currentFullTrackIndex] || null);
 
             if (!track) {
-                content.innerHTML = `<p style="color:var(--text-secondary); text-align:center;">Nessun brano attualmente in riproduzione.</p>`;
+                content.innerHTML = `<p style="color:var(--text-secondary); text-align:center;">${t('common.no_track_playing')}</p>`;
                 return;
             }
 
-            const path = track.path || 'Locale';
+            const path = track.path || t('common.local');
             const isFlac = path.toLowerCase().endsWith('.flac');
-            const format = isFlac ? 'FLAC (Lossless / Hi-Res Audio)' : 'MP3 (Audio standard)';
-            const source = isJf ? 'Server Jellyfin' : 'Libreria Locale';
+            const format = isFlac ? t('common.audio_format_lossless') : t('common.audio_format_standard');
+            const source = isJf ? t('common.jellyfin') : t('common.local');
 
             content.innerHTML = `
                 <div style="display:flex; flex-direction:column; gap:10px;">
-                    <div><strong>Brano:</strong> ${escapeHtml(track.title)}</div>
-                    <div><strong>Artista:</strong> ${escapeHtml(track.artist || 'Sconosciuto')}</div>
-                    <div><strong>Album:</strong> ${escapeHtml(track.album || 'Sconosciuto')}</div>
-                    <div><strong>Formato Audio:</strong> <span style="color:var(--accent); font-weight:700;">${format}</span></div>
-                    <div><strong>Sorgente:</strong> ${source}</div>
+                    <div><strong>${t('common.track_metadata_title')}</strong> ${escapeHtml(track.title)}</div>
+                    <div><strong>${t('common.track_metadata_artist')}</strong> ${escapeHtml(track.artist || 'Unknown')}</div>
+                    <div><strong>${t('common.track_metadata_album')}</strong> ${escapeHtml(track.album || 'Unknown')}</div>
+                    <div><strong>${t('common.audio_format')}</strong> <span style="color:var(--accent); font-weight:700;">${format}</span></div>
+                    <div><strong>${t('common.audio_source')}</strong> ${source}</div>
                     <div style="word-break:break-all; font-size:0.78rem; color:var(--text-secondary); background:rgba(0,0,0,0.3); padding:8px; border-radius:6px; margin-top:6px;">
-                        <strong>Percorso File:</strong><br>${escapeHtml(path)}
+                        <strong>${t('common.file_path')}</strong><br>${escapeHtml(path)}
                     </div>
                 </div>
             `;
@@ -6577,7 +6616,7 @@
                 album = localTrack.album;
             } else {
                 if (shouldOpenModal) {
-                    showAlertPopup("Nessun brano in riproduzione", "Avvia prima una canzone per visualizzarne il testo.");
+                    showAlertPopup("No track is playing", "Start a track before opening its lyrics.");
                 }
                 return;
             }
@@ -6590,7 +6629,7 @@
                 appleLyricsOverlay.classList.add('open');
                 appleLyricsWrapper.innerHTML = `
                     <div style="padding: 60px 0; color:var(--text-secondary); text-align:center;">
-                        Verifica testo sincronizzato...
+                        ${t('common.check_synced_lyrics')}
                     </div>`;
             }
 
@@ -6627,21 +6666,21 @@
                     currentLyricsLines = [];
                     if (shouldOpenModal) {
                         closeLyricsView();
-                        showAlertPopup("Lyrics non trovata", data.message || "Impossibile reperire il testo per questo brano.");
+                        showAlertPopup("Lyrics not found", data.message || "Could not find lyrics for this track.");
                     }
                 }
             } catch (err) {
                 currentLyricsLines = [];
                 if (shouldOpenModal) {
                     closeLyricsView();
-                    showAlertPopup("Errore", "Si è verificato un errore durante la richiesta del testo.");
+                    showAlertPopup(t('common.error'), "An error occurred while requesting lyrics.");
                 }
             }
         }
 
         function renderAppleLyricsLines() {
             if (!currentLyricsLines || currentLyricsLines.length === 0) {
-                appleLyricsWrapper.innerHTML = `<p style="color:var(--text-secondary);">Nessun testo sincronizzato disponibile.</p>`;
+                appleLyricsWrapper.innerHTML = `<p style="color:var(--text-secondary);">No synchronized lyrics are available.</p>`;
                 return;
             }
 
@@ -6904,7 +6943,7 @@
                 if (heroPl) heroPl.textContent = jellyPlaylistsList.length;
                 renderJellyPlaylists(jellyPlaylistsList);
             } catch (err) {
-                if (track) track.innerHTML = `<div class="empty-state"><p>Impossibile caricare le playlist.</p></div>`;
+                if (track) track.innerHTML = `<div class="empty-state"><p>Could not load playlists.</p></div>`;
             }
         }
 
@@ -6912,7 +6951,7 @@
             const track = document.getElementById('jellyPlaylistsTrack');
             if (!track) return;
             if (!playlists || playlists.length === 0) {
-                track.innerHTML = `<div class="empty-state"><p>Nessuna playlist trovata in Jellyfin.</p></div>`;
+                track.innerHTML = `<div class="empty-state"><p>No playlists found in Jellyfin.</p></div>`;
                 return;
             }
             track.innerHTML = playlists.map(pl => {
@@ -6945,7 +6984,7 @@
                 renderJellyAlbums(jellyAlbumsList);
             } catch (err) {
                 updateJellyfinHubStatus(false);
-                if (track) track.innerHTML = `<div class="empty-state"><p>Impossibile caricare gli album. Verifica Jellyfin nelle impostazioni.</p></div>`;
+                if (track) track.innerHTML = `<div class="empty-state"><p>Could not load albums. Check Jellyfin in Settings.</p></div>`;
             }
         }
 
@@ -6953,7 +6992,7 @@
             const track = document.getElementById('jellyAlbumsTrack');
             if (!track) return;
             if (!albums || albums.length === 0) {
-                track.innerHTML = `<div class="empty-state"><p>Nessun album trovato.</p></div>`;
+                track.innerHTML = `<div class="empty-state"><p>No albums found.</p></div>`;
                 return;
             }
             track.innerHTML = albums.map(alb => `
@@ -6982,7 +7021,7 @@
                 if (heroArt) heroArt.textContent = data.total;
                 renderJellyArtists(jellyArtistsList);
             } catch (err) {
-                if (track) track.innerHTML = `<div class="empty-state"><p>Impossibile caricare gli artisti.</p></div>`;
+                if (track) track.innerHTML = `<div class="empty-state"><p>Could not load artists.</p></div>`;
             }
         }
 
@@ -6990,7 +7029,7 @@
             const track = document.getElementById('jellyArtistsTrack');
             if (!track) return;
             if (!artists || artists.length === 0) {
-                track.innerHTML = `<div class="empty-state"><p>Nessun artista trovato.</p></div>`;
+                track.innerHTML = `<div class="empty-state"><p>No artists found.</p></div>`;
                 return;
             }
             track.innerHTML = artists.map(art => `
@@ -6999,7 +7038,7 @@
                         <img class="jelly-card-thumb" src="${art.cover_url}" alt="Avatar" onerror="this.onerror=null;this.style.display='none';">
                     </div>
                     <div class="jelly-card-title" style="text-align:center;" title="${escapeHtml(art.name)}">${escapeHtml(art.name)}</div>
-                    <div class="jelly-card-sub" style="text-align:center;">Artista</div>
+                    <div class="jelly-card-sub" style="text-align:center;">Artist</div>
                 </div>
             `).join('');
             setupShelfInteractions(track);
@@ -7122,8 +7161,8 @@
                 currentDetailTracks = data.tracks || [];
                 currentJellyfinTracksList = currentDetailTracks;
 
-                document.getElementById('detailTitle').textContent = art.name || 'Artista';
-                document.getElementById('detailSubtitle').textContent = `Tutti i brani in libreria • ${currentDetailTracks.length} ${t('common.songs')}`;
+                document.getElementById('detailTitle').textContent = art.name || 'Artist';
+                document.getElementById('detailSubtitle').textContent = `All tracks in library • ${currentDetailTracks.length} ${t('common.songs')}`;
                 document.getElementById('detailHeroCover').src = art.cover_url || '';
 
                 updateDetailStats();
@@ -7193,17 +7232,142 @@
                     btn.className = "btn-batch-lyrics all-present";
                     btn.disabled = true;
                 } else {
-                    label.textContent = `Scarica ${missingCount} Lyrics Mancanti`;
+                    label.textContent = `Download ${missingCount} Missing Lyrics`;
                     btn.className = "btn-batch-lyrics";
                     btn.disabled = isBatchDownloading;
                 }
             }
         }
 
+        let activeTrackAction = null;
+
+        async function openTrackActions(source, index) {
+            const list = source === 'detail' ? currentDetailTracks : currentJellyfinTracksList;
+            const track = list?.[index];
+            if (!track) return;
+            activeTrackAction = { source, index, track };
+            document.getElementById('trackActionsTitle').textContent = track.title || t('player.default_title');
+            document.getElementById('trackActionsSubtitle').textContent = [track.artist, track.album].filter(Boolean).join(' · ');
+            const removeButton = document.getElementById('trackRemovePlaylistButton');
+            removeButton.style.display = source === 'detail' && currentDetailType === 'playlist' ? '' : 'none';
+            const allUsers = adminAllUsersMode && currentAppUser?.is_admin;
+            const listEndpoint = allUsers ? '/api/admin/jellyfin/playlists' : '/api/jellyfin/playlists';
+            let playlists = [];
+            try {
+                const response = await fetch(listEndpoint);
+                if (!response.ok) throw new Error(String(response.status));
+                playlists = await response.json();
+            } catch (error) {}
+            const currentPlaylist = playlists.find(playlist => playlist.id === currentDetailId);
+            activeTrackAction.ownerUserId = currentPlaylist?.owner_user_id || '';
+            const ownerPicker = document.getElementById('trackOwnerPicker');
+            ownerPicker.style.display = allUsers && source === 'detail' && currentDetailType === 'playlist' && !activeTrackAction.ownerUserId ? '' : 'none';
+            ownerPicker.innerHTML = `<option value="">${escapeHtml(t('jellyfin.select_playlist_owner'))}</option>`;
+            const targetOwnerPicker = document.getElementById('trackTargetOwnerPicker');
+            targetOwnerPicker.style.display = 'none';
+            targetOwnerPicker.innerHTML = `<option value="">${escapeHtml(t('jellyfin.select_playlist_owner'))}</option>`;
+            if (currentAppUser?.is_admin && allUsers) {
+                try {
+                    const usersResponse = await fetch('/api/admin/users');
+                    const usersData = await usersResponse.json();
+                    (usersData.users || []).forEach(user => {
+                        ownerPicker.add(new Option(user.name, user.id));
+                        targetOwnerPicker.add(new Option(user.name, user.id));
+                    });
+                } catch (error) {}
+            }
+            document.getElementById('trackFavoriteButton').textContent = track.is_favorite ? t('jellyfin.remove_favorite') : t('jellyfin.add_favorite');
+            const picker = document.getElementById('trackTargetPlaylist');
+            picker.innerHTML = `<option value="">${escapeHtml(t('jellyfin.select_playlist'))}</option>`;
+            if (!playlists.length) picker.innerHTML = `<option value="">${escapeHtml(t('jellyfin.playlists_unavailable'))}</option>`;
+            playlists.forEach(playlist => {
+                const option = document.createElement('option');
+                option.value = playlist.id;
+                option.textContent = playlist.owner_name ? `${playlist.name} · ${playlist.owner_name}` : playlist.name;
+                option.dataset.ownerId = playlist.owner_user_id || '';
+                picker.appendChild(option);
+            });
+            const modal = document.getElementById('trackActionsModal');
+            modal.style.display = 'flex';
+            modal.classList.add('open');
+        }
+
+        function closeTrackActions() {
+            const modal = document.getElementById('trackActionsModal');
+            modal.classList.remove('open');
+            modal.style.display = 'none';
+            activeTrackAction = null;
+        }
+
+        function updateTrackTargetOwnerPicker() {
+            const picker = document.getElementById('trackTargetPlaylist');
+            const option = picker?.options[picker.selectedIndex];
+            const ownerPicker = document.getElementById('trackTargetOwnerPicker');
+            ownerPicker.style.display = Boolean(adminAllUsersMode && currentAppUser?.is_admin && picker?.value && !option?.dataset.ownerId) ? '' : 'none';
+        }
+
+        async function addTrackToSelectedPlaylist() {
+            if (!activeTrackAction) return;
+            const picker = document.getElementById('trackTargetPlaylist');
+            const option = picker.options[picker.selectedIndex];
+            if (!picker.value) return;
+            const playlistId = picker.value;
+            const ownerUserId = option.dataset.ownerId || document.getElementById('trackTargetOwnerPicker').value || null;
+            try {
+                const response = await fetch(`/api/jellyfin/playlist/${encodeURIComponent(playlistId)}/add-items`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({item_ids: [activeTrackAction.track.id], owner_user_id: ownerUserId})
+                });
+                if (!response.ok) throw new Error(String(response.status));
+                invalidateJellyfinCachedJson(`playlist:${playlistId}`);
+                closeTrackActions();
+                if (currentDetailType === 'playlist' && currentDetailId === playlistId) await openPlaylistDetail(playlistId, false);
+                showAlertPopup(t('common.success'), t('jellyfin.track_added'), true);
+            } catch (error) {
+                const status = Number(error.message);
+                showAlertPopup(t('common.error'), status ? t('jellyfin.playlist_action_error', {status}) : t('jellyfin.playlist_action_error', {status: '—'}));
+            }
+        }
+
+        async function removeTrackFromCurrentPlaylist() {
+            if (!activeTrackAction || currentDetailType !== 'playlist') return;
+            const entryId = activeTrackAction.track.playlist_entry_id || activeTrackAction.track.id;
+            try {
+                const ownerId = activeTrackAction.ownerUserId || document.getElementById('trackOwnerPicker').value;
+                const ownerQuery = ownerId ? `?owner_user_id=${encodeURIComponent(ownerId)}` : '';
+                const response = await fetch(`/api/jellyfin/playlist/${encodeURIComponent(currentDetailId)}/items/${encodeURIComponent(entryId)}${ownerQuery}`, {method: 'DELETE'});
+                if (!response.ok) throw new Error(String(response.status));
+                invalidateJellyfinCachedJson(`playlist:${currentDetailId}`);
+                closeTrackActions();
+                await openPlaylistDetail(currentDetailId, false);
+            } catch (error) {
+                const status = Number(error.message);
+                showAlertPopup(t('common.error'), t('jellyfin.playlist_action_error', {status: status || '—'}));
+            }
+        }
+
+        async function toggleTrackFavorite() {
+            if (!activeTrackAction) return;
+            const track = activeTrackAction.track;
+            const favorite = !track.is_favorite;
+            try {
+                const response = await fetch(`/api/jellyfin/items/${encodeURIComponent(track.id)}/favorite`, {
+                    method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({favorite})
+                });
+                if (!response.ok) throw new Error(String(response.status));
+                track.is_favorite = favorite;
+                closeTrackActions();
+                showAlertPopup(t('common.success'), favorite ? t('jellyfin.favorite_added') : t('jellyfin.favorite_removed'), true);
+            } catch (error) {
+                const status = Number(error.message);
+                showAlertPopup(t('common.error'), t('jellyfin.favorite_action_error', {status: status || '—'}));
+            }
+        }
+
         function renderDetailTracks(tracks) {
             const list = document.getElementById('jellyDetailTracksList');
             if (!tracks || tracks.length === 0) {
-                list.innerHTML = `<div class="empty-state"><p>Nessun brano trovato.</p></div>`;
+                list.innerHTML = `<div class="empty-state"><p>${t('jellyfin.no_tracks')}</p></div>`;
                 return;
             }
 
@@ -7237,6 +7401,7 @@
 
                         <div class="jellyfin-actions" id="detail-actions-${track.id}">
                             ${lyricsAction}
+                            <button type="button" class="jelly-track-menu-button" onclick="openTrackActions('detail', ${idx})" aria-label="${escapeHtml(t('jellyfin.track_actions'))}" title="${escapeHtml(t('jellyfin.track_actions'))}">•••</button>
                         </div>
 
                         <div class="jellyfin-track-duration">
@@ -7252,7 +7417,7 @@
             if (isBatchDownloading) return;
             const missing = currentDetailTracks.filter(t => !t.has_lyrics);
             if (missing.length === 0) {
-                showAlertPopup("Completato", "Tutti i brani di questo elenco hanno già le lyrics sincronizzate!", true);
+                showAlertPopup(t('common.success'), "All tracks in this list already have synchronized lyrics!", true);
                 return;
             }
 
@@ -7264,7 +7429,7 @@
             let downloadedCount = 0;
             for (let i = 0; i < missing.length; i++) {
                 const track = missing[i];
-                if (label) label.textContent = `Scaricamento (${i + 1}/${missing.length}): ${track.title.slice(0, 18)}...`;
+                if (label) label.textContent = t('jellyfin.downloading_lyrics', {current: i + 1, total: missing.length});
 
                 try {
                     const res = await fetch('/api/jellyfin/save-lyrics', {
@@ -7298,8 +7463,8 @@
             isBatchDownloading = false;
             updateDetailStats();
             showAlertPopup(
-                "Download Lyrics Completato",
-                `Operazione terminata con successo!\n\n${downloadedCount} lyrics sincronizzate scaricate ed indicizzate per questo ${currentDetailType}.`,
+                "Lyrics download complete",
+                `Operation completed successfully!\n\n${downloadedCount} synchronized lyrics downloaded and indexed for this ${currentDetailType}.`,
                 true
             );
         }
@@ -7400,7 +7565,7 @@
 
         async function openPlaylistCsvModal() {
             if (!currentDetailId || currentDetailType !== 'playlist') {
-                showAlertPopup("Attenzione", "Apri prima una playlist Jellyfin per accoppiare un foglio CSV.");
+                showAlertPopup(t('common.warning'), "Open a Jellyfin playlist before pairing a CSV file.");
                 return;
             }
             currentPlaylistCsvId = currentDetailId;
@@ -7445,16 +7610,16 @@
                 if (hasCsv) {
                     const trackCount = data.track_count || data.row_count || 0;
                     if (currentFilenameEl) currentFilenameEl.textContent = data.filename || 'playlist.csv';
-                    if (metaSubEl) metaSubEl.textContent = `Caricato: ${data.updated_at ? new Date(data.updated_at).toLocaleString() : 'Recentemente'} • ${trackCount} brani`;
+                    if (metaSubEl) metaSubEl.textContent = t('jellyfin.csv_uploaded', {date: data.updated_at ? new Date(data.updated_at).toLocaleString() : t('common.recently'), count: trackCount});
                     if (badgeEl) {
                         badgeEl.style.display = 'inline-block';
-                        badgeEl.textContent = `${trackCount} Brani`;
+                        badgeEl.textContent = `${trackCount} Tracks`;
                     }
                     if (reMatchBtn) reMatchBtn.style.display = 'inline-flex';
                     await runPlaylistCsvMatch(targetId);
                 } else {
                     if (currentFilenameEl) currentFilenameEl.textContent = t('jellyfin.csv_no_file');
-                    if (metaSubEl) metaSubEl.textContent = 'Carica un file .csv esportato da Spotify, Apple Music o Soundiiz';
+                    if (metaSubEl) metaSubEl.textContent = t('jellyfin.csv_hint');
                     if (badgeEl) badgeEl.style.display = 'none';
                     if (reMatchBtn) reMatchBtn.style.display = 'none';
                     if (toolbar) toolbar.style.display = 'none';
@@ -7480,12 +7645,12 @@
 
             const targetId = currentPlaylistCsvId || currentDetailId;
             if (!targetId) {
-                showAlertPopup("Errore", "Nessuna playlist attiva selezionata.");
+                showAlertPopup(t('common.error'), "No active playlist selected.");
                 return;
             }
 
             const currentFilenameEl = document.getElementById('csvCurrentFilename');
-            if (currentFilenameEl) currentFilenameEl.textContent = `Caricamento ${file.name}...`;
+            if (currentFilenameEl) currentFilenameEl.textContent = `Loading ${file.name}...`;
 
             const container = document.getElementById('csvTracksContainer');
             if (container) {
@@ -7505,7 +7670,7 @@
                 checkPlaylistCsvInfo(targetId);
                 await checkAndLoadPlaylistCsv(targetId);
             } catch (err) {
-                showAlertPopup(t('common.error'), 'Impossibile caricare il file CSV: ' + err.message);
+                showAlertPopup(t('common.error'), 'Could not load the CSV file: ' + err.message);
             } finally {
                 event.target.value = '';
             }
@@ -7558,7 +7723,7 @@
                 renderCsvList();
             } catch (err) {
                 if (container) {
-                    container.innerHTML = `<div class="empty-state" style="padding: 40px 20px;"><p>Errore durante il confronto: ${escapeHtml(err.message)}</p></div>`;
+                    container.innerHTML = `<div class="empty-state" style="padding: 40px 20px;"><p>Error while matching: ${escapeHtml(err.message)}</p></div>`;
                 }
             }
         }
@@ -7635,7 +7800,7 @@
                                 <div class="csv-item-title">${escapeHtml(item.title || '')}</div>
                                 ${matchTitleHtml}
                                 <div class="csv-item-subtitle">
-                                    <span class="clickable-artist" onclick="event.stopPropagation(); navigateToArtist('${escapeJs(item.artist || '')}', '${escapeJs(artistId)}')">${escapeHtml(item.artist || 'Artista')}</span>
+                                    <span class="clickable-artist" onclick="event.stopPropagation(); navigateToArtist('${escapeJs(item.artist || '')}', '${escapeJs(artistId)}')">${escapeHtml(item.artist || 'Artist')}</span>
                                     ${item.album ? `<span class="sub-sep">-</span><span class="clickable-album" onclick="event.stopPropagation(); navigateToAlbum('${escapeJs(item.album)}', '${escapeJs(albumId)}')">${escapeHtml(item.album)}</span>` : ''}
                                 </div>
                             </div>
@@ -7687,7 +7852,7 @@
                 renderCsvList();
                 openPlaylistDetail(targetId, false);
             } catch (err) {
-                showAlertPopup(t('common.error'), 'Impossibile aggiungere il brano alla playlist: ' + err.message);
+                showAlertPopup(t('common.error'), 'Could not add the track to the playlist: ' + err.message);
                 if (btn) btn.disabled = false;
             }
         }
@@ -7716,11 +7881,11 @@
                 if (!res.ok) throw new Error(data.detail || 'Batch add error');
                 invalidateJellyfinCachedJson(`playlist:${targetId}`);
 
-                showAlertPopup(t('common.success'), `${data.added_count || itemIds.length} brani aggiunti alla playlist!`, true);
+                showAlertPopup(t('common.success'), `${data.added_count || itemIds.length} tracks added to the playlist!`, true);
                 await runPlaylistCsvMatch(targetId);
                 openPlaylistDetail(targetId, false);
             } catch (err) {
-                showAlertPopup(t('common.error'), 'Errore aggiunta brani: ' + err.message);
+                showAlertPopup(t('common.error'), 'Could not add tracks: ' + err.message);
             } finally {
                 if (btn) btn.disabled = false;
             }
@@ -7733,7 +7898,7 @@
             const btn = document.getElementById(`btn-csv-dl-${rowIdx}`);
             if (btn) {
                 btn.disabled = true;
-                btn.innerHTML = `<span>In Coda...</span>`;
+                btn.innerHTML = `<span>Queued...</span>`;
             }
 
             const plName = document.getElementById('detailTitle')?.textContent || 'Playlist';
@@ -7751,10 +7916,10 @@
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.detail || 'Download queue error');
                 if (btn) {
-                    btn.innerHTML = `<span>In Coda</span>`;
+                    btn.innerHTML = `<span>Queued</span>`;
                 }
             } catch (err) {
-                showAlertPopup(t('common.error'), 'Impossibile accodare il download: ' + err.message);
+                showAlertPopup(t('common.error'), 'Could not queue the download: ' + err.message);
                 if (btn) btn.disabled = false;
             }
         }
@@ -7769,7 +7934,7 @@
             const btn = document.getElementById('btnCsvDownloadAll');
             if (btn) {
                 btn.disabled = true;
-                btn.innerHTML = `<span>Invio ${toDlItems.length} brani in coda...</span>`;
+                btn.innerHTML = `<span>Queueing ${toDlItems.length} tracks...</span>`;
             }
 
             const plName = document.getElementById('detailTitle')?.textContent || 'Playlist';
@@ -7788,12 +7953,12 @@
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.detail || 'Queue error');
 
-                showAlertPopup(t('common.success'), `${data.queued_count || tracksPayload.length} brani inseriti nella coda di download per la playlist!`, true);
+                showAlertPopup(t('common.success'), `${data.queued_count || tracksPayload.length} tracks queued for download to the playlist!`, true);
                 if (btn) {
                     btn.style.display = 'none';
                 }
             } catch (err) {
-                showAlertPopup(t('common.error'), 'Errore durante la messa in coda: ' + err.message);
+                showAlertPopup(t('common.error'), 'Could not add tracks to the queue: ' + err.message);
                 if (btn) btn.disabled = false;
             }
         }
@@ -7831,21 +7996,21 @@
                     updateDetailStats();
 
                     if (data.saved_to_disk) {
-                        showAlertPopup("Lyrics Salvata", `Il file .lrc è stato salvato sul server in:\n\n${data.target_path}\n\nJellyfin è stato aggiornato!`, true);
+                        showAlertPopup("Lyrics saved", `The .lrc file was saved on the server at:\n\n${data.target_path}\n\nJellyfin has been refreshed!`, true);
                     } else if (data.jellyfin_uploaded) {
-                        showAlertPopup("Lyrics Salvata in Jellyfin", `Lyrics sincronizzata scaricata e memorizzata con successo direttamente su Jellyfin!`, true);
+                        showAlertPopup("Lyrics saved in Jellyfin", `Synchronized lyrics downloaded and saved to Jellyfin.`, true);
                     } else {
-                        showAlertPopup("Lyrics Trovata", data.message || "Lyrics trovata con successo!", true);
+                        showAlertPopup("Lyrics found", data.message || "Lyrics found successfully!", true);
                     }
                 } else {
-                    showAlertPopup("Testo non disponibile", data.message || "Impossibile trovare il testo per questa traccia online.");
+                    showAlertPopup("Lyrics unavailable", data.message || "Could not find lyrics for this track online.");
                     if (btn) {
                         btn.disabled = false;
                         btn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> <span>${t('jellyfin.download_lrc')}</span>`;
                     }
                 }
             } catch (err) {
-                showAlertPopup("Errore", "Si è verificato un errore durante il salvataggio della lyrics.");
+                showAlertPopup(t('common.error'), "An error occurred while saving lyrics.");
                 if (btn) {
                     btn.disabled = false;
                     btn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> <span>${t('jellyfin.download_lrc')}</span>`;
@@ -7882,17 +8047,17 @@
             const countLabel = document.getElementById('jellyfinSearchResultsCount');
             const list = document.getElementById('jellyfinSearchResultsList');
 
-            countLabel.textContent = "Ricerca in corso...";
-            list.innerHTML = `<div class="empty-state"><p>Ricerca in corso su Jellyfin...</p></div>`;
+            countLabel.textContent = "Searching...";
+            list.innerHTML = `<div class="empty-state"><p>Searching Jellyfin...</p></div>`;
 
             try {
                 const url = `/api/jellyfin/library/tracks?limit=100&q=${encodeURIComponent(query)}`;
                 const data = await fetchJellyfinCachedJson(`search:${query.trim().toLowerCase()}`, url, 30000);
                 currentJellyfinTracksList = data.tracks || [];
-                countLabel.textContent = `${data.total} brani trovati`;
+                countLabel.textContent = `${data.total} tracks found`;
 
                 if (currentJellyfinTracksList.length === 0) {
-                    list.innerHTML = `<div class="empty-state"><p>Nessun brano trovato per "${escapeHtml(query)}".</p></div>`;
+                    list.innerHTML = `<div class="empty-state"><p>No tracks found for "${escapeHtml(query)}".</p></div>`;
                     return;
                 }
 
@@ -7926,6 +8091,7 @@
 
                             <div class="jellyfin-actions" id="search-actions-${track.id}">
                                 ${lyricsAction}
+                                <button type="button" class="jelly-track-menu-button" onclick="openTrackActions('search', ${idx})" aria-label="${escapeHtml(t('jellyfin.track_actions'))}" title="${escapeHtml(t('jellyfin.track_actions'))}">•••</button>
                             </div>
 
                             <div class="jellyfin-track-duration">
@@ -7935,7 +8101,7 @@
                     `;
                 }).join('');
             } catch (err) {
-                list.innerHTML = `<div class="empty-state"><p>Errore durante la ricerca su Jellyfin.</p></div>`;
+                list.innerHTML = `<div class="empty-state"><p>Error while searching Jellyfin.</p></div>`;
             }
         }
 
@@ -7969,19 +8135,19 @@
                         actions.innerHTML = `<span class="jellyfin-lyrics-text">Lyrics</span>`;
                     }
                     if (data.saved_to_disk) {
-                        showAlertPopup("Lyrics Salvata", `Il file .lrc è stato salvato con successo sul server:\n\n${data.target_path}\n\nJellyfin è stato aggiornato!`, true);
+                        showAlertPopup("Lyrics saved", t('common.lyrics_file_saved', {path: data.target_path}), true);
                     } else {
-                        showAlertPopup("Lyrics Trovata", `Lyrics scaricata con successo!`, true);
+                        showAlertPopup("Lyrics found", t('common.lyrics_downloaded'), true);
                     }
                 } else {
-                    showAlertPopup("Testo non disponibile", data.message || "Impossibile trovare il testo per questa traccia online.");
+                    showAlertPopup("Lyrics unavailable", data.message || "Could not find lyrics for this track online.");
                     if (btn) {
                         btn.disabled = false;
                         btn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> <span>${t('jellyfin.download_lrc')}</span>`;
                     }
                 }
             } catch (err) {
-                showAlertPopup("Errore", "Si è verificato un errore durante il salvataggio.");
+                showAlertPopup(t('common.error'), "An error occurred while saving.");
                 if (btn) {
                     btn.disabled = false;
                     btn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> <span>${t('jellyfin.download_lrc')}</span>`;
@@ -8141,11 +8307,11 @@
             const badge = document.getElementById('jellyfinStatusBadge');
             if (!badge) return;
             if (isOk === true) {
-                badge.innerHTML = `<span class="lrc-badge present">${checkSvg()} ${escapeHtml(msg || 'Connesso a Jellyfin')}</span>`;
+                badge.innerHTML = `<span class="lrc-badge present">${checkSvg()} ${escapeHtml(msg || 'Connected to Jellyfin')}</span>`;
             } else if (isOk === false) {
-                badge.innerHTML = `<span class="lrc-badge missing">${crossSvg()} ${escapeHtml(msg || 'Non connesso')}</span>`;
+                badge.innerHTML = `<span class="lrc-badge missing">${crossSvg()} ${escapeHtml(msg || 'Not connected')}</span>`;
             } else {
-                badge.innerHTML = `<span class="lrc-badge" style="background:rgba(255,255,255,0.06); color:var(--text-secondary);">${escapeHtml(msg || 'Verifica...')}</span>`;
+                badge.innerHTML = `<span class="lrc-badge" style="background:rgba(255,255,255,0.06); color:var(--text-secondary);">${escapeHtml(msg || t('settings.testing_connection'))}</span>`;
             }
         }
 
@@ -8183,7 +8349,7 @@
 
                     // Test Jellyfin connection to update status badge
                     if (data.jellyfin_url && data.jellyfin_api_key) {
-                        updateJellyfinStatusBadge(null, "Verifica connessione Jellyfin...");
+                        updateJellyfinStatusBadge(null, t('settings.testing_connection'));
                         try {
                             const testRes = await fetch('/api/settings/test-jellyfin', {
                                 method: 'POST',
@@ -8199,7 +8365,7 @@
                                 renderJellyfinPathInfo(testData.jellyfin_music_paths);
                             }
                         } catch (e) {
-                            updateJellyfinStatusBadge(false, "Impossibile contattare il server Jellyfin.");
+                            updateJellyfinStatusBadge(false, "Could not reach the Jellyfin server.");
                         }
                     } else {
                         updateJellyfinStatusBadge(false, "Configura URL e API Key per connetterti a Jellyfin");
@@ -8233,15 +8399,15 @@
                 const data = await res.json();
                 if (data.success) {
                     setLanguage(language, false);
-                    showAlertPopup("Impostazioni Salvate", data.message, true);
+                    showAlertPopup("Settings saved", data.message, true);
                     loadSettings();
                     loadPlaylists();
                     reloadCurrentJellySubTab();
                 } else {
-                    showAlertPopup("Errore", "Impossibile salvare le impostazioni.");
+                    showAlertPopup(t('common.error'), "Could not save settings.");
                 }
             } catch (err) {
-                showAlertPopup("Errore", "Si è verificato un errore durante il salvataggio.");
+                showAlertPopup(t('common.error'), "An error occurred while saving.");
             }
         }
         window.saveAllSettings = saveAllSettings;
@@ -8250,7 +8416,7 @@
             const jellyfinUrl = document.getElementById('settingsJellyfinUrl').value.trim();
             const jellyfinApiKey = document.getElementById('settingsJellyfinApiKey').value.trim();
 
-            updateJellyfinStatusBadge(null, "Verifica in corso...");
+            updateJellyfinStatusBadge(null, "Checking connection...");
 
             try {
                 const res = await fetch('/api/settings/test-jellyfin', {
@@ -8268,7 +8434,7 @@
                     renderJellyfinPathInfo(data.jellyfin_music_paths);
                 }
             } catch (err) {
-                updateJellyfinStatusBadge(false, "Impossibile contattare il server Jellyfin.");
+                updateJellyfinStatusBadge(false, "Could not reach the Jellyfin server.");
             }
         }
         window.testJellyfin = testJellyfin;

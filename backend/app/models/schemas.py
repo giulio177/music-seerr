@@ -24,6 +24,7 @@ class DownloadRequest(BaseModel):
     track: TrackItem
     playlist_id: Optional[str] = None
     playlist_name: Optional[str] = None
+    owner_user_id: Optional[str] = None
 
 class DownloadJob(BaseModel):
     job_id: str

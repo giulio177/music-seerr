@@ -46,7 +46,7 @@ class DownloadManager:
                     owner_name=row.get("user_name"),
                     status="interrupted",
                     progress=0,
-                    message="Download interrotto dal riavvio. Puoi riprovare.",
+                    message="Download interrupted by a server restart. You can retry it.",
                     created_at=row.get("created_at"),
                 )
                 self.jobs[job.job_id] = job
@@ -68,7 +68,7 @@ class DownloadManager:
     async def create_job(self, track: TrackItem, playlist_id: Optional[str] = None, playlist_name: Optional[str] = None, owner: Optional[dict] = None, playlist_user_id: Optional[str] = None) -> DownloadJob:
         active = sum(job.status in self.ACTIVE_STATUSES for job in self.jobs.values())
         if active >= self.MAX_ACTIVE_JOBS:
-            raise HTTPException(status_code=429, detail="La coda ha raggiunto il limite di 500 download. Attendi che vengano completati alcuni brani.")
+            raise HTTPException(status_code=429, detail="The queue has reached its 500 download limit. Wait for some tracks to finish.")
         owner = owner or {"id": "guest:unknown", "name": "Guest", "is_admin": False}
         job_id = str(uuid.uuid4())
         job = DownloadJob(
@@ -81,7 +81,7 @@ class DownloadManager:
             owner_name=owner.get("name", "Guest"),
             status="pending",
             progress=0,
-            message="Richiesta in coda"
+            message="Request queued"
         )
         self.jobs[job_id] = job
         track_data = track.model_dump() if hasattr(track, "model_dump") else track.dict()
@@ -98,7 +98,7 @@ class DownloadManager:
         except Exception as exc:
             print(f"[DownloadManager] Job {job.job_id} failed before execution: {exc}")
             job.status = "failed"
-            job.message = f"Errore durante il download: {exc}"
+            job.message = f"Download failed: {exc}"
             UserDataService.update_download_status(job.job_id, job.status)
 
     async def _run_download(self, job: DownloadJob):
@@ -106,7 +106,7 @@ class DownloadManager:
         job.status = "downloading"
         UserDataService.update_download_status(job.job_id, job.status)
         job.progress = 10
-        job.message = f"Ricerca audio per {track.artist} - {track.title}"
+        job.message = f"Finding audio for {track.artist} - {track.title}"
 
         safe_artist = sanitize_filename(track.artist)
         safe_album = sanitize_filename(track.album)
@@ -187,12 +187,12 @@ class DownloadManager:
             if settings.JELLYFIN_API_KEY:
                 job.status = "jellyfin_sync"
                 UserDataService.update_download_status(job.job_id, job.status)
-                job.message = "Aggiornamento libreria Jellyfin in corso..."
+                job.message = "Refreshing the Jellyfin library..."
                 await JellyfinService.refresh_library()
 
                 # Se l'utente ha chiesto di aggiungere a una playlist
                 if job.playlist_id:
-                    job.message = f"Attesa scansione per inserire in playlist '{job.playlist_name or job.playlist_id}'..."
+                    job.message = f"Waiting for Jellyfin to scan the track before adding it to '{job.playlist_name or job.playlist_id}'..."
                     # Polling fino a 15 secondi per attendere che Jellyfin veda il brano
                     jellyfin_item_id = None
                     for _ in range(8):
@@ -203,21 +203,21 @@ class DownloadManager:
                     
                     if jellyfin_item_id:
                         await JellyfinService.add_to_playlist(job.playlist_id, jellyfin_item_id, user_id=job.playlist_user_id)
-                        job.message = f"Aggiunto con successo alla playlist!"
+                        job.message = "Added to the playlist."
                     else:
-                        job.message = "File scaricato, ma non ancora indicizzato nella playlist da Jellyfin."
+                        job.message = "The file was downloaded, but Jellyfin has not added it to the playlist yet."
 
             job.status = "completed"
             job.progress = 100
             UserDataService.update_download_status(job.job_id, job.status)
-            if not job.message or "Attesa" in job.message:
-                job.message = f"Completato! Salvato in {safe_artist}/{safe_album}/{safe_title}.mp3"
+            if not job.message or "Waiting for Jellyfin" in job.message:
+                job.message = f"Completed. Saved to {safe_artist}/{safe_album}/{safe_title}.mp3"
 
         except Exception as e:
             print(f"[DownloadManager] Errore: {e}")
             job.status = "failed"
             UserDataService.update_download_status(job.job_id, job.status)
-            job.message = f"Errore durante il download: {str(e)}"
+            job.message = f"Download failed: {str(e)}"
 
     def _tag_audio(self, mp3_path: str, track: TrackItem):
         """Inietta metadati ID3 e copertina ad altissima risoluzione nell'MP3"""

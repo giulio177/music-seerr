@@ -170,7 +170,7 @@ class PlaylistCSVService:
             csv_path = cls.get_csv_path(playlist_id)
             if not os.path.exists(csv_path):
                 return {
-                    "error": "Nessun CSV accoppiato a questa playlist.",
+                    "error": "No CSV is paired with this playlist.",
                     "summary": {"total": 0, "in_playlist": 0, "in_library": 0, "to_download": 0},
                     "in_playlist": [],
                     "in_library": [],
@@ -337,10 +337,10 @@ class PlaylistCSVService:
     async def queue_tracks_download(cls, playlist_id: str, playlist_name: str, tracks: List[Dict[str, str]], owner: dict, playlist_user_id: Optional[str] = None) -> Dict[str, Any]:
         requested = [item for item in tracks if item.get("title", "").strip()]
         if len(requested) > download_manager.MAX_ACTIVE_JOBS:
-            raise HTTPException(status_code=413, detail="Puoi inviare al massimo 500 brani in una singola operazione.")
+            raise HTTPException(status_code=413, detail="You can submit up to 500 tracks in one operation.")
         active = sum(job.status in download_manager.ACTIVE_STATUSES for job in download_manager.jobs.values())
         if active + len(requested) > download_manager.MAX_ACTIVE_JOBS:
-            raise HTTPException(status_code=429, detail="La coda può contenere al massimo 500 download attivi. Attendi che si liberino alcuni posti.")
+            raise HTTPException(status_code=429, detail="The queue can hold up to 500 active downloads. Wait for a slot to become available.")
 
         def build_track(item):
             title = item.get("title", "").strip()
@@ -350,7 +350,7 @@ class PlaylistCSVService:
             return TrackItem(
                 id=safe_id or f"csv_{len(title)}",
                 title=title,
-                artist=artist or "Artista",
+                artist=artist or "Unknown artist",
                 album=album or "Album",
                 duration=max(0, int(item.get("duration") or 0)),
                 cover_url=item.get("cover_url") or None,

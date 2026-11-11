@@ -63,26 +63,26 @@ async def resolve_app_session(request: Request, call_next):
 def require_app_user(request: Request) -> dict:
     principal = getattr(request.state, "app_user", None)
     if not principal:
-        raise HTTPException(status_code=401, detail="Accedi con Jellyfin o continua come ospite.")
+        raise HTTPException(status_code=401, detail="Sign in with Jellyfin or continue as a guest.")
     return principal
 
 def require_admin(request: Request) -> dict:
     principal = require_app_user(request)
     if not principal.get("is_admin"):
-        raise HTTPException(status_code=403, detail="Questa funzione è riservata agli amministratori.")
+        raise HTTPException(status_code=403, detail="This action is reserved for administrators.")
     return principal
 
 def require_jellyfin_user(request: Request) -> dict:
     principal = require_app_user(request)
     if principal.get("is_guest") or not principal.get("id"):
-        raise HTTPException(status_code=403, detail="Accedi con un account Jellyfin per consultare questa libreria.")
+        raise HTTPException(status_code=403, detail="Sign in with a Jellyfin account to access this library.")
     return principal
 
 async def resolve_playlist_access(playlist_id: str, principal: dict, for_mutation: bool = False, owner_user_id: Optional[str] = None):
     if principal.get("is_guest"):
-        raise HTTPException(status_code=403, detail="Accedi con Jellyfin per usare le playlist.")
+        raise HTTPException(status_code=403, detail="Sign in with Jellyfin to use playlists.")
     if owner_user_id and not principal.get("is_admin") and owner_user_id != principal.get("id"):
-        raise HTTPException(status_code=403, detail="Puoi indicare solo il tuo account Jellyfin.")
+        raise HTTPException(status_code=403, detail="You can only select your own Jellyfin account.")
     if principal.get("is_admin"):
         users = await JellyfinService.get_users()
         user_names = {user.get("id"): user.get("name") for user in users if user.get("id")}
@@ -90,17 +90,17 @@ async def resolve_playlist_access(playlist_id: str, principal: dict, for_mutatio
         known_user_ids = {user.get("id") for user in users if user.get("id")}
         if owner_user_id:
             if owner_user_id not in known_user_ids:
-                raise HTTPException(status_code=400, detail="L'account selezionato non esiste più in Jellyfin.")
+                raise HTTPException(status_code=400, detail="The selected Jellyfin account no longer exists.")
             selected_user = next(user for user in users if user.get("id") == owner_user_id)
             for playlist in await JellyfinService.get_playlists(user_id=owner_user_id):
                 if playlist.id != playlist_id:
                     continue
                 if playlist.owner_user_id and playlist.owner_user_id != owner_user_id:
-                    raise HTTPException(status_code=403, detail="Jellyfin indica che questa playlist appartiene a un altro account.")
+                    raise HTTPException(status_code=403, detail="Jellyfin reports that this playlist belongs to another account.")
                 playlist.owner_user_id = owner_user_id
                 playlist.owner_name = user_names.get(owner_user_id) or selected_user.get("name")
                 return playlist, owner_user_id
-            raise HTTPException(status_code=404, detail="La playlist non è accessibile dall'account Jellyfin selezionato.")
+            raise HTTPException(status_code=404, detail="The selected Jellyfin account cannot access this playlist.")
         for user in users:
             access_user_id = user.get("id")
             if not access_user_id:
@@ -115,22 +115,22 @@ async def resolve_playlist_access(playlist_id: str, principal: dict, for_mutatio
                         accessible_match = (playlist, access_user_id)
         if accessible_match:
             if for_mutation:
-                raise HTTPException(status_code=409, detail="Jellyfin non ha indicato il proprietario. Seleziona l'account proprietario nel pannello CSV.")
+                raise HTTPException(status_code=409, detail="Jellyfin did not report the playlist owner. Select the owner account in the CSV panel.")
             return accessible_match
     else:
         if owner_user_id and owner_user_id != principal.get("id"):
-            raise HTTPException(status_code=403, detail="Puoi indicare solo il tuo account Jellyfin.")
+            raise HTTPException(status_code=403, detail="You can only select your own Jellyfin account.")
         for playlist in await JellyfinService.get_playlists(user_id=principal.get("id")):
             if playlist.id == playlist_id:
                 if for_mutation:
                     if not playlist.owner_user_id:
-                        raise HTTPException(status_code=409, detail="Jellyfin non ha indicato il proprietario della playlist; chiedi all'amministratore di verificarlo.")
+                        raise HTTPException(status_code=409, detail="Jellyfin did not report the playlist owner. Ask an administrator to verify it.")
                     if playlist.owner_user_id != principal.get("id"):
-                        raise HTTPException(status_code=403, detail="Puoi modificare solo le playlist che appartengono al tuo account Jellyfin.")
+                        raise HTTPException(status_code=403, detail="You can only edit playlists owned by your Jellyfin account.")
                 if playlist.owner_user_id == principal.get("id"):
                     playlist.owner_name = principal.get("name")
                 return playlist, principal.get("id")
-    raise HTTPException(status_code=404, detail="Playlist non trovata o non accessibile.")
+    raise HTTPException(status_code=404, detail="Playlist not found or inaccessible.")
 
 def set_session_cookie(response: Response, token: str, request: Request):
     response.set_cookie(
@@ -163,7 +163,7 @@ async def serve_index():
 async def health_check():
     music_ready = bool(settings.MUSIC_OUTPUT_DIR and os.path.isdir(settings.MUSIC_OUTPUT_DIR) and os.access(settings.MUSIC_OUTPUT_DIR, os.W_OK))
     if not music_ready:
-        raise HTTPException(status_code=503, detail="La cartella musicale non è disponibile in scrittura.")
+        raise HTTPException(status_code=503, detail="The music folder is not writable.")
     return {"status": "healthy", "jellyfin_configured": bool(settings.JELLYFIN_API_KEY)}
 
 def _normalize_str(text: Optional[str]) -> str:
@@ -229,11 +229,11 @@ async def get_recommendations(request: Request, limit: int = 12, user_id: Option
     target_name = principal.get("name", "Guest")
     if user_id:
         if not principal.get("is_admin"):
-            raise HTTPException(status_code=403, detail="Solo gli amministratori possono consultare consigliati di altri utenti.")
+            raise HTTPException(status_code=403, detail="Only administrators can view recommendations for other users.")
         known_users = await JellyfinService.get_users()
         target = next((item for item in known_users if item.get("id") == user_id), None)
         if not target:
-            raise HTTPException(status_code=404, detail="Utente Jellyfin non trovato.")
+            raise HTTPException(status_code=404, detail="Jellyfin user not found.")
         target_user_id = user_id
         target_name = target.get("name", target_user_id)
     is_guest_target = target_user_id.startswith("guest:")
@@ -384,7 +384,7 @@ async def stream_jellyfin_track(item_id: str, request: Request, format: Optional
 
     require_jellyfin_user(request)
     if not settings.JELLYFIN_URL or not settings.JELLYFIN_API_KEY:
-        raise HTTPException(status_code=400, detail="Jellyfin non configurato")
+        raise HTTPException(status_code=400, detail="Jellyfin is not configured.")
     force_mp3 = (format == "mp3")
     stream_url = await JellyfinService.get_stream_url(item_id, force_mp3=force_mp3)
     if not stream_url:
@@ -425,7 +425,7 @@ async def get_jellyfin_image(item_id: str, request: Request):
     """Proxy Jellyfin artwork so browsers never need to resolve the container hostname."""
     require_jellyfin_user(request)
     if not settings.JELLYFIN_URL or not settings.JELLYFIN_API_KEY:
-        raise HTTPException(status_code=400, detail="Jellyfin non configurato")
+        raise HTTPException(status_code=400, detail="Jellyfin is not configured.")
     image_url = f"{settings.JELLYFIN_URL.rstrip('/')}/Items/{item_id}/Images/Primary"
     return await _proxy_jellyfin_image(image_url, params={"maxWidth": 300, "maxHeight": 300})
 
@@ -434,9 +434,9 @@ async def get_jellyfin_user_image(user_id: str, request: Request):
     """Proxy a Jellyfin user artwork using server-side API credentials."""
     principal = require_app_user(request)
     if user_id != principal.get("id") and not principal.get("is_admin"):
-        raise HTTPException(status_code=403, detail="Non puoi visualizzare il profilo di un altro utente.")
+        raise HTTPException(status_code=403, detail="You cannot view another user’s profile.")
     if not settings.JELLYFIN_URL or not settings.JELLYFIN_API_KEY:
-        raise HTTPException(status_code=400, detail="Jellyfin non configurato")
+        raise HTTPException(status_code=400, detail="Jellyfin is not configured.")
     image_url = f"{settings.JELLYFIN_URL.rstrip('/')}/Users/{user_id}/Images/Primary"
     return await _proxy_jellyfin_image(image_url)
 
@@ -448,14 +448,14 @@ async def _proxy_jellyfin_image(image_url: str, params: Optional[dict] = None) -
         async with httpx.AsyncClient(timeout=12.0, follow_redirects=True) as client:
             image = await client.get(image_url, params=params, headers=JellyfinService._headers())
     except httpx.HTTPError as exc:
-        raise HTTPException(status_code=502, detail="Impossibile recuperare l'immagine da Jellyfin.") from exc
+        raise HTTPException(status_code=502, detail="Could not retrieve the image from Jellyfin.") from exc
     if image.status_code != 200:
         return Response(status_code=image.status_code, headers={"Cache-Control": "private, max-age=60"})
     content_type = image.headers.get("content-type", "image/jpeg")
     if not content_type.startswith("image/"):
-        raise HTTPException(status_code=502, detail="Jellyfin ha restituito un contenuto non immagine.")
+        raise HTTPException(status_code=502, detail="Jellyfin returned a non-image response.")
     if len(image.content) > 8 * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="Immagine Jellyfin troppo grande.")
+        raise HTTPException(status_code=413, detail="The Jellyfin image is too large.")
     return Response(
         content=image.content,
         media_type=content_type,
@@ -487,12 +487,12 @@ async def complete_setup(payload: dict, request: Request):
     """Completa la procedura guidata di set-up e salva la configurazione"""
     principal = getattr(request.state, "app_user", None)
     if getattr(settings, "SETUP_COMPLETED", False) and (not principal or not principal.get("is_admin")):
-        raise HTTPException(status_code=403, detail="Solo un amministratore può modificare la configurazione globale.")
+        raise HTTPException(status_code=403, detail="Only an administrator can change the global configuration.")
     payload["setup_completed"] = True
     save_webapp_config(payload)
     return {
         "success": True,
-        "message": "Configurazione completata con successo!",
+        "message": "Setup completed successfully!",
         "setup_completed": True,
         "music_dir": settings.MUSIC_OUTPUT_DIR,
         "jellyfin_url": settings.JELLYFIN_URL,
@@ -517,15 +517,15 @@ async def auth_login(payload: dict, request: Request, response: Response):
     jellyfin_url = settings.JELLYFIN_URL if getattr(settings, "SETUP_COMPLETED", False) else payload.get("jellyfin_url")
 
     if not username:
-        raise HTTPException(status_code=400, detail="Il nome utente è obbligatorio.")
+        raise HTTPException(status_code=400, detail="A username is required.")
 
     res = await JellyfinService.authenticate_user(username=username, password=password, jellyfin_url=jellyfin_url)
     if not res.get("success"):
-        raise HTTPException(status_code=401, detail=res.get("message", "Credenziali non valide."))
+        raise HTTPException(status_code=401, detail=res.get("message", "Invalid credentials."))
 
     user = res.get("user", {})
     if not user.get("id"):
-        raise HTTPException(status_code=401, detail="Jellyfin non ha restituito un'identità valida.")
+        raise HTTPException(status_code=401, detail="Jellyfin did not return a valid identity.")
     UserDataService.delete_session(request.cookies.get(APP_SESSION_COOKIE))
     set_session_cookie(response, UserDataService.create_session(user), request)
     # Do not return Jellyfin's access token to the browser.
@@ -536,7 +536,7 @@ async def auth_logout(request: Request, response: Response):
     """Termina la sessione utente locale"""
     UserDataService.delete_session(request.cookies.get(APP_SESSION_COOKIE))
     response.delete_cookie(APP_SESSION_COOKIE, path="/", httponly=True, samesite="lax")
-    return {"success": True, "message": "Disconnesso con successo."}
+    return {"success": True, "message": "Signed out successfully."}
 
 @app.post("/api/auth/guest")
 async def auth_guest(request: Request, response: Response):
@@ -577,7 +577,7 @@ async def create_play_history(payload: dict, request: Request):
     principal = require_app_user(request)
     source = payload.get("source", "preview")
     if source not in {"preview", "jellyfin", "downloaded"}:
-        raise HTTPException(status_code=400, detail="Sorgente di riproduzione non valida.")
+        raise HTTPException(status_code=400, detail="Invalid playback source.")
     saved = UserDataService.record_play(principal, payload.get("track") or {}, source=source)
     return {"recorded": saved}
 
@@ -603,7 +603,7 @@ async def get_jellyfin_track_lyrics(item_id: str, request: Request, title: Optio
         lyrics = await LyricsService.fetch_lyrics(title, artist)
         if lyrics and (lyrics.get("synced") or lyrics.get("plain")):
             return {"found": True, "synced": lyrics.get("synced"), "plain": lyrics.get("plain")}
-    return {"found": False, "message": "Nessun testo trovato per questo brano."}
+    return {"found": False, "message": "No lyrics found for this track."}
 
 @app.post("/api/jellyfin/save-lyrics")
 async def save_jellyfin_lyrics(payload: dict, request: Request):
@@ -614,7 +614,7 @@ async def save_jellyfin_lyrics(payload: dict, request: Request):
     artist = payload.get("artist")
     album = payload.get("album")
     if not item_id or not title or not artist:
-        raise HTTPException(status_code=400, detail="item_id, title e artist sono obbligatori")
+        raise HTTPException(status_code=400, detail="item_id, title, and artist are required.")
 
     result = await JellyfinService.save_lrc_for_jellyfin_track(
         item_id=item_id,
@@ -632,7 +632,7 @@ async def download_lrc_file(item_id: str, request: Request, title: str, artist: 
     from app.services.lyrics_service import LyricsService
     lyrics = await LyricsService.fetch_lyrics(title, artist, album)
     if not lyrics or not (lyrics.get("synced") or lyrics.get("plain")):
-        raise HTTPException(status_code=404, detail="Lyrics non trovata")
+        raise HTTPException(status_code=404, detail="Lyrics not found.")
     content = lyrics.get("synced") or lyrics.get("plain")
     filename = f"{artist} - {title}.lrc".replace("/", "_")
     return Response(
@@ -650,7 +650,9 @@ async def start_download(req: DownloadRequest, request: Request):
     playlist_user_id = None
     playlist_name = req.playlist_name
     if req.playlist_id:
-        selected_playlist, playlist_user_id = await resolve_playlist_access(req.playlist_id, principal, for_mutation=True)
+        selected_playlist, playlist_user_id = await resolve_playlist_access(
+            req.playlist_id, principal, for_mutation=True, owner_user_id=req.owner_user_id
+        )
         playlist_name = selected_playlist.name
     job = await download_manager.create_job(
         track=req.track,
@@ -666,9 +668,9 @@ async def get_download_jobs(request: Request, all_users: bool = False, user_id: 
     """Restituisce i job correnti dell'utente, oppure il totale solo per un admin"""
     principal = require_app_user(request)
     if all_users and not principal.get("is_admin"):
-        raise HTTPException(status_code=403, detail="Questa funzione è riservata agli amministratori.")
+        raise HTTPException(status_code=403, detail="This action is reserved for administrators.")
     if user_id and (not all_users or not principal.get("is_admin")):
-        raise HTTPException(status_code=403, detail="Il filtro per utente è riservato agli amministratori.")
+        raise HTTPException(status_code=403, detail="The user filter is reserved for administrators.")
     return download_manager.list_jobs(owner_id=principal.get("id"), include_all=all_users, user_id=user_id)
 
 @app.get("/api/download/job/{job_id}", response_model=DownloadJob)
@@ -676,10 +678,10 @@ async def get_job_status(job_id: str, request: Request):
     """Controlla lo stato di avanzamento di un download specifico"""
     job = download_manager.get_job(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job non trovato")
+        raise HTTPException(status_code=404, detail="Job not found.")
     principal = require_app_user(request)
     if job.owner_user_id != principal.get("id") and not principal.get("is_admin"):
-        raise HTTPException(status_code=403, detail="Questo download appartiene a un altro utente.")
+        raise HTTPException(status_code=403, detail="This download belongs to another user.")
     return job
 
 @app.post("/api/download/job/{job_id}/retry", response_model=DownloadJob)
@@ -688,11 +690,11 @@ async def retry_download_job(job_id: str, request: Request):
     principal = require_app_user(request)
     previous = download_manager.get_job(job_id)
     if not previous:
-        raise HTTPException(status_code=404, detail="Job non trovato o non disponibile per il nuovo tentativo.")
+        raise HTTPException(status_code=404, detail="Job not found or unavailable for retry.")
     if previous.owner_user_id != principal.get("id"):
-        raise HTTPException(status_code=403, detail="Puoi riprovare solo i download del tuo account.")
+        raise HTTPException(status_code=403, detail="You can only retry downloads from your account.")
     if previous.status not in {"failed", "interrupted"}:
-        raise HTTPException(status_code=409, detail="Questo download non può essere rimesso in coda.")
+        raise HTTPException(status_code=409, detail="This download cannot be queued again.")
 
     playlist_user_id = None
     playlist_name = previous.playlist_name
@@ -736,7 +738,7 @@ async def get_downloaded_library(request: Request):
 
                 # Artista e album da cartelle se presenti
                 parts = rel_path.split(os.sep)
-                artist = parts[0] if len(parts) > 2 else "Artista Locale"
+                artist = parts[0] if len(parts) > 2 else "Local artist"
                 album = parts[1] if len(parts) > 2 else "Singoli"
                 title = base_name
 
@@ -762,9 +764,9 @@ async def stream_local_track(rel_path: str, request: Request):
     base_dir = os.path.realpath(settings.MUSIC_OUTPUT_DIR)
     full_path = os.path.realpath(os.path.join(base_dir, rel_path))
     if os.path.commonpath((base_dir, full_path)) != base_dir:
-        raise HTTPException(status_code=403, detail="Percorso non consentito")
+        raise HTTPException(status_code=403, detail="Path is not allowed.")
     if not os.path.exists(full_path):
-        raise HTTPException(status_code=404, detail="File non trovato")
+        raise HTTPException(status_code=404, detail="File not found.")
     return FileResponse(full_path, media_type="audio/mpeg", filename=os.path.basename(full_path))
 
 @app.get("/api/lyrics")
@@ -774,7 +776,7 @@ async def get_lyrics(title: str, artist: str, request: Request):
     from app.services.lyrics_service import LyricsService
     data = await LyricsService.fetch_lyrics(title, artist)
     if not data:
-        raise HTTPException(status_code=404, detail="Testo non trovato")
+        raise HTTPException(status_code=404, detail="Lyrics not found.")
     return data
 
 @app.post("/api/library/get-or-fetch-lyrics")
@@ -793,13 +795,13 @@ async def get_or_fetch_lyrics(payload: dict, request: Request):
     base_dir = os.path.realpath(settings.MUSIC_OUTPUT_DIR)
     full_path = os.path.realpath(full_path) if full_path else ""
     if not full_path or os.path.commonpath((base_dir, full_path)) != base_dir or not os.path.exists(full_path):
-        raise HTTPException(status_code=400, detail="File audio non trovato sul disco")
+        raise HTTPException(status_code=400, detail="Audio file not found on disk.")
 
     result = await LyricsService.get_or_fetch(full_path, artist, title)
     if not result:
         return {
             "found": False,
-            "message": f"Nessun testo trovato per '{artist} - {title}' su disco o su LRCLIB."
+            "message": f"No lyrics found for '{artist} - {title}' on disk or LRCLIB."
         }
 
     return {
@@ -808,7 +810,7 @@ async def get_or_fetch_lyrics(payload: dict, request: Request):
         "synced": result.get("synced"),
         "plain": result.get("plain"),
         "lrc_path": result.get("lrc_path"),
-        "message": "Testo caricato dal disco" if result.get("source") == "disk" else "Testo scaricato e salvato nella cartella del brano!"
+        "message": "Lyrics loaded from disk" if result.get("source") == "disk" else "Lyrics downloaded and saved alongside the track."
     }
 
 @app.get("/api/config/status")
@@ -832,7 +834,7 @@ async def get_settings(request: Request):
     if principal and not principal.get("is_admin"):
         return {"language": getattr(settings, "LANGUAGE", "en") or "en", "setup_completed": getattr(settings, "SETUP_COMPLETED", False)}
     if getattr(settings, "SETUP_COMPLETED", False) and not principal:
-        raise HTTPException(status_code=401, detail="Accedi come amministratore per gestire la configurazione.")
+        raise HTTPException(status_code=401, detail="Sign in as an administrator to manage configuration.")
     jellyfin_paths = await JellyfinService.get_music_library_paths()
     return {
         "music_dir": settings.MUSIC_OUTPUT_DIR,
@@ -851,14 +853,14 @@ async def save_settings(payload: dict, request: Request):
     principal = getattr(request.state, "app_user", None)
     if principal and not principal.get("is_admin"):
         if set(payload) - {"language"}:
-            raise HTTPException(status_code=403, detail="Solo un amministratore può modificare la configurazione globale.")
+            raise HTTPException(status_code=403, detail="Only an administrator can change the global configuration.")
     elif getattr(settings, "SETUP_COMPLETED", False) and not principal:
-        raise HTTPException(status_code=401, detail="Accedi come amministratore per gestire la configurazione.")
+        raise HTTPException(status_code=401, detail="Sign in as an administrator to manage configuration.")
     save_webapp_config(payload)
 
     return {
         "success": True,
-        "message": "Impostazioni salvate su config.json e applicate con successo!",
+        "message": "Settings saved and applied successfully.",
         "music_dir": settings.MUSIC_OUTPUT_DIR,
         "dir_exists": os.path.exists(settings.MUSIC_OUTPUT_DIR),
         "language": getattr(settings, "LANGUAGE", "en") or "en",
@@ -877,7 +879,7 @@ async def test_jellyfin_connection(payload: dict, request: Request):
         api_key = settings.JELLYFIN_API_KEY
 
     if not url:
-        return {"success": False, "message": "Inserisci l'URL del server Jellyfin."}
+        return {"success": False, "message": "Enter the Jellyfin server URL."}
 
     # 1. Test endpoint pubblico (nessuna autenticazione richiesta) per verificare raggiungibilità
     server_info = {}
@@ -894,12 +896,12 @@ async def test_jellyfin_connection(payload: dict, request: Request):
         except httpx.ConnectError:
             return {
                 "success": False,
-                "message": f"Impossibile raggiungere {url}. Verifica l'indirizzo IP, porta (es. 8096) e che il server sia acceso."
+                "message": f"Could not reach {url}. Check the IP address, port (for example 8096), and that the server is running."
             }
         except Exception as e:
             return {
                 "success": False,
-                "message": f"Errore durante la connessione a {url}: {str(e)}"
+                "message": f"Connection to {url} failed: {str(e)}"
             }
 
         server_name = server_info.get("ServerName", "Jellyfin")
@@ -909,7 +911,7 @@ async def test_jellyfin_connection(payload: dict, request: Request):
             users = await JellyfinService.get_users(jellyfin_url=url, api_key=None)
             return {
                 "success": True,
-                "message": f"Server '{server_name}' (v{version}) online! Inserisci ora l'API Key per autenticarti.",
+                "message": f"Server '{server_name}' (v{version}) is online. Enter the API key to authenticate.",
                 "users": users
             }
 
@@ -944,7 +946,7 @@ async def test_jellyfin_connection(payload: dict, request: Request):
                     }
                 return {
                     "success": False,
-                    "message": f"Server '{server_name}' raggiunto, ma l'API Key non è valida o scaduta (401 Unauthorized)."
+                    "message": f"Server '{server_name}' is reachable, but the API key is invalid or expired (401 Unauthorized)."
                 }
             else:
                 return {
@@ -954,7 +956,7 @@ async def test_jellyfin_connection(payload: dict, request: Request):
         except Exception as e:
             return {
                 "success": False,
-                "message": f"Errore durante la verifica dell'API Key: {str(e)}"
+                "message": f"API key verification failed: {str(e)}"
             }
 
 # === PLAYLIST CSV SYNC ENDPOINTS ===
@@ -989,11 +991,35 @@ class AddItemsRequest(BaseModel):
     item_ids: List[str]
     owner_user_id: Optional[str] = None
 
+class PlaylistEntryRequest(BaseModel):
+    entry_id: str
+    owner_user_id: Optional[str] = None
+
+class FavoriteRequest(BaseModel):
+    favorite: bool = True
+
 @app.post("/api/jellyfin/playlist/{playlist_id}/add-items")
 async def add_items_to_playlist(playlist_id: str, req: AddItemsRequest, request: Request):
     principal = require_jellyfin_user(request)
     _, access_user_id = await resolve_playlist_access(playlist_id, principal, for_mutation=True, owner_user_id=req.owner_user_id)
     return await PlaylistCSVService.add_tracks_to_playlist(playlist_id, req.item_ids, user_id=access_user_id)
+
+@app.delete("/api/jellyfin/playlist/{playlist_id}/items/{entry_id}")
+async def remove_item_from_playlist(playlist_id: str, entry_id: str, request: Request, owner_user_id: Optional[str] = None):
+    principal = require_jellyfin_user(request)
+    _, access_user_id = await resolve_playlist_access(
+        playlist_id, principal, for_mutation=True, owner_user_id=owner_user_id
+    )
+    if not await JellyfinService.remove_from_playlist(playlist_id, entry_id, user_id=access_user_id):
+        raise HTTPException(status_code=502, detail="Jellyfin could not remove this playlist entry.")
+    return {"success": True}
+
+@app.put("/api/jellyfin/items/{item_id}/favorite")
+async def set_jellyfin_favorite(item_id: str, payload: FavoriteRequest, request: Request):
+    principal = require_jellyfin_user(request)
+    if not await JellyfinService.set_favorite(item_id, principal.get("id"), payload.favorite):
+        raise HTTPException(status_code=502, detail="Jellyfin could not update this favorite.")
+    return {"success": True, "favorite": payload.favorite}
 
 class QueueDownloadsRequest(BaseModel):
     playlist_name: str
