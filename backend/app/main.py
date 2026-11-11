@@ -101,6 +101,17 @@ async def resolve_playlist_access(playlist_id: str, principal: dict, for_mutatio
                 playlist.owner_name = user_names.get(owner_user_id) or selected_user.get("name")
                 return playlist, owner_user_id
             raise HTTPException(status_code=404, detail="The selected Jellyfin account cannot access this playlist.")
+        # Jellyfin may omit OwnerUserId even for playlists returned in the
+        # authenticated administrator's own account scope. In that case the
+        # verified session identifies the owner without a client-supplied ID.
+        for playlist in await JellyfinService.get_playlists(user_id=principal.get("id")):
+            if playlist.id != playlist_id:
+                continue
+            if playlist.owner_user_id and playlist.owner_user_id != principal.get("id"):
+                break
+            playlist.owner_user_id = principal.get("id")
+            playlist.owner_name = user_names.get(principal.get("id")) or principal.get("name")
+            return playlist, principal.get("id")
         for user in users:
             access_user_id = user.get("id")
             if not access_user_id:
