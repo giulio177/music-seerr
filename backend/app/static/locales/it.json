@@ -106,7 +106,12 @@
     "csv_btn_download_all": "Metti in coda tutti nel download",
     "csv_btn_add": "Aggiungi",
     "csv_btn_download": "Scarica",
-    "csv_matching": "Confronto del file CSV con la libreria in corso..."
+    "csv_matching": "Confronto del file CSV con la libreria in corso...",
+    "csv_owner_label": "Proprietario della playlist",
+    "csv_owner_help": "Da amministratore, scegli l’account proprietario. Jellyfin verificherà che possa accedere alla playlist.",
+    "csv_owner_select": "Seleziona un account Jellyfin",
+    "csv_owner_required": "Seleziona il proprietario della playlist per continuare.",
+    "csv_owner_load_error": "Impossibile caricare gli account Jellyfin."
   },
   "player": {
     "now_playing": "In Riproduzione",

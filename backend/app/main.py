@@ -78,14 +78,29 @@ def require_jellyfin_user(request: Request) -> dict:
         raise HTTPException(status_code=403, detail="Accedi con un account Jellyfin per consultare questa libreria.")
     return principal
 
-async def resolve_playlist_access(playlist_id: str, principal: dict, for_mutation: bool = False):
+async def resolve_playlist_access(playlist_id: str, principal: dict, for_mutation: bool = False, owner_user_id: Optional[str] = None):
     if principal.get("is_guest"):
         raise HTTPException(status_code=403, detail="Accedi con Jellyfin per usare le playlist.")
+    if owner_user_id and not principal.get("is_admin") and owner_user_id != principal.get("id"):
+        raise HTTPException(status_code=403, detail="Puoi indicare solo il tuo account Jellyfin.")
     if principal.get("is_admin"):
         users = await JellyfinService.get_users()
         user_names = {user.get("id"): user.get("name") for user in users if user.get("id")}
         accessible_match = None
         known_user_ids = {user.get("id") for user in users if user.get("id")}
+        if owner_user_id:
+            if owner_user_id not in known_user_ids:
+                raise HTTPException(status_code=400, detail="L'account selezionato non esiste più in Jellyfin.")
+            selected_user = next(user for user in users if user.get("id") == owner_user_id)
+            for playlist in await JellyfinService.get_playlists(user_id=owner_user_id):
+                if playlist.id != playlist_id:
+                    continue
+                if playlist.owner_user_id and playlist.owner_user_id != owner_user_id:
+                    raise HTTPException(status_code=403, detail="Jellyfin indica che questa playlist appartiene a un altro account.")
+                playlist.owner_user_id = owner_user_id
+                playlist.owner_name = user_names.get(owner_user_id) or selected_user.get("name")
+                return playlist, owner_user_id
+            raise HTTPException(status_code=404, detail="La playlist non è accessibile dall'account Jellyfin selezionato.")
         for user in users:
             access_user_id = user.get("id")
             if not access_user_id:
@@ -100,14 +115,16 @@ async def resolve_playlist_access(playlist_id: str, principal: dict, for_mutatio
                         accessible_match = (playlist, access_user_id)
         if accessible_match:
             if for_mutation:
-                raise HTTPException(status_code=409, detail="Jellyfin non ha indicato il proprietario di questa playlist; non posso modificarla in modo sicuro.")
+                raise HTTPException(status_code=409, detail="Jellyfin non ha indicato il proprietario. Seleziona l'account proprietario nel pannello CSV.")
             return accessible_match
     else:
+        if owner_user_id and owner_user_id != principal.get("id"):
+            raise HTTPException(status_code=403, detail="Puoi indicare solo il tuo account Jellyfin.")
         for playlist in await JellyfinService.get_playlists(user_id=principal.get("id")):
             if playlist.id == playlist_id:
                 if for_mutation:
                     if not playlist.owner_user_id:
-                        raise HTTPException(status_code=409, detail="Jellyfin non ha indicato il proprietario di questa playlist; non posso modificarla in modo sicuro.")
+                        raise HTTPException(status_code=409, detail="Jellyfin non ha indicato il proprietario della playlist; chiedi all'amministratore di verificarlo.")
                     if playlist.owner_user_id != principal.get("id"):
                         raise HTTPException(status_code=403, detail="Puoi modificare solo le playlist che appartengono al tuo account Jellyfin.")
                 if playlist.owner_user_id == principal.get("id"):
@@ -922,15 +939,15 @@ async def test_jellyfin_connection(payload: dict, request: Request):
 
 # === PLAYLIST CSV SYNC ENDPOINTS ===
 @app.get("/api/jellyfin/playlist/{playlist_id}/csv-info")
-async def get_playlist_csv_info(playlist_id: str, request: Request):
+async def get_playlist_csv_info(playlist_id: str, request: Request, owner_user_id: Optional[str] = None):
     principal = require_jellyfin_user(request)
-    await resolve_playlist_access(playlist_id, principal)
+    await resolve_playlist_access(playlist_id, principal, owner_user_id=owner_user_id)
     return PlaylistCSVService.get_csv_info(playlist_id)
 
 @app.post("/api/jellyfin/playlist/{playlist_id}/csv")
-async def upload_playlist_csv(playlist_id: str, request: Request, file: UploadFile = File(...)):
+async def upload_playlist_csv(playlist_id: str, request: Request, file: UploadFile = File(...), owner_user_id: Optional[str] = None):
     principal = require_jellyfin_user(request)
-    await resolve_playlist_access(playlist_id, principal)
+    await resolve_playlist_access(playlist_id, principal, owner_user_id=owner_user_id)
     content_bytes = await file.read()
     try:
         content_str = content_bytes.decode("utf-8")
@@ -941,31 +958,33 @@ async def upload_playlist_csv(playlist_id: str, request: Request, file: UploadFi
     return {"success": True, "meta": meta}
 
 @app.post("/api/jellyfin/playlist/{playlist_id}/csv-match")
-async def match_playlist_csv(playlist_id: str, request: Request):
+async def match_playlist_csv(playlist_id: str, request: Request, owner_user_id: Optional[str] = None):
     principal = require_jellyfin_user(request)
-    _, access_user_id = await resolve_playlist_access(playlist_id, principal)
+    _, access_user_id = await resolve_playlist_access(playlist_id, principal, owner_user_id=owner_user_id)
     return await PlaylistCSVService.match_playlist(playlist_id, user_id=access_user_id)
 
 from pydantic import BaseModel
 
 class AddItemsRequest(BaseModel):
     item_ids: List[str]
+    owner_user_id: Optional[str] = None
 
 @app.post("/api/jellyfin/playlist/{playlist_id}/add-items")
 async def add_items_to_playlist(playlist_id: str, req: AddItemsRequest, request: Request):
     principal = require_jellyfin_user(request)
-    _, access_user_id = await resolve_playlist_access(playlist_id, principal, for_mutation=True)
+    _, access_user_id = await resolve_playlist_access(playlist_id, principal, for_mutation=True, owner_user_id=req.owner_user_id)
     return await PlaylistCSVService.add_tracks_to_playlist(playlist_id, req.item_ids, user_id=access_user_id)
 
 class QueueDownloadsRequest(BaseModel):
     playlist_name: str
     tracks: List[Dict[str, Any]]
+    owner_user_id: Optional[str] = None
 
 @app.post("/api/jellyfin/playlist/{playlist_id}/queue-downloads")
 async def queue_playlist_downloads(playlist_id: str, req: QueueDownloadsRequest, request: Request):
     principal = require_app_user(request)
     if playlist_id:
-        _, access_user_id = await resolve_playlist_access(playlist_id, principal, for_mutation=True)
+        _, access_user_id = await resolve_playlist_access(playlist_id, principal, for_mutation=True, owner_user_id=req.owner_user_id)
     else:
         access_user_id = None
     return await PlaylistCSVService.queue_tracks_download(playlist_id, req.playlist_name, req.tracks, owner=principal, playlist_user_id=access_user_id)

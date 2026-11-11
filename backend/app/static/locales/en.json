@@ -106,7 +106,12 @@
     "csv_btn_download_all": "Queue All for Download",
     "csv_btn_add": "Add to Playlist",
     "csv_btn_download": "Download",
-    "csv_matching": "Comparing CSV against Jellyfin library..."
+    "csv_matching": "Comparing CSV against Jellyfin library...",
+    "csv_owner_label": "Playlist owner",
+    "csv_owner_help": "As administrator, choose the account that owns this playlist. Jellyfin will verify it can access the playlist.",
+    "csv_owner_select": "Select a Jellyfin account",
+    "csv_owner_required": "Select the playlist owner to continue.",
+    "csv_owner_load_error": "Unable to load Jellyfin accounts."
   },
   "player": {
     "now_playing": "Now Playing",
