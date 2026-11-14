@@ -365,6 +365,7 @@ class JellyfinService:
             "album_id": album_id,
             "duration": duration_formatted,
             "duration_sec": total_sec,
+            "index_number": item.get("IndexNumber"),
             "has_lyrics": item.get("HasLyrics", False),
             "is_favorite": bool((item.get("UserData") or {}).get("IsFavorite")),
             "playlist_entry_id": item.get("PlaylistItemId"),

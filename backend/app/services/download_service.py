@@ -24,6 +24,8 @@ class DownloadManager:
     def __init__(self):
         self.jobs: Dict[str, DownloadJob] = {}
         self._download_slots = asyncio.Semaphore(2)
+        self._procs: Dict[str, asyncio.subprocess.Process] = {}
+        self._cancelled: set = set()
         self._restore_interrupted_jobs()
 
     def _restore_interrupted_jobs(self):
@@ -50,6 +52,24 @@ class DownloadManager:
 
     def get_job(self, job_id: str) -> Optional[DownloadJob]:
         return self.jobs.get(job_id)
+
+    def cancel_job(self, job_id: str) -> bool:
+        """Cancel a queued or downloading job; later stages finish normally."""
+        job = self.jobs.get(job_id)
+        if not job or job.status not in {"pending", "downloading"}:
+            return False
+        self._cancelled.add(job_id)
+        proc = self._procs.get(job_id)
+        if proc and proc.returncode is None:
+            proc.kill()
+        if job.status == "pending":
+            self._mark_cancelled(job)
+        return True
+
+    def _mark_cancelled(self, job: DownloadJob):
+        job.status = "cancelled"
+        job.message = "Download cancelled."
+        UserDataService.update_download_status(job.job_id, job.status)
 
     def list_jobs(self, owner_id: Optional[str] = None, include_all: bool = False, user_id: Optional[str] = None):
         # Completed work belongs in persistent download history, not the live queue.
@@ -89,6 +109,8 @@ class DownloadManager:
     async def _process_download(self, job: DownloadJob):
         try:
             async with self._download_slots:
+                if job.job_id in self._cancelled:
+                    return
                 await self._run_download(job)
         except Exception as exc:
             print(f"[DownloadManager] Job {job.job_id} failed before execution: {exc}")
@@ -139,7 +161,7 @@ class DownloadManager:
 
         try:
             job.progress = 30
-            job.message = "Download stream audio in corso..."
+            job.message = "Downloading the audio stream..."
             
             # Esegui il processo yt-dlp
             proc = await asyncio.create_subprocess_exec(
@@ -147,27 +169,32 @@ class DownloadManager:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
+            self._procs[job.job_id] = proc
             try:
                 stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=3600)
             except asyncio.TimeoutError:
                 proc.kill()
                 await proc.wait()
-                raise TimeoutError("Download interrotto: superato il limite di un'ora")
+                raise TimeoutError("Download stopped: it exceeded the one-hour limit")
+            finally:
+                self._procs.pop(job.job_id, None)
 
+            if job.job_id in self._cancelled:
+                raise asyncio.CancelledError()
             if proc.returncode != 0:
                 raise Exception(f"yt-dlp error: {stderr.decode()[:300]}")
 
             job.status = "tagging"
             UserDataService.update_download_status(job.job_id, job.status)
             job.progress = 70
-            job.message = "Applicazione metadati e copertina HD..."
+            job.message = "Adding metadata and cover art..."
 
             # Applica ID3 Tags con Mutagen per renderlo perfetto per Jellyfin
             self._tag_audio(final_mp3, release)
 
             # Ricerca automatica Lyrics sincronizzate (LRC) e plain
             try:
-                job.message = "Ricerca testi sincronizzati (LRC)..."
+                job.message = "Looking for synchronized lyrics..."
                 lyrics_data = await LyricsService.fetch_lyrics(
                     title=track.title,
                     artist=track.artist,
@@ -215,7 +242,12 @@ class DownloadManager:
             if not (job.playlist_id and settings.JELLYFIN_API_KEY) or "Waiting for Jellyfin" in job.message:
                 job.message = f"Completed. Saved to {relative_path}"
 
+        except asyncio.CancelledError:
+            self._mark_cancelled(job)
         except Exception as e:
+            if job.job_id in self._cancelled:
+                self._mark_cancelled(job)
+                return
             print(f"[DownloadManager] Errore: {e}")
             job.status = "failed"
             UserDataService.update_download_status(job.job_id, job.status)

@@ -748,9 +748,37 @@ async def retry_download_job(job_id: str, request: Request):
         playlist_user_id=playlist_user_id,
     )
     previous.status = "retried"
-    previous.message = "Nuovo tentativo aggiunto alla coda."
+    previous.message = "A new attempt was queued."
     UserDataService.update_download_status(previous.job_id, "retried")
     return retried_job
+
+@app.post("/api/download/job/{job_id}/cancel", response_model=DownloadJob)
+async def cancel_download_job(job_id: str, request: Request):
+    """Cancel one of the signed-in user's queued or downloading jobs."""
+    principal = require_app_user(request)
+    job = download_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    if job.owner_user_id != principal.get("id"):
+        raise HTTPException(status_code=403, detail="You can only cancel downloads from your account.")
+    if not download_manager.cancel_job(job_id):
+        raise HTTPException(status_code=409, detail="This download can no longer be cancelled.")
+    return job
+
+@app.post("/api/download/job/{job_id}/dismiss", response_model=DownloadJob)
+async def dismiss_download_job(job_id: str, request: Request):
+    """Remove one of the signed-in user's failed/interrupted jobs from the live queue."""
+    principal = require_app_user(request)
+    job = download_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    if job.owner_user_id != principal.get("id"):
+        raise HTTPException(status_code=403, detail="You can only dismiss downloads from your account.")
+    if job.status not in {"failed", "interrupted"}:
+        raise HTTPException(status_code=409, detail="Only failed or interrupted downloads can be dismissed.")
+    job.status = "dismissed"
+    UserDataService.update_download_status(job.job_id, "dismissed")
+    return job
 
 # --- NUOVE FUNZIONALITÀ: LIBRERIA SCARICATA & LYRICS ---
 
@@ -932,7 +960,7 @@ async def test_jellyfin_connection(payload: dict, request: Request):
             else:
                 return {
                     "success": False,
-                    "message": f"Il server a {url} ha risposto con codice HTTP {pub_res.status_code}."
+                    "message": f"The server at {url} responded with HTTP {pub_res.status_code}."
                 }
         except httpx.ConnectError:
             return {
@@ -969,7 +997,9 @@ async def test_jellyfin_connection(payload: dict, request: Request):
                 users = await JellyfinService.get_users(jellyfin_url=url, api_key=api_key)
                 return {
                     "success": True,
-                    "message": f"Connessione riuscita a '{s_name}' (v{s_ver})! API Key verificata.",
+                    "message": f"Connected to '{s_name}' (v{s_ver}). API key verified.",
+                    "server_name": s_name,
+                    "version": s_ver,
                     "jellyfin_music_paths": paths,
                     "users": users
                 }
@@ -981,7 +1011,9 @@ async def test_jellyfin_connection(payload: dict, request: Request):
                     users = await JellyfinService.get_users(jellyfin_url=url, api_key=api_key)
                     return {
                         "success": True,
-                        "message": f"Connessione riuscita a '{server_name}' (v{version})! API Key verificata.",
+                        "message": f"Connected to '{server_name}' (v{version}). API key verified.",
+                        "server_name": server_name,
+                        "version": version,
                         "jellyfin_music_paths": paths,
                         "users": users
                     }
@@ -992,7 +1024,7 @@ async def test_jellyfin_connection(payload: dict, request: Request):
             else:
                 return {
                     "success": False,
-                    "message": f"Il server ha risposto con codice HTTP {res.status_code}."
+                    "message": f"The server responded with HTTP {res.status_code}."
                 }
         except Exception as e:
             return {
