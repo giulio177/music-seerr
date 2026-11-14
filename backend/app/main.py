@@ -21,6 +21,7 @@ from app.services.download_service import download_manager
 from app.services.jellyfin_service import JellyfinService
 from app.services.playlist_csv_service import PlaylistCSVService
 from app.services.user_data_service import UserDataService
+from app.services.jellyfin_connection import JellyfinConnection
 
 app = FastAPI(
     title="Music Seerr API",
@@ -510,6 +511,30 @@ async def complete_setup(payload: dict, request: Request):
         "jellyfin_user_id": settings.JELLYFIN_USER_ID or ""
     }
 
+@app.on_event("startup")
+async def check_jellyfin_on_startup():
+    if getattr(settings, "SETUP_COMPLETED", False):
+        asyncio.create_task(JellyfinConnection.repair())
+
+@app.get("/api/jellyfin/connection")
+async def get_jellyfin_connection():
+    """Public reachability report so the sign-in screen can explain connection failures."""
+    return await JellyfinConnection.status()
+
+@app.post("/api/jellyfin/connection/repair")
+async def repair_jellyfin_connection(payload: Optional[dict] = None):
+    """Relocate the saved Jellyfin server while it is unreachable.
+
+    Unauthenticated callers may only point the app at the same Jellyfin installation
+    (matching server ID); a working address is never replaced here.
+    """
+    if not getattr(settings, "SETUP_COMPLETED", False):
+        raise HTTPException(status_code=400, detail="Complete the setup wizard first.")
+    result = await JellyfinConnection.repair((payload or {}).get("jellyfin_url"))
+    if result.get("changed"):
+        ADMIN_ROLE_CHECK_CACHE.clear()
+    return result
+
 @app.get("/api/auth/users")
 async def get_auth_users(request: Request, jellyfin_url: Optional[str] = None, api_key: Optional[str] = None):
     """Restituisce l'elenco degli utenti Jellyfin rilevati dal server"""
@@ -731,8 +756,11 @@ async def retry_download_job(job_id: str, request: Request):
 async def get_downloaded_library(request: Request):
     """Restituisce l'elenco di tutti i brani scaricati nella cartella locale"""
     require_jellyfin_user(request)
+    # The music root is the whole library; walk it off the event loop.
+    return await asyncio.to_thread(_scan_music_folder, settings.MUSIC_OUTPUT_DIR)
+
+def _scan_music_folder(base_dir: str) -> list:
     tracks = []
-    base_dir = settings.MUSIC_OUTPUT_DIR
     if not os.path.exists(base_dir):
         return []
 

@@ -13,14 +13,9 @@ from app.services.jellyfin_service import JellyfinService
 from app.services.lyrics_service import LyricsService
 from app.services.user_data_service import UserDataService
 import mutagen
-from mutagen.id3 import ID3, TIT2, TPE1, TALB, APIC, ID3NoHeaderError
+from mutagen.id3 import ID3, TIT2, TPE1, TPE2, TALB, TRCK, TPOS, TDRC, TSRC, APIC, ID3NoHeaderError
 from mutagen.mp3 import MP3
-
-def sanitize_filename(name: str) -> str:
-    """Convert user-provided metadata into one safe filesystem component."""
-    safe = re.sub(r'[\\/*?:"<>|\x00-\x1f]', "", str(name)).strip().strip(".")
-    safe = re.sub(r"\.{2,}", ".", safe)
-    return (safe[:150] or "Unknown")
+from app.services.library_layout import ReleaseInfo, resolve_release, album_directory, track_stem, find_existing_track
 
 class DownloadManager:
     MAX_ACTIVE_JOBS = 500
@@ -108,16 +103,23 @@ class DownloadManager:
         job.progress = 10
         job.message = f"Finding audio for {track.artist} - {track.title}"
 
-        safe_artist = sanitize_filename(track.artist)
-        safe_album = sanitize_filename(track.album)
-        safe_title = sanitize_filename(track.title)
-
+        # Lidarr-style layout: Album Artist/Album (Year)/Album Artist - Album - NN - Title.mp3
+        release = await resolve_release(track)
         music_root = os.path.realpath(settings.MUSIC_OUTPUT_DIR)
-        dest_dir = os.path.realpath(os.path.join(music_root, safe_artist, safe_album))
-        if os.path.commonpath([music_root, dest_dir]) != music_root:
-            raise ValueError("Percorso di destinazione non valido")
+        dest_dir = album_directory(music_root, release)
+        stem = track_stem(release)
+        final_mp3 = os.path.join(dest_dir, f"{stem}.mp3")
+        relative_path = os.path.relpath(final_mp3, music_root)
+
+        existing = find_existing_track(dest_dir, release)
+        if existing:
+            job.file_path = existing
+            job.status = "completed"
+            job.progress = 100
+            job.message = f"Already in the library: {os.path.relpath(existing, music_root)}"
+            UserDataService.update_download_status(job.job_id, job.status)
+            return
         os.makedirs(dest_dir, exist_ok=True)
-        final_mp3 = os.path.join(dest_dir, f"{safe_title}.mp3")
 
         # Cerca la traccia audio su YouTube Music / YouTube
         search_query = f"ytsearch1:{track.artist} - {track.title} audio"
@@ -129,7 +131,7 @@ class DownloadManager:
             "--audio-format", "mp3",
             "--audio-quality", "0",
             "--no-cache-dir",
-            "--output", os.path.join(dest_dir, f"{safe_title}.%(ext)s"),
+            "--output", os.path.join(dest_dir, stem.replace("%", "%%") + ".%(ext)s"),
             "--no-playlist",
             "--default-search", "ytsearch",
             search_query
@@ -161,7 +163,7 @@ class DownloadManager:
             job.message = "Applicazione metadati e copertina HD..."
 
             # Applica ID3 Tags con Mutagen per renderlo perfetto per Jellyfin
-            self._tag_audio(final_mp3, track)
+            self._tag_audio(final_mp3, release)
 
             # Ricerca automatica Lyrics sincronizzate (LRC) e plain
             try:
@@ -211,7 +213,7 @@ class DownloadManager:
             job.progress = 100
             UserDataService.update_download_status(job.job_id, job.status)
             if not job.message or "Waiting for Jellyfin" in job.message:
-                job.message = f"Completed. Saved to {safe_artist}/{safe_album}/{safe_title}.mp3"
+                job.message = f"Completed. Saved to {relative_path}"
 
         except Exception as e:
             print(f"[DownloadManager] Errore: {e}")
@@ -219,7 +221,7 @@ class DownloadManager:
             UserDataService.update_download_status(job.job_id, job.status)
             job.message = f"Download failed: {str(e)}"
 
-    def _tag_audio(self, mp3_path: str, track: TrackItem):
+    def _tag_audio(self, mp3_path: str, track: ReleaseInfo):
         """Inietta metadati ID3 e copertina ad altissima risoluzione nell'MP3"""
         if not os.path.exists(mp3_path):
             return
@@ -234,13 +236,22 @@ class DownloadManager:
             audio.tags.add(TIT2(encoding=3, text=track.title))
             audio.tags.add(TPE1(encoding=3, text=track.artist))
             audio.tags.add(TALB(encoding=3, text=track.album))
+            audio.tags.add(TPE2(encoding=3, text=track.album_artist))
+            if track.track_number:
+                audio.tags.add(TRCK(encoding=3, text=str(track.track_number)))
+            if track.disc_number:
+                audio.tags.add(TPOS(encoding=3, text=str(track.disc_number)))
+            if track.year:
+                audio.tags.add(TDRC(encoding=3, text=str(track.year)))
+            if track.isrc:
+                audio.tags.add(TSRC(encoding=3, text=track.isrc))
 
             # Se c'è una copertina, scaricala e incorporala nell'MP3
             if track.cover_url:
                 try:
                     parsed = urlsplit(track.cover_url)
                     host = (parsed.hostname or "").lower()
-                    allowed_host = host == "e-cdns-images.dzcdn.net" or host.endswith(".mzstatic.com")
+                    allowed_host = host.endswith(".dzcdn.net") or host.endswith(".mzstatic.com")
                     if parsed.scheme != "https" or not allowed_host or parsed.username or parsed.password:
                         raise ValueError("Host copertina non consentito")
                     req = urllib.request.Request(

@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     JELLYFIN_URL: str = "http://localhost:8096"
     JELLYFIN_API_KEY: Optional[str] = None
     JELLYFIN_USER_ID: Optional[str] = None
+    JELLYFIN_SERVER_ID: Optional[str] = None
     LANGUAGE: str = "en"
     SPOTIFY_CLIENT_ID: Optional[str] = None
     SPOTIFY_CLIENT_SECRET: Optional[str] = None
@@ -62,6 +63,8 @@ def load_webapp_config():
                 settings.JELLYFIN_API_KEY = data["jellyfin_api_key"] or None
             if "jellyfin_user_id" in data:
                 settings.JELLYFIN_USER_ID = data["jellyfin_user_id"] or None
+            if "jellyfin_server_id" in data:
+                settings.JELLYFIN_SERVER_ID = data["jellyfin_server_id"] or None
             if "language" in data:
                 settings.LANGUAGE = data["language"] or "en"
             settings.SETUP_COMPLETED = bool(
@@ -82,6 +85,13 @@ def save_webapp_config(data: dict):
     jellyfin_url = (data.get("jellyfin_url") or settings.JELLYFIN_URL).rstrip("/")
     jellyfin_api_key = data.get("jellyfin_api_key", settings.JELLYFIN_API_KEY) or ""
     jellyfin_user_id = data.get("jellyfin_user_id", settings.JELLYFIN_USER_ID) or ""
+    # A new server address invalidates the remembered server identity unless the caller supplies it.
+    if "jellyfin_server_id" in data:
+        jellyfin_server_id = data.get("jellyfin_server_id") or ""
+    elif jellyfin_url != (settings.JELLYFIN_URL or "").rstrip("/"):
+        jellyfin_server_id = ""
+    else:
+        jellyfin_server_id = settings.JELLYFIN_SERVER_ID or ""
     language = data.get("language", settings.LANGUAGE) or "en"
     setup_completed = data.get("setup_completed", settings.SETUP_COMPLETED)
     config_dict = {
@@ -89,6 +99,7 @@ def save_webapp_config(data: dict):
         "jellyfin_url": jellyfin_url,
         "jellyfin_api_key": jellyfin_api_key,
         "jellyfin_user_id": jellyfin_user_id,
+        "jellyfin_server_id": jellyfin_server_id,
         "language": language,
         "setup_completed": bool(setup_completed),
     }
@@ -97,6 +108,7 @@ def save_webapp_config(data: dict):
     settings.JELLYFIN_URL = jellyfin_url
     settings.JELLYFIN_API_KEY = jellyfin_api_key or None
     settings.JELLYFIN_USER_ID = jellyfin_user_id or None
+    settings.JELLYFIN_SERVER_ID = jellyfin_server_id or None
     settings.LANGUAGE = language
     settings.SETUP_COMPLETED = bool(setup_completed)
 

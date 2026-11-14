@@ -20,7 +20,11 @@ Open `http://<server-ip>:8000` and complete the setup wizard. If Jellyfin is not
 JELLYFIN_URL=http://<jellyfin-host>:8096
 ```
 
-Mount the same host `music/` directory into Jellyfin's music library so Jellyfin can scan downloaded files. App configuration and history persist under `backend/data`; downloaded audio is stored under `music/`.
+Mount the same host `music/` directory into Jellyfin's music library so Jellyfin can scan downloaded files. App configuration and history persist under `backend/data`; downloaded audio is stored under `music/`. To share an existing library (for example one managed by Lidarr), mount its root folder as `/music`.
+
+Tracks are saved with Lidarr's default naming: `Album Artist/Album (Year)/Album Artist - Album - NN - Title.mp3`, with album artist, track number, year, ISRC, and cover tags taken from Deezer or iTunes. Existing artist and album folders are reused, and a track already present in its album folder is not downloaded again. Older downloads can be moved into this layout from inside the container: `python -m app.tools.reorganize_library /music/<folder>` previews the changes, and `--apply` moves the files and writes an undo manifest to `/app/data`.
+
+If Jellyfin becomes unreachable, the sign-in screen offers an automatic search and a server address field to reconnect the same Jellyfin server without editing configuration files.
 
 The default web endpoint uses HTTP. Keep it on a trusted network, or put it behind a VPN or a TLS-enabled reverse proxy before remote access. Do not expose port 8000 directly to the public internet.
 
