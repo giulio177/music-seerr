@@ -23,13 +23,15 @@ from app.services.library_layout import (
     AUDIO_EXTENSIONS,
     ReleaseInfo,
     album_directory,
-    find_existing_track,
+    audio_quality,
+    find_existing_tracks,
+    normalize_key,
     resolve_release,
     track_stem,
 )
 
 SIDE_FILE_EXTENSIONS = (".lrc",)
-DISPOSABLE_EXTENSIONS = (".nfo", ".jpg", ".jpeg", ".png", ".txt", ".m3u", ".m3u8", ".cue", ".log", ".db", ".ini")
+DISPOSABLE_EXTENSIONS = (".nfo", ".jpg", ".jpeg", ".png", ".txt", ".cue", ".log", ".db", ".ini", ".ds_store")
 STAGING_DIRNAME = ".musicseerr-import"
 UPLOAD_EXTENSIONS = AUDIO_EXTENSIONS + SIDE_FILE_EXTENSIONS
 MAX_UPLOAD_FILE_BYTES = 200 * 1024 * 1024
@@ -151,6 +153,7 @@ class ImportJob:
     processed: int = 0
     entries: List[dict] = field(default_factory=list)
     moved: int = 0
+    deleted: int = 0
     error: str = ""
     manifest: str = ""
     created_at: float = field(default_factory=time.time)
@@ -172,6 +175,7 @@ class ImportJob:
             "summary": self.summary(),
             "unmatched": sum(not entry["matched"] for entry in self.entries),
             "moved": self.moved,
+            "deleted": self.deleted,
             "error": self.error,
             "is_upload": bool(self.upload_session),
         }
@@ -181,6 +185,10 @@ class ImportJob:
                 "target": os.path.relpath(entry["target"], root),
                 "action": entry["action"],
                 "matched": entry["matched"],
+                "quality": entry.get("quality", ""),
+                "kept": os.path.relpath(entry["kept"], root) if entry.get("kept") else "",
+                "kept_quality": entry.get("kept_quality", ""),
+                "replaces": [os.path.relpath(path, root) for path in entry.get("replaces", [])],
             } for entry in self.entries]
         return data
 
@@ -276,38 +284,38 @@ class LibraryImporter:
 
     @classmethod
     async def plan(cls, job: ImportJob, log: bool = False):
+        """Plan every file, then settle each track slot so only its best-quality copy is kept."""
         root = music_root()
         files = await asyncio.to_thread(_audio_files, job.source)
         job.total = len(files)
-        planned = set()
+        slots: Dict[tuple, List[dict]] = {}
         for path in files:
             track = await asyncio.to_thread(read_track, path, job.source)
             release = await resolve_release(track)
             dest_dir = album_directory(root, release)
-            target = os.path.join(dest_dir, track_stem(release) + os.path.splitext(path)[1].lower())
-            existing = find_existing_track(dest_dir, release)
-            if os.path.realpath(path) == os.path.realpath(target):
-                action = "unchanged"
-            elif (existing and os.path.realpath(existing) != os.path.realpath(path)) or target in planned:
-                action = "duplicate"
-            else:
-                action = "move"
-                planned.add(target)
-            job.entries.append({
+            entry = {
                 "source": path,
-                "target": target,
-                "action": action,
+                "target": os.path.join(dest_dir, track_stem(release) + os.path.splitext(path)[1].lower()),
+                "action": "move",
                 "matched": release.matched,
+                "existing": await asyncio.to_thread(find_existing_tracks, dest_dir, release),
                 "release": {
                     "title": release.title, "artist": release.artist, "album_artist": release.album_artist,
                     "album": release.album, "year": release.year, "track_number": release.track_number,
                     "disc_number": release.disc_number, "isrc": release.isrc, "cover_url": release.cover_url,
                 },
-            })
+            }
+            job.entries.append(entry)
+            slots.setdefault((dest_dir, normalize_key(release.title) or path), []).append(entry)
             job.processed += 1
-            if log:
-                print(f"[{job.processed}/{job.total}] {action:9} {'' if release.matched else '(no match) '}"
-                      f"{os.path.relpath(path, root)} -> {os.path.relpath(target, root)}")
+
+        for group in slots.values():
+            await asyncio.to_thread(_settle_slot, group)
+        if log:
+            for entry in job.entries:
+                print(f"{entry['action']:9} {'' if entry['matched'] else '(no match) '}"
+                      f"{os.path.relpath(entry['source'], root)} -> {os.path.relpath(entry['target'], root)}"
+                      f"{'  [keeps ' + os.path.relpath(entry['kept'], root) + ']' if entry.get('kept') else ''}")
 
     @classmethod
     async def _scan(cls, job: ImportJob):
@@ -320,7 +328,7 @@ class LibraryImporter:
             job.status, job.error = "failed", "scan_failed"
 
     @classmethod
-    def start_apply(cls, job_id: str) -> ImportJob:
+    def start_apply(cls, job_id: str, delete_duplicates: bool = False) -> ImportJob:
         job = cls.jobs.get(job_id)
         if not job:
             raise ValueError("job_not_found")
@@ -330,26 +338,39 @@ class LibraryImporter:
             raise ValueError("busy")
         job.status = "applying"
         job.processed = 0
-        asyncio.create_task(cls._apply(job))
+        asyncio.create_task(cls._apply(job, delete_duplicates))
         return job
 
     @classmethod
-    async def _apply(cls, job: ImportJob):
+    async def _apply(cls, job: ImportJob, delete_duplicates: bool):
         try:
             async with cls._busy:
-                await cls.apply(job)
+                await cls.apply(job, delete_duplicates=delete_duplicates)
             job.status = "done"
         except Exception as exc:
             print(f"[LibraryImport] Import failed for {job.source}: {exc}")
             job.status, job.error = "failed", "apply_failed"
 
     @classmethod
-    async def apply(cls, job: ImportJob, refresh: bool = True):
+    async def apply(cls, job: ImportJob, delete_duplicates: bool = False, refresh: bool = True):
+        """Move planned files; with delete_duplicates, also drop lower-quality copies and upgrade library files."""
         from app.services.download_service import download_manager
 
-        moved = []
-        to_move = [entry for entry in job.entries if entry["action"] == "move"]
-        job.total = len(to_move)
+        moved, deleted = [], []
+        actions = ("move", "upgrade") if delete_duplicates else ("move",)
+        to_move = [entry for entry in job.entries if entry["action"] in actions]
+        losers = [entry for entry in job.entries if entry["action"] == "duplicate"] if delete_duplicates else []
+        job.total = len(to_move) + len(losers)
+
+        if delete_duplicates:
+            # Drop worse copies first so the better one can take the canonical file name.
+            for entry in losers:
+                deleted += await asyncio.to_thread(_delete_copy, entry["source"], entry["final"], entry["kept_current"])
+                job.processed += 1
+            for entry in to_move:
+                for path in entry.get("replaces", []):
+                    deleted += await asyncio.to_thread(_delete_copy, path, entry["target"], entry["source"])
+
         for entry in to_move:
             record = await asyncio.to_thread(_move_entry, entry)
             if record:
@@ -358,22 +379,33 @@ class LibraryImporter:
                     await asyncio.to_thread(download_manager._tag_audio, entry["target"], release)
                 moved.append(record)
             job.processed += 1
+
+        renamed = []
+        if delete_duplicates:
+            # A library copy that won keeps its place but gets the canonical name.
+            for entry in losers:
+                rename = entry.get("rename")
+                if rename and os.path.exists(rename[0]) and not os.path.exists(rename[1]):
+                    record = await asyncio.to_thread(_move_entry, {"source": rename[0], "target": rename[1]})
+                    if record:
+                        renamed.append(record)
         job.moved = len(moved)
+        job.deleted = sum(path.lower().endswith(AUDIO_EXTENSIONS) for path in deleted)
 
         if job.upload_session:
             cls.discard_upload(job.upload_session)
         else:
             protected = {root["path"] for root in browse_roots()}
-            moved_from = {os.path.dirname(record["source"]) for record in moved}
-            await asyncio.to_thread(_clean_source, moved_from, job.source, protected)
+            await asyncio.to_thread(_clean_source, job.source, protected)
 
         manifest_dir = os.path.dirname(os.environ.get("MUSIC_SEERR_CONFIG") or "/app/data/config.json")
         if os.path.isdir(manifest_dir):
             job.manifest = os.path.join(manifest_dir, f"import-{time.strftime('%Y%m%d-%H%M%S')}.json")
             with open(job.manifest, "w", encoding="utf-8") as handle:
-                json.dump({"source": job.label, "moved": moved, "plan": job.entries}, handle, indent=2, ensure_ascii=False)
+                json.dump({"source": job.label, "moved": moved, "renamed": renamed, "deleted": deleted,
+                           "delete_duplicates": delete_duplicates, "plan": job.entries}, handle, indent=2, ensure_ascii=False)
 
-        if refresh and moved and settings.JELLYFIN_API_KEY:
+        if refresh and (moved or deleted) and settings.JELLYFIN_API_KEY:
             from app.services.jellyfin_service import JellyfinService
             await JellyfinService.refresh_library()
 
@@ -404,18 +436,82 @@ def _move_entry(entry: dict) -> Optional[dict]:
     return record
 
 
-def _clean_source(moved_from: set, source_root: str, protected: set):
-    """Tidy only the folders files were moved out of: drop leftover metadata, then empty folders up to the source."""
-    for folder in sorted(moved_from, key=len, reverse=True):
-        current = folder
-        while _inside(current, source_root) and current not in protected and os.path.isdir(current):
-            names = os.listdir(current)
-            files = [name for name in names if os.path.isfile(os.path.join(current, name))]
-            if len(files) != len(names) or not all(name.lower().endswith(DISPOSABLE_EXTENSIONS) for name in files):
-                break
-            for name in files:
+def _settle_slot(group: List[dict]):
+    """Decide which copy of one track (library file or imported file) survives."""
+    sources = {os.path.realpath(entry["source"]) for entry in group}
+    library = list(dict.fromkeys(path for entry in group for path in entry.pop("existing")
+                                 if os.path.realpath(path) not in sources))
+    qualities = {path: audio_quality(path) for path in library + [entry["source"] for entry in group]}
+    for entry in group:
+        entry["quality"] = qualities[entry["source"]]["label"]
+    # Highest quality wins; on a tie the file already in the library stays, then the first imported one.
+    candidates = [(path, None) for path in library] + [(entry["source"], entry) for entry in group]
+    best_path, best_entry = max(enumerate(candidates), key=lambda item: (qualities[item[1][0]]["score"], -item[0]))[1]
+
+    if best_entry is not None:
+        final = best_entry["target"]
+        best_entry["replaces"] = library
+        if os.path.realpath(best_entry["source"]) == os.path.realpath(final):
+            best_entry["action"] = "unchanged"
+        else:
+            best_entry["action"] = "upgrade" if library else "move"
+    else:
+        reference = group[0]["target"]
+        final = os.path.join(os.path.dirname(reference),
+                             os.path.splitext(os.path.basename(reference))[0] + os.path.splitext(best_path)[1].lower())
+    for entry in group:
+        if entry is best_entry:
+            continue
+        entry.update(action="duplicate", kept=best_path if best_entry is None else best_entry["target"],
+                     kept_current=best_path, kept_quality=qualities[best_path]["label"], final=final)
+        if best_entry is None and os.path.realpath(best_path) != os.path.realpath(final):
+            entry["rename"] = [best_path, final]
+
+
+def _delete_copy(path: str, keeper: str, keeper_current: str) -> List[str]:
+    """Delete a lower-quality copy; hand its lyrics to the kept file (final name `keeper`) when that has none."""
+    if not os.path.exists(path) or not os.path.exists(keeper_current) \
+            or os.path.realpath(path) == os.path.realpath(keeper_current):
+        return []
+    removed = [path]
+    os.remove(path)
+    stem, keeper_stem = os.path.splitext(path)[0], os.path.splitext(keeper)[0]
+    current_stem = os.path.splitext(keeper_current)[0]
+    for ext in SIDE_FILE_EXTENSIONS:
+        if not os.path.exists(stem + ext) or stem == current_stem:
+            # Missing, or shared with the kept file (same name, other format).
+            continue
+        if stem == keeper_stem and not os.path.exists(current_stem + ext):
+            continue
+        if stem == keeper_stem:
+            # The kept file brings its own lyrics to this name.
+            os.remove(stem + ext)
+            removed.append(stem + ext)
+        elif os.path.exists(keeper_stem + ext) or os.path.exists(current_stem + ext):
+            os.remove(stem + ext)
+            removed.append(stem + ext)
+        else:
+            os.makedirs(os.path.dirname(keeper_stem), exist_ok=True)
+            shutil.move(stem + ext, keeper_stem + ext)
+    return removed
+
+
+def _orphan_side_file(folder: str, name: str, names: List[str]) -> bool:
+    stem, ext = os.path.splitext(name)
+    return ext.lower() in SIDE_FILE_EXTENSIONS and not any(
+        os.path.splitext(other)[0] == stem and other.lower().endswith(AUDIO_EXTENSIONS) for other in names)
+
+
+def _clean_source(source_root: str, protected: set):
+    """Remove folders in the imported tree that hold no music any more (only metadata, artwork, or orphan lyrics)."""
+    for current, dirs, files in os.walk(source_root, topdown=False):
+        if current in protected or any(part.startswith(".") for part in os.path.relpath(current, source_root).split(os.sep) if part != "."):
+            continue
+        names = os.listdir(current)
+        if any(os.path.isdir(os.path.join(current, name)) for name in names):
+            continue
+        if all(name.lower().endswith(DISPOSABLE_EXTENSIONS) or name.startswith("._")
+               or _orphan_side_file(current, name, names) for name in names):
+            for name in names:
                 os.remove(os.path.join(current, name))
             os.rmdir(current)
-            if current == source_root:
-                break
-            current = os.path.dirname(current)

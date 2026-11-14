@@ -258,8 +258,6 @@
     "import_no_match": "No match",
     "import_more": "...and {count} more",
     "import_nothing": "No audio files found in this folder.",
-    "import_duplicates_note": "Duplicates stay in their current folder; delete them yourself if you do not need them.",
-    "import_duplicates_upload": "Duplicates are not imported and are discarded with the upload.",
     "import_apply": "Import {count} tracks",
     "import_done": "Imported {count} tracks. Jellyfin is refreshing the library.",
     "import_error_generic": "The import could not be completed.",
@@ -274,7 +272,17 @@
     "import_error_job_not_found": "This import expired. Start it again.",
     "import_error_job_not_ready": "This import is not ready yet.",
     "import_error_scan_failed": "Tracks could not be analyzed.",
-    "import_error_apply_failed": "Moving the tracks failed. Check the folder permissions."
+    "import_error_apply_failed": "Moving the tracks failed. Check the folder permissions.",
+    "import_summary_upgrade": "{count} better than the library copy",
+    "import_action_upgrade": "Better quality",
+    "import_detail_duplicate": "{quality} · the library keeps {kept} ({kept_quality})",
+    "import_detail_upgrade": "{quality} · replaces {replaces} if you delete duplicates",
+    "import_duplicates_question": "{count} tracks are already in the library. What should happen to the extra copies?",
+    "import_duplicates_keep": "Leave them where they are",
+    "import_duplicates_keep_upload": "Do not import them (they are discarded with the upload)",
+    "import_duplicates_delete": "Delete them and keep only the best quality (for example FLAC instead of MP3), moved into the right folder",
+    "import_apply_delete": "Import {count} tracks and delete {deleted} duplicates",
+    "import_done_deleted": "Imported {count} tracks and deleted {deleted} duplicates. Jellyfin is refreshing the library."
   },
   "auth": {
     "checking_session": "Checking your session…",

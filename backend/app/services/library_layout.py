@@ -9,9 +9,10 @@ import os
 import re
 import unicodedata
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import List, Optional
 
 import httpx
+import mutagen
 
 from app.models.schemas import TrackItem
 
@@ -242,20 +243,70 @@ def album_directory(music_root: str, info: ReleaseInfo) -> str:
     return path
 
 
-def find_existing_track(album_dir: str, info: ReleaseInfo) -> Optional[str]:
-    """Return an audio file already in the album folder for the same track title."""
+def find_existing_tracks(album_dir: str, info: ReleaseInfo) -> List[str]:
+    """Return every audio file already in the album folder for the same track title."""
     title_key = normalize_key(info.title)
     if not title_key:
-        return None
+        return []
     try:
-        entries = list(os.scandir(album_dir))
+        entries = sorted(os.scandir(album_dir), key=lambda entry: entry.name)
     except OSError:
-        return None
+        return []
+    found = []
     for entry in entries:
         stem, ext = os.path.splitext(entry.name)
         if ext.lower() not in AUDIO_EXTENSIONS or not entry.is_file():
             continue
         last_part = stem.rsplit(" - ", 1)[-1]
-        if normalize_key(last_part) == title_key or normalize_key(stem) == title_key:
-            return entry.path
-    return None
+        if normalize_key(last_part) == title_key or normalize_key(stem) == title_key \
+                or normalize_key(_tag_title(entry.path)) == title_key:
+            found.append(entry.path)
+    return found
+
+
+def _tag_title(path: str) -> str:
+    """Title tag of a file whose name does not follow the library naming."""
+    try:
+        audio = mutagen.File(path, easy=True)
+        title = (audio.tags or {}).get("title") if audio is not None else None
+        return str(title[0] if isinstance(title, list) and title else title or "")
+    except Exception:
+        return ""
+
+
+def find_existing_track(album_dir: str, info: ReleaseInfo) -> Optional[str]:
+    """Return an audio file already in the album folder for the same track title."""
+    found = find_existing_tracks(album_dir, info)
+    return found[0] if found else None
+
+
+LOSSLESS_CODECS = ("flac", "alac", "wav", "pcm", "aiff")
+
+
+def audio_quality(path: str) -> dict:
+    """Describe a file's audio resolution; `score` orders lossless above lossy, then bit depth, rate, bitrate."""
+    ext = os.path.splitext(path)[1].lower().lstrip(".")
+    lossless, bits, rate, bitrate, codec = False, 0, 0, 0, ext
+    try:
+        audio = mutagen.File(path)
+        info = getattr(audio, "info", None)
+        if info is not None:
+            codec = str(getattr(info, "codec", "") or ext).lower()
+            bits = int(getattr(info, "bits_per_sample", 0) or 0)
+            rate = int(getattr(info, "sample_rate", 0) or 0)
+            bitrate = int(getattr(info, "bitrate", 0) or 0)
+            length = float(getattr(info, "length", 0) or 0)
+            if not bitrate and length:
+                bitrate = int(os.path.getsize(path) * 8 / length)
+    except Exception:
+        pass
+    lossless = ext in ("flac", "wav", "aiff", "aif") or any(name in codec for name in LOSSLESS_CODECS)
+    if lossless:
+        label = f"{('ALAC' if 'alac' in codec else ext.upper())} {bits or 16}-bit / {rate / 1000:g} kHz" if rate else ext.upper()
+    else:
+        label = f"{ext.upper()} {round(bitrate / 1000)} kbps" if bitrate else ext.upper()
+    try:
+        size = os.path.getsize(path)
+    except OSError:
+        size = 0
+    return {"label": label, "score": [int(lossless), bits, rate, bitrate, size]}

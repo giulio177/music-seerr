@@ -258,8 +258,6 @@
     "import_no_match": "Nessun riscontro",
     "import_more": "...e altri {count}",
     "import_nothing": "Nessun file audio in questa cartella.",
-    "import_duplicates_note": "I doppioni restano nella cartella attuale; eliminali tu se non ti servono.",
-    "import_duplicates_upload": "I doppioni non vengono importati e vengono scartati insieme al caricamento.",
     "import_apply": "Importa {count} brani",
     "import_done": "Importati {count} brani. Jellyfin sta aggiornando la libreria.",
     "import_error_generic": "Non è stato possibile completare l'importazione.",
@@ -274,7 +272,17 @@
     "import_error_job_not_found": "Questa importazione è scaduta. Ricominciala.",
     "import_error_job_not_ready": "Questa importazione non è ancora pronta.",
     "import_error_scan_failed": "Non è stato possibile analizzare i brani.",
-    "import_error_apply_failed": "Lo spostamento dei brani non è riuscito. Controlla i permessi della cartella."
+    "import_error_apply_failed": "Lo spostamento dei brani non è riuscito. Controlla i permessi della cartella.",
+    "import_summary_upgrade": "{count} migliori della copia in libreria",
+    "import_action_upgrade": "Qualità migliore",
+    "import_detail_duplicate": "{quality} · in libreria resta {kept} ({kept_quality})",
+    "import_detail_upgrade": "{quality} · sostituisce {replaces} se elimini i doppioni",
+    "import_duplicates_question": "{count} brani sono già in libreria. Cosa faccio con le copie in più?",
+    "import_duplicates_keep": "Lasciale dove sono",
+    "import_duplicates_keep_upload": "Non importarle (vengono scartate con il caricamento)",
+    "import_duplicates_delete": "Eliminale e tieni solo la qualità migliore (per esempio il FLAC invece dell'MP3), spostata nella cartella giusta",
+    "import_apply_delete": "Importa {count} brani ed elimina {deleted} doppioni",
+    "import_done_deleted": "Importati {count} brani ed eliminati {deleted} doppioni. Jellyfin sta aggiornando la libreria."
   },
   "auth": {
     "checking_session": "Verifica della sessione…",

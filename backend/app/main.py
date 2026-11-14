@@ -1150,10 +1150,11 @@ async def get_import_job(job_id: str, request: Request):
     return job.to_dict(include_entries=job.status != "scanning")
 
 @app.post("/api/library/import/jobs/{job_id}/apply")
-async def apply_import_job(job_id: str, request: Request):
+async def apply_import_job(job_id: str, request: Request, payload: Optional[dict] = None):
     require_admin(request)
+    delete_duplicates = bool((payload or {}).get("delete_duplicates"))
     try:
-        return LibraryImporter.start_apply(job_id).to_dict(include_entries=False)
+        return LibraryImporter.start_apply(job_id, delete_duplicates=delete_duplicates).to_dict(include_entries=False)
     except ValueError as exc:
         raise _import_error(exc)
 

@@ -2,7 +2,7 @@
 
 Run inside the container (dry run by default):
     python -m app.tools.reorganize_library /music/SomeFolder
-    python -m app.tools.reorganize_library /music/SomeFolder --apply
+    python -m app.tools.reorganize_library /music/SomeFolder --apply [--delete-duplicates]
 
 Every applied import is recorded in /app/data/import-<timestamp>.json.
 """
@@ -19,6 +19,8 @@ async def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("source", help="Folder with tracks to import, inside the music root or the import mount")
     parser.add_argument("--apply", action="store_true", help="Move files (default is a dry run)")
+    parser.add_argument("--delete-duplicates", action="store_true",
+                        help="Delete lower-quality duplicates and replace library files with better copies")
     args = parser.parse_args()
 
     try:
@@ -32,8 +34,8 @@ async def main():
     if not args.apply:
         print("Dry run only. Re-run with --apply to move the files.")
         return
-    await LibraryImporter.apply(job)
-    print(f"Moved {job.moved} tracks. Manifest: {job.manifest}")
+    await LibraryImporter.apply(job, delete_duplicates=args.delete_duplicates)
+    print(f"Moved {job.moved} tracks, deleted {job.deleted} duplicates. Manifest: {job.manifest}")
 
 
 if __name__ == "__main__":
