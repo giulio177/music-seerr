@@ -212,7 +212,7 @@ class DownloadManager:
             job.status = "completed"
             job.progress = 100
             UserDataService.update_download_status(job.job_id, job.status)
-            if not job.message or "Waiting for Jellyfin" in job.message:
+            if not (job.playlist_id and settings.JELLYFIN_API_KEY) or "Waiting for Jellyfin" in job.message:
                 job.message = f"Completed. Saved to {relative_path}"
 
         except Exception as e:
