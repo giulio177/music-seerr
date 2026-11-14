@@ -34,7 +34,8 @@ def normalize_key(text: str) -> str:
     text = unicodedata.normalize("NFKD", str(text or "")).casefold()
     text = "".join(ch for ch in text if not unicodedata.combining(ch))
     text = text.replace("&", "and")
-    return re.sub(r"[^0-9a-z]+", "", text)
+    # Keep letters of every script (e.g. Japanese titles); drop punctuation and spacing.
+    return re.sub(r"[\W_]+", "", text)
 
 
 @dataclass
@@ -124,15 +125,23 @@ async def _deezer_search(client: httpx.AsyncClient, track: TrackItem) -> Optiona
         res = await client.get(f"{DEEZER_API}/search", params={"q": query, "limit": 10})
         items += (res.json() or {}).get("data", []) if res.status_code == 200 else []
     title_key, artist_key, album_key = normalize_key(track.title), normalize_key(track.artist), normalize_key(track.album)
+    if not title_key:
+        return None
 
     def score(item: dict) -> int:
         value = 0
-        if normalize_key(item.get("title")) == title_key or normalize_key(item.get("title_short")) == title_key:
-            value += 4
+        # An exact title beats a different version that only shares the short title.
+        if normalize_key(item.get("title")) == title_key:
+            value += 5
+        elif normalize_key(item.get("title_short")) == title_key:
+            value += 2
         if normalize_key((item.get("artist") or {}).get("name")) == artist_key:
             value += 2
-        if album_key and normalize_key((item.get("album") or {}).get("title")) == album_key:
+        item_album = normalize_key((item.get("album") or {}).get("title"))
+        if album_key and item_album == album_key:
             value += 3
+        elif album_key and item_album and (album_key in item_album or item_album in album_key):
+            value += 1
         return value
 
     ranked = sorted(items, key=score, reverse=True)
@@ -145,7 +154,8 @@ async def resolve_release(track: TrackItem) -> ReleaseInfo:
     """Resolve album artist, year, and track position for a track, falling back to its own fields."""
     source, _, provider_id = (track.id or "").partition(":")
     try:
-        async with httpx.AsyncClient(timeout=8.0) as client:
+        # English names keep folder names stable (e.g. "Various Artists", not a localized label).
+        async with httpx.AsyncClient(timeout=8.0, headers={"Accept-Language": "en"}) as client:
             info = None
             if source == "deezer" and provider_id.isdigit():
                 info = await _deezer_track(client, provider_id, track)
@@ -209,6 +219,8 @@ def album_directory(music_root: str, info: ReleaseInfo) -> str:
 def find_existing_track(album_dir: str, info: ReleaseInfo) -> Optional[str]:
     """Return an audio file already in the album folder for the same track title."""
     title_key = normalize_key(info.title)
+    if not title_key:
+        return None
     try:
         entries = list(os.scandir(album_dir))
     except OSError:
