@@ -107,7 +107,7 @@ async def _itunes_track(client: httpx.AsyncClient, track_id: str, fallback: Trac
         title=data.get("trackName") or fallback.title,
         artist=artist,
         album_artist=data.get("collectionArtistName") or artist,
-        album=data.get("collectionName") or fallback.album,
+        album=re.sub(r"\s+-\s+(Single|EP)$", "", data.get("collectionName") or "") or fallback.album,
         year=_year(data.get("releaseDate")),
         track_number=_positive(data.get("trackNumber")),
         disc_number=_positive(data.get("discNumber")),
@@ -117,37 +117,59 @@ async def _itunes_track(client: httpx.AsyncClient, track_id: str, fallback: Trac
     )
 
 
+def _match_score(track: TrackItem, title: str, short_title: str, artist: str, album: str) -> int:
+    """Rank a search hit; an exact title beats another version that only shares the short title."""
+    title_key, artist_key, album_key = normalize_key(track.title), normalize_key(track.artist), normalize_key(track.album)
+    value = 0
+    if normalize_key(title) == title_key:
+        value += 5
+    elif short_title and normalize_key(short_title) == title_key:
+        value += 2
+    if normalize_key(artist) == artist_key:
+        value += 2
+    item_album = normalize_key(album)
+    if album_key and item_album == album_key:
+        value += 3
+    elif album_key and item_album and (album_key in item_album or item_album in album_key):
+        value += 1
+    return value
+
+
+MIN_MATCH_SCORE = 6
+
+
 async def _deezer_search(client: httpx.AsyncClient, track: TrackItem) -> Optional[ReleaseInfo]:
-    """Find the release by artist and title when no provider ID is available."""
+    """Find the release on Deezer by artist and title when no provider ID is available."""
     plain = re.sub(r"[()\[\]\-\"]+", " ", f"{track.artist} {track.title}")
     items = []
     for query in (plain, f'artist:"{track.artist}" track:"{track.title}"'):
         res = await client.get(f"{DEEZER_API}/search", params={"q": query, "limit": 10})
         items += (res.json() or {}).get("data", []) if res.status_code == 200 else []
-    title_key, artist_key, album_key = normalize_key(track.title), normalize_key(track.artist), normalize_key(track.album)
-    if not title_key:
-        return None
 
     def score(item: dict) -> int:
-        value = 0
-        # An exact title beats a different version that only shares the short title.
-        if normalize_key(item.get("title")) == title_key:
-            value += 5
-        elif normalize_key(item.get("title_short")) == title_key:
-            value += 2
-        if normalize_key((item.get("artist") or {}).get("name")) == artist_key:
-            value += 2
-        item_album = normalize_key((item.get("album") or {}).get("title"))
-        if album_key and item_album == album_key:
-            value += 3
-        elif album_key and item_album and (album_key in item_album or item_album in album_key):
-            value += 1
-        return value
+        return _match_score(track, item.get("title"), item.get("title_short"),
+                            (item.get("artist") or {}).get("name"), (item.get("album") or {}).get("title"))
 
     ranked = sorted(items, key=score, reverse=True)
-    if not ranked or score(ranked[0]) < 6:
+    if not ranked or score(ranked[0]) < MIN_MATCH_SCORE:
         return None
     return await _deezer_track(client, str(ranked[0]["id"]), track)
+
+
+async def _itunes_search(client: httpx.AsyncClient, track: TrackItem) -> Optional[ReleaseInfo]:
+    """Second catalog for tracks that Deezer search does not surface."""
+    res = await client.get("https://itunes.apple.com/search",
+                           params={"term": f"{track.artist} {track.title}", "entity": "song", "limit": 15, "country": "IT"})
+    items = (res.json() or {}).get("results", []) if res.status_code == 200 else []
+
+    def score(item: dict) -> int:
+        return _match_score(track, item.get("trackName"), item.get("trackCensoredName"),
+                            item.get("artistName"), item.get("collectionName"))
+
+    ranked = sorted(items, key=score, reverse=True)
+    if not ranked or score(ranked[0]) < MIN_MATCH_SCORE:
+        return None
+    return await _itunes_track(client, str(ranked[0]["trackId"]), track)
 
 
 async def resolve_release(track: TrackItem) -> ReleaseInfo:
@@ -162,7 +184,7 @@ async def resolve_release(track: TrackItem) -> ReleaseInfo:
             elif source == "itunes" and provider_id.isdigit():
                 info = await _itunes_track(client, provider_id, track)
             if not info:
-                info = await _deezer_search(client, track)
+                info = await _deezer_search(client, track) or await _itunes_search(client, track)
             if info:
                 return info
     except (httpx.HTTPError, ValueError) as exc:
