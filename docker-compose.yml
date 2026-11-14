@@ -20,6 +20,8 @@ services:
     volumes:
       - ./music:/music
       - ./backend/data:/app/data
+      # Optional: a folder outside the library to import from (Settings > Import into library).
+      # - ./import:/import
     extra_hosts:
       - "host.docker.internal:host-gateway"
     user: "10001:10001"

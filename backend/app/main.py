@@ -3,7 +3,7 @@ import re
 import random
 import asyncio
 import time
-from fastapi import FastAPI, Query, HTTPException, BackgroundTasks, Request, UploadFile, File, Response
+from fastapi import FastAPI, Query, HTTPException, BackgroundTasks, Request, UploadFile, File, Form, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from typing import List, Optional, Dict, Any
@@ -22,6 +22,8 @@ from app.services.jellyfin_service import JellyfinService
 from app.services.playlist_csv_service import PlaylistCSVService
 from app.services.user_data_service import UserDataService
 from app.services.jellyfin_connection import JellyfinConnection
+from app.services import library_import
+from app.services.library_import import LibraryImporter
 
 app = FastAPI(
     title="Music Seerr API",
@@ -1073,6 +1075,96 @@ async def queue_playlist_downloads(playlist_id: str, req: QueueDownloadsRequest,
     else:
         access_user_id = None
     return await PlaylistCSVService.queue_tracks_download(playlist_id, req.playlist_name, req.tracks, owner=principal, playlist_user_id=access_user_id)
+
+
+# === LIBRARY IMPORT (administrators) ===
+IMPORT_ERROR_STATUS = {
+    "folder_not_found": 404, "folder_not_allowed": 403, "upload_not_found": 404, "job_not_found": 404,
+    "job_not_ready": 409, "busy": 409, "too_many_files": 413, "file_too_large": 413, "unsupported_file": 415,
+}
+
+def _import_error(exc: ValueError) -> HTTPException:
+    code = str(exc)
+    return HTTPException(status_code=IMPORT_ERROR_STATUS.get(code, 400), detail=code)
+
+@app.on_event("startup")
+async def clean_import_staging():
+    await asyncio.to_thread(LibraryImporter.cleanup_stale_uploads)
+
+@app.get("/api/library/import/folders")
+async def list_import_folders(request: Request, path: Optional[str] = None):
+    require_admin(request)
+    try:
+        return await asyncio.to_thread(library_import.list_folder, path)
+    except (ValueError, OSError) as exc:
+        raise _import_error(ValueError(str(exc) if isinstance(exc, ValueError) else "folder_not_found"))
+
+@app.post("/api/library/import/uploads")
+async def create_import_upload(request: Request):
+    require_admin(request)
+    if LibraryImporter.busy():
+        raise _import_error(ValueError("busy"))
+    return {"session_id": await asyncio.to_thread(LibraryImporter.create_upload_session)}
+
+@app.post("/api/library/import/uploads/{session_id}/files")
+async def upload_import_file(session_id: str, request: Request, file: UploadFile = File(...), relative_path: str = Form("")):
+    require_admin(request)
+    try:
+        target = LibraryImporter.upload_target(session_id, relative_path or file.filename or "")
+    except ValueError as exc:
+        raise _import_error(exc)
+    written = 0
+    try:
+        with open(target, "wb") as handle:
+            while chunk := await file.read(1024 * 1024):
+                written += len(chunk)
+                if written > library_import.MAX_UPLOAD_FILE_BYTES:
+                    raise ValueError("file_too_large")
+                handle.write(chunk)
+    except ValueError as exc:
+        os.remove(target)
+        raise _import_error(exc)
+    return {"success": True, "bytes": written}
+
+@app.delete("/api/library/import/uploads/{session_id}")
+async def discard_import_upload(session_id: str, request: Request):
+    require_admin(request)
+    await asyncio.to_thread(LibraryImporter.discard_upload, session_id)
+    return {"success": True}
+
+@app.post("/api/library/import/scan")
+async def start_import_scan(payload: dict, request: Request):
+    require_admin(request)
+    try:
+        job = LibraryImporter.start_scan(path=payload.get("path"), upload_session=payload.get("upload_session"))
+    except ValueError as exc:
+        raise _import_error(exc)
+    return job.to_dict(include_entries=False)
+
+@app.get("/api/library/import/jobs/{job_id}")
+async def get_import_job(job_id: str, request: Request):
+    require_admin(request)
+    job = LibraryImporter.jobs.get(job_id)
+    if not job:
+        raise _import_error(ValueError("job_not_found"))
+    return job.to_dict(include_entries=job.status != "scanning")
+
+@app.post("/api/library/import/jobs/{job_id}/apply")
+async def apply_import_job(job_id: str, request: Request):
+    require_admin(request)
+    try:
+        return LibraryImporter.start_apply(job_id).to_dict(include_entries=False)
+    except ValueError as exc:
+        raise _import_error(exc)
+
+@app.delete("/api/library/import/jobs/{job_id}")
+async def discard_import_job(job_id: str, request: Request):
+    require_admin(request)
+    try:
+        await asyncio.to_thread(LibraryImporter.discard, job_id)
+    except ValueError as exc:
+        raise _import_error(exc)
+    return {"success": True}
 
 
 

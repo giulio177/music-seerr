@@ -19,6 +19,7 @@ AUDIO_EXTENSIONS = (".mp3", ".flac", ".m4a", ".ogg", ".opus", ".wav")
 DEEZER_API = "https://api.deezer.com"
 ITUNES_LOOKUP = "https://itunes.apple.com/lookup"
 YEAR_SUFFIX = re.compile(r"\s*[\(\[]\d{4}[\)\]]\s*$")
+FEATURING = re.compile(r"\s*[\(\[]\s*(?:feat\.?|ft\.?|featuring|with)\s[^\)\]]*[\)\]]", re.IGNORECASE)
 
 
 def sanitize_component(name: str, max_length: int = 150) -> str:
@@ -112,7 +113,7 @@ async def _itunes_track(client: httpx.AsyncClient, track_id: str, fallback: Trac
         track_number=_positive(data.get("trackNumber")),
         disc_number=_positive(data.get("discNumber")),
         isrc=fallback.isrc,
-        cover_url=fallback.cover_url,
+        cover_url=fallback.cover_url or (data.get("artworkUrl100") or "").replace("100x100bb", "1000x1000bb") or None,
         matched=True,
     )
 
@@ -123,6 +124,9 @@ def _match_score(track: TrackItem, title: str, short_title: str, artist: str, al
     value = 0
     if normalize_key(title) == title_key:
         value += 5
+    elif normalize_key(FEATURING.sub("", title or "")) == normalize_key(FEATURING.sub("", track.title or "")):
+        # "Song (feat. Someone)" is the same recording as "Song".
+        value += 4
     elif short_title and normalize_key(short_title) == title_key:
         value += 2
     if normalize_key(artist) == artist_key:
