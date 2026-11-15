@@ -26,6 +26,8 @@ Tracks are saved with Lidarr's default naming: `Album Artist/Album (Year)/Album 
 
 Featured artists are written as separate artist values (main artist first), so a track such as "Song (feat. Guest)" appears under both artists instead of creating a combined "Main feat. Guest" artist. To tidy a library that already has combined credits, album folders split by year, or an artist listed under a former name, run `python -m app.tools.tidy_library` inside the container: it prints the plan, `--alias "Old Name=New Name"` maps a former artist name (saved as `artist_aliases` in the config and applied to future downloads), `--apply` writes the changes, and `--undo <manifest>` restores them. Run it as the user that owns the music files.
 
+Jellyfin's API does not tell an API key who owns a playlist. To let Music Seerr detect owners (needed to add tracks or queue downloads into another user's playlist), mount Jellyfin's playlists folder read-only at `/jellyfin-playlists`, for example `- /path/to/jellyfin/config/data/data/playlists:/jellyfin-playlists:ro`. Without it, an owner is detected only when a single account can see the playlist; otherwise an administrator selects it.
+
 If Jellyfin becomes unreachable, the sign-in screen offers an automatic search and a server address field to reconnect the same Jellyfin server without editing configuration files.
 
 The default web endpoint uses HTTP. Keep it on a trusted network, or put it behind a VPN or a TLS-enabled reverse proxy before remote access. Do not expose port 8000 directly to the public internet.

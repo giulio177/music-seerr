@@ -22,6 +22,9 @@ services:
       - ./backend/data:/app/data
       # Optional: a folder outside the library to import from (Settings > Import into library).
       # - ./import:/import
+      # Optional: Jellyfin's playlists folder (read-only) so playlist owners are detected.
+      # Jellyfin's API does not report playlist owners to an API key.
+      # - /path/to/jellyfin/config/data/data/playlists:/jellyfin-playlists:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     user: "10001:10001"

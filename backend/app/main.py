@@ -81,6 +81,19 @@ def require_jellyfin_user(request: Request) -> dict:
         raise HTTPException(status_code=403, detail="Sign in with a Jellyfin account to access this library.")
     return principal
 
+async def fill_playlist_owners(playlists: List[JellyfinPlaylist]) -> List[JellyfinPlaylist]:
+    """Completes OwnerUserId, which Jellyfin item listings omit, from server-side inference."""
+    missing = {playlist.id for playlist in playlists if not playlist.owner_user_id}
+    if missing:
+        owner_map = await JellyfinService.get_playlist_owner_map(missing)
+        for playlist in playlists:
+            if not playlist.owner_user_id:
+                playlist.owner_user_id = owner_map.get(playlist.id)
+    return playlists
+
+async def get_playlists_with_owners(user_id: str) -> List[JellyfinPlaylist]:
+    return await fill_playlist_owners(await JellyfinService.get_playlists(user_id=user_id))
+
 async def resolve_playlist_access(playlist_id: str, principal: dict, for_mutation: bool = False, owner_user_id: Optional[str] = None):
     if principal.get("is_guest"):
         raise HTTPException(status_code=403, detail="Sign in with Jellyfin to use playlists.")
@@ -95,7 +108,7 @@ async def resolve_playlist_access(playlist_id: str, principal: dict, for_mutatio
             if owner_user_id not in known_user_ids:
                 raise HTTPException(status_code=400, detail="The selected Jellyfin account no longer exists.")
             selected_user = next(user for user in users if user.get("id") == owner_user_id)
-            for playlist in await JellyfinService.get_playlists(user_id=owner_user_id):
+            for playlist in await get_playlists_with_owners(owner_user_id):
                 if playlist.id != playlist_id:
                     continue
                 if playlist.owner_user_id and playlist.owner_user_id != owner_user_id:
@@ -107,7 +120,7 @@ async def resolve_playlist_access(playlist_id: str, principal: dict, for_mutatio
         # Jellyfin may omit OwnerUserId even for playlists returned in the
         # authenticated administrator's own account scope. In that case the
         # verified session identifies the owner without a client-supplied ID.
-        for playlist in await JellyfinService.get_playlists(user_id=principal.get("id")):
+        for playlist in await get_playlists_with_owners(principal.get("id")):
             if playlist.id != playlist_id:
                 continue
             if playlist.owner_user_id and playlist.owner_user_id != principal.get("id"):
@@ -119,7 +132,7 @@ async def resolve_playlist_access(playlist_id: str, principal: dict, for_mutatio
             access_user_id = user.get("id")
             if not access_user_id:
                 continue
-            for playlist in await JellyfinService.get_playlists(user_id=access_user_id):
+            for playlist in await get_playlists_with_owners(access_user_id):
                 if playlist.id == playlist_id:
                     if playlist.owner_user_id:
                         playlist.owner_name = user_names.get(playlist.owner_user_id, playlist.owner_name)
@@ -134,7 +147,7 @@ async def resolve_playlist_access(playlist_id: str, principal: dict, for_mutatio
     else:
         if owner_user_id and owner_user_id != principal.get("id"):
             raise HTTPException(status_code=403, detail="You can only select your own Jellyfin account.")
-        for playlist in await JellyfinService.get_playlists(user_id=principal.get("id")):
+        for playlist in await get_playlists_with_owners(principal.get("id")):
             if playlist.id == playlist_id:
                 if for_mutation:
                     if not playlist.owner_user_id:
@@ -302,7 +315,7 @@ async def get_recommendations(request: Request, limit: int = 12, user_id: Option
 async def list_jellyfin_playlists(request: Request):
     """Restituisce l'elenco delle playlist da Jellyfin per il menu a tendina"""
     principal = require_jellyfin_user(request)
-    playlists = await JellyfinService.get_playlists(user_id=principal.get("id"))
+    playlists = await get_playlists_with_owners(principal.get("id"))
     for playlist in playlists:
         if playlist.owner_user_id == principal.get("id"):
             playlist.owner_name = principal.get("name")
@@ -324,7 +337,7 @@ async def list_all_jellyfin_playlists(request: Request):
         user_id = user.get("id")
         if not user_id:
             continue
-        for playlist in await JellyfinService.get_playlists(user_id=user_id):
+        for playlist in await get_playlists_with_owners(user_id):
             if playlist.id in seen_playlist_ids:
                 continue
             seen_playlist_ids.add(playlist.id)

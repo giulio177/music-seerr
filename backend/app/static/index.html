@@ -2918,6 +2918,28 @@
             backdrop-filter: blur(24px);
         }
 
+        .csv-modal-card {
+            max-width: 820px;
+            width: 92%;
+            max-height: 85vh;
+            max-height: 85dvh;
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+            padding: 24px;
+            overscroll-behavior: contain;
+        }
+        .csv-modal-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:16px; }
+        .csv-modal-heading { min-width:0; flex:1; }
+        .csv-modal-title-row { display:flex; align-items:center; flex-wrap:wrap; gap:8px 10px; }
+        .csv-modal-title { font-size:1.25rem; font-weight:700; color:#ffffff; margin:0; }
+        .csv-modal-close { flex-shrink:0; }
+        .csv-upload-info { display:flex; align-items:center; gap:12px; min-width:0; flex:1; }
+        .csv-upload-text { min-width:0; flex:1; }
+        .csv-upload-meta { font-size:.75rem; color:var(--text-secondary); overflow-wrap:anywhere; }
+        .csv-upload-actions { display:flex; gap:8px; align-items:center; flex-shrink:0; }
+        body.csv-modal-open { overflow:hidden; }
+
         .csv-badge-info {
             background: rgba(59, 130, 246, 0.2);
             color: #60a5fa;
@@ -3086,6 +3108,28 @@
         .csv-status-badge.not_in_csv { color:#c084fc; background:rgba(192,132,252,.11); border:1px solid rgba(192,132,252,.24); }
 
         @media (max-width: 600px) {
+            #playlistCsvModal { padding:12px; align-items:stretch; }
+            .csv-modal-card {
+                width:100%;
+                max-height:none;
+                height:100%;
+                padding:18px 16px;
+                overflow-y:auto;
+                -webkit-overflow-scrolling:touch;
+            }
+            .csv-modal-card > * { flex-shrink:0; }
+            .csv-modal-title { font-size:1.12rem; }
+            .csv-upload-banner { flex-direction:column; align-items:stretch; gap:12px; padding:12px; }
+            .csv-upload-actions { width:100%; }
+            .csv-upload-actions #btnCsvUpload { flex:1; justify-content:center; min-width:0; }
+            .csv-upload-actions #btnCsvReMatch { flex:0 0 auto; width:auto; min-width:44px; padding-left:12px; padding-right:12px; justify-content:center; }
+            .csv-toolbar { flex-direction:column; align-items:stretch; gap:10px; }
+            .csv-tabs { display:flex; width:100%; scrollbar-width:none; }
+            .csv-tabs::-webkit-scrollbar { display:none; }
+            .csv-tab-btn { flex:0 0 auto; }
+            .csv-actions-group { width:100%; }
+            .csv-actions-group > button { flex:1 1 0; min-width:0; justify-content:center; font-size:.78rem; padding:9px 10px; line-height:1.2; }
+            .csv-list-container { flex:none; max-height:none; min-height:0; overflow:visible; }
             .csv-item-row { align-items:flex-start; flex-wrap:wrap; gap:8px; padding:9px; }
             .csv-item-main { grid-template-columns:38px 20px minmax(0,1fr); gap:7px; }
             .csv-item-artwork { width:38px; height:38px; }
@@ -5385,19 +5429,19 @@
 
     <!-- PLAYLIST CSV PAIRING & MATCHER MODAL -->
     <div id="playlistCsvModal" class="alert-popup-overlay" style="display:none;" onclick="if(event.target===this) closePlaylistCsvModal()">
-        <div class="alert-popup-box csv-modal-card" style="max-width: 820px; width: 92%; max-height: 85vh; display: flex; flex-direction: column; text-align: left; padding: 24px;">
+        <div class="alert-popup-box csv-modal-card" role="dialog" aria-modal="true" aria-labelledby="csvModalTitle">
             <!-- Header -->
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
-                <div>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <h2 style="font-size: 1.25rem; font-weight: 700; color: #ffffff; margin: 0;" data-i18n="jellyfin.csv_modal_title">Playlist CSV Sync</h2>
+            <div class="csv-modal-header">
+                <div class="csv-modal-heading">
+                    <div class="csv-modal-title-row">
+                        <h2 id="csvModalTitle" class="csv-modal-title" data-i18n="jellyfin.csv_modal_title">Playlist CSV Sync</h2>
                         <span id="csvModalBadge" class="csv-badge-info" style="display: none;">CSV</span>
                     </div>
                     <p style="font-size: 0.82rem; color: var(--text-secondary); margin: 4px 0 0 0;" data-i18n="jellyfin.csv_modal_desc">
                         Pair an exported CSV playlist file to verify availability in your library and download missing songs.
                     </p>
                 </div>
-                <button type="button" class="btn-icon" onclick="closePlaylistCsvModal()" data-i18n-title="common.close" data-i18n-aria-label="common.close" title="Close" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;fill:currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+                <button type="button" class="btn-icon csv-modal-close" onclick="closePlaylistCsvModal()" data-i18n-title="common.close" data-i18n-aria-label="common.close" title="Close" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;fill:currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
             </div>
 
             <div id="csvOwnerPickerWrap" style="display:none; margin: 0 0 14px;">
@@ -5408,16 +5452,16 @@
 
             <!-- Upload & File Info Bar -->
             <div class="csv-upload-banner">
-                <div style="display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1;">
+                <div class="csv-upload-info">
                     <div class="csv-file-icon">
                         <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
                     </div>
-                    <div style="min-width: 0;">
+                    <div class="csv-upload-text">
                         <div id="csvCurrentFilename" style="font-size: 0.88rem; font-weight: 600; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" data-i18n="jellyfin.csv_no_file">No paired CSV file yet</div>
-                        <div id="csvFileMetaSub" style="font-size: 0.75rem; color: var(--text-secondary);">Export a playlist CSV from Spotify, Apple Music, or Soundiiz</div>
+                        <div id="csvFileMetaSub" class="csv-upload-meta">Export a playlist CSV from Spotify, Apple Music, or Soundiiz</div>
                     </div>
                 </div>
-                <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
+                <div class="csv-upload-actions">
                     <input type="file" id="csvFileInput" accept=".csv,text/csv,text/plain,application/vnd.ms-excel" style="display:none;" onchange="handleCsvFileSelected(event)">
                     <button class="btn-download" id="btnCsvUpload" onclick="const inp = document.getElementById('csvFileInput'); if (inp) { inp.value = ''; inp.click(); }" style="background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.18);">
                         <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
@@ -9640,6 +9684,7 @@
             const modal = document.getElementById('playlistCsvModal');
             if (!modal) return;
             modal.style.display = 'flex';
+            document.body.classList.add('csv-modal-open');
             await prepareCsvOwnerPicker();
             if (currentAppUser?.is_admin && !currentCsvOwnerId) {
                 const container = document.getElementById('csvTracksContainer');
@@ -9653,6 +9698,7 @@
         function closePlaylistCsvModal() {
             const modal = document.getElementById('playlistCsvModal');
             if (modal) modal.style.display = 'none';
+            document.body.classList.remove('csv-modal-open');
         }
         window.closePlaylistCsvModal = closePlaylistCsvModal;
 

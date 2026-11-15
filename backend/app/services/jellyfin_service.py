@@ -1,4 +1,7 @@
+import os
+import re
 import time
+import asyncio
 
 import httpx
 from contextvars import ContextVar, Token
@@ -233,6 +236,114 @@ class JellyfinService:
             except Exception as e:
                 print(f"[JellyfinService] Errore get_playlists: {e}")
         return []
+
+    _owner_map_cache: Optional[tuple] = None
+    _owner_map_lock: Optional[asyncio.Lock] = None
+    OWNER_MAP_TTL = 60
+
+    @classmethod
+    async def _get_playlist_share_ids(cls, client: httpx.AsyncClient, playlist_id: str) -> Optional[set]:
+        """Returns the user IDs a playlist is shared with, or None when Jellyfin does not expose them."""
+        try:
+            res = await client.get(
+                f"{settings.JELLYFIN_URL.rstrip('/')}/Playlists/{playlist_id}",
+                headers=cls._headers(),
+            )
+            if res.status_code != 200:
+                return None
+            data = res.json()
+            shares = data.get("Shares")
+            if not isinstance(shares, list):
+                return None
+            return {str(share.get("UserId")).replace("-", "").lower() for share in shares if share.get("UserId")}
+        except Exception:
+            return None
+
+    PLAYLIST_XML_MAX_BYTES = 16 * 1024 * 1024
+    _OWNER_XML_RE = re.compile(r"<OwnerUserId>\s*([0-9a-fA-F-]{32,36})\s*</OwnerUserId>")
+
+    @classmethod
+    async def _get_playlist_owner_from_xml(cls, client: httpx.AsyncClient, playlist_id: str, user_id: str) -> Optional[str]:
+        """Reads OwnerUserId from Jellyfin's playlist.xml through the optional read-only mount."""
+        root = os.environ.get("JELLYFIN_PLAYLISTS_DIR", "/jellyfin-playlists")
+        if not root or not os.path.isdir(root):
+            return None
+        try:
+            res = await client.get(
+                f"{settings.JELLYFIN_URL.rstrip('/')}/Users/{user_id}/Items/{playlist_id}",
+                headers=cls._headers(),
+            )
+            if res.status_code != 200:
+                return None
+            folder = os.path.basename(str(res.json().get("Path") or "").rstrip("/"))
+            if not folder or folder in (".", ".."):
+                return None
+            root_real = os.path.realpath(root)
+            xml_path = os.path.realpath(os.path.join(root_real, folder, "playlist.xml"))
+            if os.path.commonpath([root_real, xml_path]) != root_real or not os.path.isfile(xml_path):
+                return None
+            if os.path.getsize(xml_path) > cls.PLAYLIST_XML_MAX_BYTES:
+                return None
+            with open(xml_path, "r", encoding="utf-8", errors="replace") as handle:
+                match = cls._OWNER_XML_RE.search(handle.read())
+            return match.group(1).replace("-", "").lower() if match else None
+        except Exception as e:
+            print(f"[JellyfinService] Could not read playlist owner for {playlist_id}: {e}")
+            return None
+
+    @classmethod
+    async def get_playlist_owner_map(cls, playlist_ids: Optional[set] = None) -> dict:
+        """Maps playlist IDs to owner user IDs.
+
+        Jellyfin item listings omit OwnerUserId. The owner is read from
+        Jellyfin's playlist.xml when the playlists folder is mounted;
+        otherwise it is inferred: a playlist owner always sees its own
+        playlist, so when exactly one account sees it (after excluding
+        accounts it is shared with), that account is the owner. Ambiguous
+        playlists stay unresolved.
+        """
+        if not settings.JELLYFIN_API_KEY or not settings.JELLYFIN_URL:
+            return {}
+        if cls._owner_map_lock is None:
+            cls._owner_map_lock = asyncio.Lock()
+        async with cls._owner_map_lock:
+            cached = cls._owner_map_cache
+            if (
+                cached
+                and time.monotonic() - cached[0] < cls.OWNER_MAP_TTL
+                and not (playlist_ids or set()) - cached[2]
+            ):
+                return cached[1]
+            users = [user for user in await cls.get_users() if user.get("id")]
+            results = await asyncio.gather(*(cls.get_playlists(user_id=user["id"]) for user in users))
+            owners: dict = {}
+            visible_to: dict = {}
+            for user, playlists in zip(users, results):
+                for playlist in playlists:
+                    if playlist.owner_user_id:
+                        owners[playlist.id] = playlist.owner_user_id
+                    visible_to.setdefault(playlist.id, set()).add(user["id"])
+            unresolved = [pid for pid in visible_to if pid not in owners]
+            known_ids = {user["id"].replace("-", "").lower(): user["id"] for user in users}
+            async with httpx.AsyncClient(timeout=6.0) as client:
+                xml_owners = await asyncio.gather(*(
+                    cls._get_playlist_owner_from_xml(client, pid, next(iter(visible_to[pid])))
+                    for pid in unresolved
+                ))
+                for playlist_id, xml_owner in zip(unresolved, xml_owners):
+                    if xml_owner and xml_owner in known_ids:
+                        owners[playlist_id] = known_ids[xml_owner]
+                unresolved = [pid for pid in unresolved if pid not in owners]
+                share_results = await asyncio.gather(*(cls._get_playlist_share_ids(client, pid) for pid in unresolved))
+            for playlist_id, share_ids in zip(unresolved, share_results):
+                candidates = {
+                    uid for uid in visible_to[playlist_id]
+                    if not share_ids or uid.replace("-", "").lower() not in share_ids
+                }
+                if len(candidates) == 1:
+                    owners[playlist_id] = next(iter(candidates))
+            cls._owner_map_cache = (time.monotonic(), owners, set(visible_to))
+            return owners
 
     @classmethod
     async def refresh_library(cls) -> bool:
