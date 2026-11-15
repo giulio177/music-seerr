@@ -14,6 +14,7 @@ from typing import List, Optional
 import httpx
 import mutagen
 
+from app.config import settings
 from app.models.schemas import TrackItem
 
 AUDIO_EXTENSIONS = (".mp3", ".flac", ".m4a", ".ogg", ".opus", ".wav")
@@ -21,6 +22,9 @@ DEEZER_API = "https://api.deezer.com"
 ITUNES_LOOKUP = "https://itunes.apple.com/lookup"
 YEAR_SUFFIX = re.compile(r"\s*[\(\[]\d{4}[\)\]]\s*$")
 FEATURING = re.compile(r"\s*[\(\[]\s*(?:feat\.?|ft\.?|featuring|with)\s[^\)\]]*[\)\]]", re.IGNORECASE)
+# "Main feat. Guest" inside an artist credit; the main part is never split further (bands use "&").
+ARTIST_FEATURING = re.compile(r"\s+[\(\[]?\s*(?:feat\.?|ft\.?|featuring)\s+", re.IGNORECASE)
+GUEST_SEPARATOR = re.compile(r"\s*[,&]\s*")
 
 
 def sanitize_component(name: str, max_length: int = 150) -> str:
@@ -40,6 +44,34 @@ def normalize_key(text: str) -> str:
     return re.sub(r"[\W_]+", "", text)
 
 
+def split_artists(credit: str) -> List[str]:
+    """Split "Main feat. Guest A & Guest B" into ["Main", "Guest A", "Guest B"]."""
+    credit = str(credit or "").strip()
+    parts = ARTIST_FEATURING.split(credit, maxsplit=1)
+    names = [parts[0].strip()]
+    if len(parts) > 1:
+        names += GUEST_SEPARATOR.split(parts[1].strip().rstrip(")]").strip())
+    return unique_artists(names)
+
+
+def unique_artists(names) -> List[str]:
+    """Drop empty and repeated names (case-insensitive), keeping order, and apply configured aliases."""
+    seen, result = set(), []
+    for name in names:
+        name = canonical_artist(str(name or "").strip())
+        key = normalize_key(name)
+        if name and key not in seen:
+            seen.add(key)
+            result.append(name)
+    return result
+
+
+def canonical_artist(name: str) -> str:
+    """Map an artist's former or alternate name (config `artist_aliases`) to the library name."""
+    aliases = {normalize_key(alias): target for alias, target in (settings.ARTIST_ALIASES or {}).items()}
+    return aliases.get(normalize_key(name), name)
+
+
 @dataclass
 class ReleaseInfo:
     title: str
@@ -52,7 +84,21 @@ class ReleaseInfo:
     isrc: Optional[str] = None
     cover_url: Optional[str] = None
     matched: bool = False
+    artists: List[str] = field(default_factory=list)
     extra: dict = field(default_factory=dict)
+
+    def __post_init__(self):
+        # Track artists always start with the main artist; guests follow.
+        self.artists = unique_artists(self.artists or split_artists(self.artist))
+        self.artist = self.artists[0] if self.artists else canonical_artist(self.artist)
+        self.album_artist = canonical_artist(split_artists(self.album_artist)[0] if self.album_artist else self.artist)
+
+    @property
+    def artist_credit(self) -> str:
+        """Display credit such as "Main feat. Guest A, Guest B"."""
+        if len(self.artists) < 2:
+            return self.artist
+        return f"{self.artists[0]} feat. {', '.join(self.artists[1:])}"
 
 
 def _year(date: Optional[str]) -> Optional[int]:
@@ -84,9 +130,14 @@ async def _deezer_track(client: httpx.AsyncClient, track_id: str, fallback: Trac
             album_artist = (album_data.get("artist") or {}).get("name", "")
             year = _year(album_data.get("release_date")) or year
     artist = (data.get("artist") or {}).get("name") or fallback.artist
+    contributors = data.get("contributors") or []
+    roles = {"Main": 0, "Featured": 1}
+    credited = [c.get("name") for c in sorted(contributors, key=lambda c: roles.get(c.get("role"), 2))
+                if c.get("role") in roles]
     return ReleaseInfo(
         title=data.get("title") or fallback.title,
         artist=artist,
+        artists=[*split_artists(artist), *credited],
         album_artist=album_artist or artist,
         album=album.get("title") or fallback.album,
         year=year,
@@ -207,6 +258,8 @@ async def resolve_release(track: TrackItem) -> ReleaseInfo:
 def _existing_child(parent: str, wanted: str, ignore_year: bool = False) -> Optional[str]:
     """Reuse an existing folder whose name matches ignoring case, punctuation, and a year suffix."""
     key = normalize_key(YEAR_SUFFIX.sub("", wanted) if ignore_year else wanted)
+    if not key:
+        return None  # Symbol-only names ("+", "÷") have no comparable key; never reuse another folder.
     try:
         entries = sorted(os.scandir(parent), key=lambda entry: entry.name)
     except OSError:
@@ -229,14 +282,29 @@ def track_stem(info: ReleaseInfo) -> str:
     return f"{artist} - {album} - {title}"
 
 
-def album_directory(music_root: str, info: ReleaseInfo) -> str:
-    """Return the absolute album folder, reusing matching artist/album folders already on disk."""
+def album_directory(music_root: str, info: ReleaseInfo, planned: Optional[dict] = None) -> str:
+    """Return the absolute album folder, reusing matching artist/album folders already on disk.
+
+    `planned` collects folders chosen earlier in the same batch, so tracks of one album that report
+    different years (single vs. album release) still share one folder. When a folder is reused, the
+    track takes that folder's year so every track of the album carries the same year tag.
+    """
     root = os.path.realpath(music_root)
     artist_name = sanitize_component(info.album_artist)
-    artist_dir = _existing_child(root, artist_name) or artist_name
+    artist_key = normalize_key(artist_name)
+    album_key = normalize_key(sanitize_component(info.album))
+    planned = planned if planned is not None else {}
+    artist_dir = (planned.get((artist_key, None)) or _existing_child(root, artist_name) or artist_name)
     album_label = f"{info.album} ({info.year})" if info.year else info.album
     album_name = sanitize_component(album_label)
-    album_dir = _existing_child(os.path.join(root, artist_dir), album_name, ignore_year=True) or album_name
+    album_dir = ((planned.get((artist_key, album_key)) if album_key else None)
+                 or _existing_child(os.path.join(root, artist_dir), album_name, ignore_year=True) or album_name)
+    planned[(artist_key, None)] = artist_dir
+    if album_key:
+        planned[(artist_key, album_key)] = album_dir
+    folder_year = re.search(r"[\(\[](\d{4})[\)\]]\s*$", album_dir)
+    if folder_year:
+        info.year = int(folder_year.group(1))
     path = os.path.realpath(os.path.join(root, artist_dir, album_dir))
     if os.path.commonpath([root, path]) != root or path == root:
         raise ValueError("Invalid destination path")

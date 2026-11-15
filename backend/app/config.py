@@ -3,7 +3,7 @@
 import json
 import os
 import tempfile
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from pydantic_settings import BaseSettings
 
@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     SPOTIFY_CLIENT_ID: Optional[str] = None
     SPOTIFY_CLIENT_SECRET: Optional[str] = None
     SETUP_COMPLETED: bool = False
+    # Former or alternate artist names mapped to the name used in the library, e.g. {"tha Supreme": "thasup"}.
+    ARTIST_ALIASES: Dict[str, str] = {}
 
     class Config:
         env_file = ".env"
@@ -65,6 +67,8 @@ def load_webapp_config():
                 settings.JELLYFIN_USER_ID = data["jellyfin_user_id"] or None
             if "jellyfin_server_id" in data:
                 settings.JELLYFIN_SERVER_ID = data["jellyfin_server_id"] or None
+            if isinstance(data.get("artist_aliases"), dict):
+                settings.ARTIST_ALIASES = {str(k): str(v) for k, v in data["artist_aliases"].items() if k and v}
             if "language" in data:
                 settings.LANGUAGE = data["language"] or "en"
             settings.SETUP_COMPLETED = bool(
@@ -102,6 +106,7 @@ def save_webapp_config(data: dict):
         "jellyfin_server_id": jellyfin_server_id,
         "language": language,
         "setup_completed": bool(setup_completed),
+        "artist_aliases": dict(settings.ARTIST_ALIASES or {}),
     }
 
     settings.MUSIC_OUTPUT_DIR = music_dir
@@ -112,6 +117,10 @@ def save_webapp_config(data: dict):
     settings.LANGUAGE = language
     settings.SETUP_COMPLETED = bool(setup_completed)
 
+    _write_config(config_dict)
+
+
+def _write_config(config_dict: dict):
     path = get_possible_config_paths()[0]
     parent = os.path.dirname(os.path.abspath(path))
     os.makedirs(parent, exist_ok=True)
@@ -127,6 +136,15 @@ def save_webapp_config(data: dict):
         if os.path.exists(temp_path):
             os.unlink(temp_path)
 
+
+def save_artist_aliases(aliases: dict):
+    """Update only `artist_aliases` in the existing config file; fail rather than write a config it cannot read."""
+    path = get_possible_config_paths()[0]
+    with open(path, "r", encoding="utf-8") as config_file:
+        data = json.load(config_file)
+    data["artist_aliases"] = dict(aliases)
+    _write_config(data)
+    settings.ARTIST_ALIASES = dict(aliases)
 
 load_webapp_config()
 os.makedirs(settings.MUSIC_OUTPUT_DIR, exist_ok=True)

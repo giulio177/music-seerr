@@ -289,10 +289,11 @@ class LibraryImporter:
         files = await asyncio.to_thread(_audio_files, job.source)
         job.total = len(files)
         slots: Dict[tuple, List[dict]] = {}
+        planned_dirs: dict = {}
         for path in files:
             track = await asyncio.to_thread(read_track, path, job.source)
             release = await resolve_release(track)
-            dest_dir = album_directory(root, release)
+            dest_dir = album_directory(root, release, planned_dirs)
             entry = {
                 "source": path,
                 "target": os.path.join(dest_dir, track_stem(release) + os.path.splitext(path)[1].lower()),
@@ -300,7 +301,8 @@ class LibraryImporter:
                 "matched": release.matched,
                 "existing": await asyncio.to_thread(find_existing_tracks, dest_dir, release),
                 "release": {
-                    "title": release.title, "artist": release.artist, "album_artist": release.album_artist,
+                    "title": release.title, "artist": release.artist, "artists": release.artists,
+                    "album_artist": release.album_artist,
                     "album": release.album, "year": release.year, "track_number": release.track_number,
                     "disc_number": release.disc_number, "isrc": release.isrc, "cover_url": release.cover_url,
                 },
@@ -374,9 +376,8 @@ class LibraryImporter:
         for entry in to_move:
             record = await asyncio.to_thread(_move_entry, entry)
             if record:
-                if entry["target"].lower().endswith(".mp3"):
-                    release = ReleaseInfo(matched=entry["matched"], **entry["release"])
-                    await asyncio.to_thread(download_manager._tag_audio, entry["target"], release)
+                release = ReleaseInfo(matched=entry["matched"], **entry["release"])
+                await asyncio.to_thread(download_manager._tag_audio, entry["target"], release)
                 moved.append(record)
             job.processed += 1
 

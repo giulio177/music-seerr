@@ -1,3 +1,5 @@
+import time
+
 import httpx
 from contextvars import ContextVar, Token
 from typing import List, Optional
@@ -335,6 +337,18 @@ class JellyfinService:
                 return False
 
     @staticmethod
+    def artist_credit(artists: List[str], album_artist: Optional[str] = None) -> str:
+        """Credit line such as "Main feat. Guest A, Guest B"; the album artist leads when it is credited."""
+        names = [name for name in artists or [] if name]
+        if not names:
+            return album_artist or ""
+        if album_artist and album_artist in names:
+            names = [album_artist] + [name for name in names if name != album_artist]
+        if len(names) == 1:
+            return names[0]
+        return f"{names[0]} feat. {', '.join(names[1:])}"
+
+    @staticmethod
     def _format_track_item(item: dict) -> dict:
         item_id = item.get("Id")
         ticks = item.get("RunTimeTicks", 0) or 0
@@ -344,7 +358,7 @@ class JellyfinService:
         duration_formatted = f"{mins}:{secs:02d}"
 
         artists = item.get("Artists", [])
-        artist_name = ", ".join(artists) if artists else item.get("AlbumArtist", "Unknown artist")
+        artist_name = JellyfinService.artist_credit(artists, item.get("AlbumArtist")) or "Unknown artist"
 
         artist_id = None
         artist_items = item.get("ArtistItems", [])
@@ -542,36 +556,68 @@ class JellyfinService:
                 return {"album": album_info, "tracks": tracks}
         return {"album": None, "tracks": []}
 
+    _credited_artists_cache: dict = {}
+    CREDITED_ARTISTS_TTL = 300
+
+    @classmethod
+    async def _credited_artist_ids(cls, client: httpx.AsyncClient, user_id: Optional[str]) -> Optional[dict]:
+        """Artists credited on at least one track as {casefolded name: track artist ID} (cached briefly per user).
+
+        Jellyfin keeps an artist entry after retagging removes its last track (for example a former
+        "Main feat. Guest" credit), so the artist list is filtered against the tracks themselves.
+        """
+        key = user_id or ""
+        cached = cls._credited_artists_cache.get(key)
+        if cached and time.monotonic() - cached[0] < cls.CREDITED_ARTISTS_TTL:
+            return cached[1]
+        url = f"{settings.JELLYFIN_URL.rstrip('/')}/Users/{user_id}/Items" if user_id else f"{settings.JELLYFIN_URL.rstrip('/')}/Items"
+        res = await client.get(url, headers=cls._headers(), params={
+            "includeItemTypes": "Audio", "recursive": "true", "fields": "ArtistItems,AlbumArtists",
+            "enableImages": "false", "enableUserData": "false",
+        })
+        if res.status_code != 200:
+            return None
+        ids = {}
+        for item in res.json().get("Items", []):
+            for artist in (item.get("ArtistItems") or []) + (item.get("AlbumArtists") or []):
+                if artist.get("Id") and artist.get("Name"):
+                    ids.setdefault(artist["Name"].casefold(), artist["Id"])
+        cls._credited_artists_cache[key] = (time.monotonic(), ids)
+        return ids
+
     @classmethod
     async def get_artists(cls, q: Optional[str] = None, limit: int = 150, offset: int = 0, user_id: Optional[str] = None) -> dict:
         if not settings.JELLYFIN_API_KEY or not settings.JELLYFIN_URL:
             return {"total": 0, "artists": []}
         user_id = user_id if user_id is not None else cls.get_scoped_user_id()
         url = f"{settings.JELLYFIN_URL.rstrip('/')}/Artists"
-        params = {
-            "userId": user_id,
-            "sortBy": "SortName",
-            "limit": limit,
-            "startIndex": offset
-        }
+        params = {"userId": user_id, "sortBy": "SortName", "enableImages": "false"}
         if q and q.strip():
             params["searchTerm"] = q.strip()
 
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=20.0) as client:
             res = await client.get(url, headers=cls._headers(), params=params)
-            if res.status_code == 200:
-                data = res.json()
-                items = data.get("Items", [])
-                total = data.get("TotalRecordCount", len(items))
-                artists = []
+            if res.status_code != 200:
+                return {"total": 0, "artists": []}
+            items = res.json().get("Items", [])
+            credited = await cls._credited_artist_ids(client, user_id)
+            if credited is not None:
+                # Jellyfin can keep a stale artist entry with the same name after files move; use the
+                # ID the tracks reference so the artist page lists them, and show each name once.
+                kept, seen = [], set()
                 for it in items:
-                    artists.append({
-                        "id": it.get("Id"),
-                        "name": it.get("Name", "Unknown artist"),
-                        "cover_url": f"/api/jellyfin/image/{it.get('Id')}"
-                    })
-                return {"total": total, "artists": artists}
-        return {"total": 0, "artists": []}
+                    name = (it.get("Name") or "").casefold()
+                    if name in credited and name not in seen:
+                        seen.add(name)
+                        kept.append({**it, "Id": credited[name]})
+                items = kept
+            page = items[offset:offset + limit]
+            artists = [{
+                "id": it.get("Id"),
+                "name": it.get("Name", "Unknown artist"),
+                "cover_url": f"/api/jellyfin/image/{it.get('Id')}"
+            } for it in page]
+            return {"total": len(items), "artists": artists}
 
     @classmethod
     async def get_artist_tracks(cls, artist_id: str) -> dict:
@@ -591,7 +637,10 @@ class JellyfinService:
             if res.status_code == 200:
                 items = res.json().get("Items", [])
                 tracks = [cls._format_track_item(it) for it in items]
-                artist_name = tracks[0]["artist"] if tracks else "Artist"
+                # Name the artist from the matching credit, not the track's full "A feat. B" line.
+                artist_name = next((artist.get("Name") for it in items for artist in it.get("ArtistItems") or []
+                                    if artist.get("Id") == artist_id and artist.get("Name")), None)
+                artist_name = artist_name or (tracks[0]["artist"] if tracks else "Artist")
                 artist_info = {
                     "id": artist_id,
                     "name": artist_name,

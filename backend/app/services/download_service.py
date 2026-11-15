@@ -254,8 +254,11 @@ class DownloadManager:
             job.message = f"Download failed: {str(e)}"
 
     def _tag_audio(self, mp3_path: str, track: ReleaseInfo):
-        """Inietta metadati ID3 e copertina ad altissima risoluzione nell'MP3"""
+        """Write ID3 metadata and the high-resolution cover into an MP3; other formats get text tags only."""
         if not os.path.exists(mp3_path):
+            return
+        if not mp3_path.lower().endswith(".mp3"):
+            self._tag_other(mp3_path, track)
             return
 
         try:
@@ -266,7 +269,8 @@ class DownloadManager:
                 audio.add_tags()
 
             audio.tags.add(TIT2(encoding=3, text=track.title))
-            audio.tags.add(TPE1(encoding=3, text=track.artist))
+            # One TPE1 value per artist, so Jellyfin lists the track under the main artist and every guest.
+            audio.tags.add(TPE1(encoding=3, text=track.artists or [track.artist]))
             audio.tags.add(TALB(encoding=3, text=track.album))
             audio.tags.add(TPE2(encoding=3, text=track.album_artist))
             if track.track_number:
@@ -314,5 +318,31 @@ class DownloadManager:
             audio.save()
         except Exception as e:
             print(f"[Tagging] Errore salvataggio ID3: {e}")
+
+    @staticmethod
+    def _tag_other(path: str, track: ReleaseInfo):
+        """Write the text tags of FLAC, M4A, and Ogg files through mutagen's format-neutral keys."""
+        try:
+            audio = mutagen.File(path, easy=True)
+            if audio is None:
+                return
+            if audio.tags is None:
+                audio.add_tags()
+            values = {
+                "title": track.title, "artist": track.artists or [track.artist], "album": track.album,
+                "albumartist": track.album_artist, "tracknumber": track.track_number,
+                "discnumber": track.disc_number, "date": track.year, "isrc": track.isrc,
+            }
+            for key, value in values.items():
+                if not value:
+                    continue
+                try:
+                    audio[key] = [str(v) for v in value] if isinstance(value, list) else str(value)
+                except (KeyError, ValueError):
+                    pass  # The format has no field for this key (e.g. ISRC in M4A).
+            audio.save()
+        except Exception as e:
+            print(f"[Tagging] Could not write tags to {path}: {e}")
+
 
 download_manager = DownloadManager()
