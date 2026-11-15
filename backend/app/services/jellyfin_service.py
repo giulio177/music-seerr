@@ -8,6 +8,7 @@ from contextvars import ContextVar, Token
 from typing import List, Optional
 from app.config import settings
 from app.models.schemas import JellyfinPlaylist
+from app.services.library_layout import title_key
 
 class JellyfinService:
     _user_scope: ContextVar = ContextVar("jellyfin_user_scope", default="__global_fallback__")
@@ -372,16 +373,17 @@ class JellyfinService:
             "searchTerm": title,
             "includeItemTypes": "Audio",
             "recursive": "true",
-            "limit": 5
+            "limit": 20
         }
+        wanted = title_key(title)
 
         async with httpx.AsyncClient(timeout=10.0) as client:
             try:
                 res = await client.get(url, params=params, headers=cls._headers())
                 if res.status_code == 200:
-                    items = res.json().get("Items", [])
+                    # Only exact title keys count: "Believer (Instrumental)" never stands in for "Believer".
+                    items = [item for item in res.json().get("Items", []) if title_key(item.get("Name", "")) == wanted]
                     for item in items:
-                        # Controllo flessibile su artista / titolo
                         item_artists = [a.lower() for a in item.get("Artists", [])]
                         if not artist or any(artist.lower() in a for a in item_artists) or artist.lower() in item.get("Name", "").lower():
                             return item.get("Id")

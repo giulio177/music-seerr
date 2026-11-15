@@ -11,6 +11,7 @@ from app.services.jellyfin_service import JellyfinService
 from app.services.search_service import SearchService
 from app.services.download_service import download_manager
 from app.models.schemas import TrackItem
+from app.services.library_layout import title_key
 
 STORAGE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "playlist_csvs")
 
@@ -201,7 +202,7 @@ class PlaylistCSVService:
         # Build index lookups
         pl_lookup = {}
         for t in playlist_tracks:
-            norm_title = _normalize_str(t.get("title"))
+            norm_title = title_key(t.get("title"))
             norm_artist = _normalize_str(t.get("artist"))
             if norm_title:
                 pl_lookup[(norm_title, norm_artist)] = t
@@ -210,7 +211,7 @@ class PlaylistCSVService:
 
         lib_lookup = {}
         for t in library_tracks:
-            norm_title = _normalize_str(t.get("title"))
+            norm_title = title_key(t.get("title"))
             norm_artist = _normalize_str(t.get("artist"))
             if norm_title:
                 lib_lookup[(norm_title, norm_artist)] = t
@@ -225,7 +226,7 @@ class PlaylistCSVService:
             title = item.get("title", "")
             artist = item.get("artist", "")
             album = item.get("album", "")
-            norm_title = _normalize_str(title)
+            norm_title = title_key(title)
             norm_artist = _normalize_str(artist)
 
             record = {
@@ -274,12 +275,12 @@ class PlaylistCSVService:
                 )
             if not candidates:
                 return
-            target_title = _normalize_str(record.get("title"))
+            target_title = title_key(record.get("title"))
             target_artist = _normalize_str(record.get("artist"))
             best = max(
                 candidates,
                 key=lambda track: (
-                    2 if _normalize_str(track.title) == target_title else 0,
+                    2 if title_key(track.title) == target_title else 0,
                     1 if target_artist and target_artist in _normalize_str(track.artist) else 0,
                 ),
             )
@@ -290,13 +291,13 @@ class PlaylistCSVService:
 
         # Include playlist entries absent from the CSV as a separate, read-only group.
         csv_keys = {
-            (_normalize_str(item.get("title")), _normalize_str(item.get("artist")))
+            (title_key(item.get("title")), _normalize_str(item.get("artist")))
             for item in csv_tracks
         }
         not_in_csv = [
             {**track, "status": "not_in_csv", "csv_index": index}
             for index, track in enumerate(playlist_tracks, start=1)
-            if (_normalize_str(track.get("title")), _normalize_str(track.get("artist"))) not in csv_keys
+            if (title_key(track.get("title")), _normalize_str(track.get("artist"))) not in csv_keys
         ]
 
         all_results = sorted(in_playlist + in_library + to_download, key=lambda x: x["csv_index"])

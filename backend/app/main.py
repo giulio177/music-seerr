@@ -23,6 +23,7 @@ from app.services.user_data_service import UserDataService
 from app.services.jellyfin_connection import JellyfinConnection
 from app.services import library_import, recommendation_service
 from app.services.library_import import LibraryImporter
+from app.services.library_layout import title_key
 
 app = FastAPI(
     title="Music Seerr API",
@@ -205,12 +206,9 @@ def _normalize_str(text: Optional[str]) -> str:
     return t
 
 def _is_match(t_title: str, t_artist: str, j_title: str, j_artist: str) -> bool:
-    norm_tt = _normalize_str(t_title)
-    norm_jt = _normalize_str(j_title)
-    if not norm_tt or not norm_jt:
-        return False
-    title_matches = (norm_tt == norm_jt) or (len(norm_tt) > 5 and norm_tt in norm_jt) or (len(norm_jt) > 5 and norm_jt in norm_tt)
-    if not title_matches:
+    # Exact title key: "Believer (Instrumental)" is a different song from "Believer".
+    norm_tt = title_key(t_title)
+    if not norm_tt or norm_tt != title_key(j_title):
         return False
     norm_ta = _normalize_str(t_artist)
     norm_ja = _normalize_str(j_artist)

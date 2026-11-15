@@ -44,6 +44,21 @@ def normalize_key(text: str) -> str:
     return re.sub(r"[\W_]+", "", text)
 
 
+# Title qualifiers that never mark a different recording: featured guests and remaster tags.
+NEUTRAL_TITLE_QUALIFIER = re.compile(
+    r"\s*[\(\[]\s*(?:feat\.?|ft\.?|featuring|with)\s[^\)\]]*[\)\]]"
+    r"|\s*[\(\[][^\)\]]*\bremaster(?:ed)?\b[^\)\]]*[\)\]]"
+    r"|\s+-\s+(?:\d{4}\s+)?remaster(?:ed)?\b.*$",
+    re.IGNORECASE,
+)
+
+
+def title_key(title: str) -> str:
+    """Comparison key for track titles. Version qualifiers such as Instrumental, Live,
+    Remix, or Acoustic stay in the key, so those versions never match the original."""
+    return normalize_key(NEUTRAL_TITLE_QUALIFIER.sub("", str(title or "")))
+
+
 def split_artists(credit: str) -> List[str]:
     """Split "Main feat. Guest A & Guest B" into ["Main", "Guest A", "Guest B"]."""
     credit = str(credit or "").strip()
