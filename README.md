@@ -4,19 +4,21 @@
 [![Docker image](https://github.com/giulio177/music-seerr/actions/workflows/docker.yml/badge.svg)](https://github.com/giulio177/music-seerr/pkgs/container/music-seerr)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Self-hosted music requests for Jellyfin: search a track, preview it, and send it to your library, tagged and in the right folder.
+Request single songs for your Jellyfin library: search, preview, download with synced lyrics, and play them in the same app.
 
 ![Search results with preview and download buttons](docs/screenshots/search.png)
 
 ## Why
 
-Jellyfin plays music well but gives you no way to add it. Music Seerr fills that gap:
+Lidarr and similar tools manage whole albums and discographies. Music Seerr covers what they leave out:
 
-- **No more manual downloads.** Search, click, and the track lands in your Jellyfin library.
-- **No more messy tags.** Album artist, track number, year, ISRC, and cover come from Deezer or iTunes.
-- **No more scattered folders.** Files follow Lidarr's naming, so it works alongside an existing library.
-- **No shared password.** Everyone signs in with their own Jellyfin account and gets their own history and playlists.
-- **Playlists move with you.** Upload a CSV exported from Spotify, Apple Music, or Soundiiz and download what is missing.
+- **Single tracks.** Download one song without grabbing the whole album.
+- **Listen first.** Preview a track before you download it.
+- **Lyrics included.** Synchronized lyrics are saved as `.lrc` next to each track, and missing ones can be fetched for songs already in your library.
+- **One app.** Request a song, play your Jellyfin library, and read the lyrics without switching apps.
+- **Works alongside Lidarr.** Files use Lidarr's naming and tags, so both can share one library.
+
+Planned: an iOS app to request songs from your phone.
 
 ## Features
 
