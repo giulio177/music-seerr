@@ -228,6 +228,32 @@ async def _itunes_search(client: httpx.AsyncClient, track: TrackItem) -> Optiona
     return await _itunes_track(client, str(ranked[0]["trackId"]), track)
 
 
+async def find_cover_url(track: TrackItem) -> Optional[str]:
+    """Best-effort album art when the full release match failed: relaxed Deezer, then iTunes search."""
+    artist_key = normalize_key(track.artist)
+    queries = [f"{track.artist} {track.title}", track.title]
+    if track.album and normalize_key(track.album) != normalize_key(track.title):
+        queries.insert(1, f"{track.artist} {track.album}")
+    try:
+        async with httpx.AsyncClient(timeout=8.0, headers={"Accept-Language": "en"}) as client:
+            for query in queries:
+                res = await client.get(f"{DEEZER_API}/search", params={"q": query, "limit": 10})
+                items = (res.json() or {}).get("data", []) if res.status_code == 200 else []
+                hit = next((i for i in items if normalize_key((i.get("artist") or {}).get("name")) == artist_key), None)
+                album = (hit or {}).get("album") or {}
+                if album.get("cover_xl") or album.get("cover_big"):
+                    return album.get("cover_xl") or album.get("cover_big")
+            res = await client.get("https://itunes.apple.com/search",
+                                   params={"term": f"{track.artist} {track.title}", "entity": "song", "limit": 15, "country": "IT"})
+            items = (res.json() or {}).get("results", []) if res.status_code == 200 else []
+            hit = next((i for i in items if normalize_key(i.get("artistName")) == artist_key and i.get("artworkUrl100")), None)
+            if hit:
+                return hit["artworkUrl100"].replace("100x100bb", "1000x1000bb")
+    except (httpx.HTTPError, ValueError) as exc:
+        print(f"[LibraryLayout] Cover lookup failed for {track.artist} - {track.title}: {exc}")
+    return None
+
+
 async def resolve_release(track: TrackItem) -> ReleaseInfo:
     """Resolve album artist, year, and track position for a track, falling back to its own fields."""
     source, _, provider_id = (track.id or "").partition(":")

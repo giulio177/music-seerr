@@ -80,7 +80,7 @@
     "page_eyebrow": "Discover",
     "page_description": "Find a track, preview it, and send it to your library.",
     "recommendations_title": "Picked for you",
-    "recommendations_subtitle": "Based on artists in your Jellyfin library",
+    "recommendations_subtitle": "Based on what you listen to and your playlists",
     "recommendations_loading": "Loading recommendations…",
     "recommendations_empty": "No recommendations are available yet.",
     "recommendations_error": "Could not load recommendations.",
@@ -122,9 +122,10 @@
     "download_to_playlist": "Download and add to {playlist}",
     "hero_hint": "Type in the search bar above, or press / to start.",
     "open_in_library": "Open in library",
-    "recommendations_based_on_short": "Based on artists you listen to",
+    "recommendations_based_on_short": "Based on what you listen to and your playlists",
     "search_artist": "Search for {artist}",
-    "download_progress": "Downloading {progress}%"
+    "download_progress": "Downloading {progress}%",
+    "recommendations_popular": "Popular tracks to get you started"
   },
   "jellyfin": {
     "page_title": "Jellyfin Library",
@@ -251,7 +252,29 @@
     "without_lyrics_one": "1 missing lyrics",
     "csv_rematch": "Run the comparison again",
     "track_actions_for": "More actions for {title}",
-    "pause": "Pause"
+    "pause": "Pause",
+    "duplicates_found_one": "1 song appears more than once in this playlist.",
+    "duplicates_found_other": "{count} songs appear more than once in this playlist.",
+    "duplicates_removing": "Removing…",
+    "duplicates_removed": "Removed {count} entries from the playlist.",
+    "duplicates_remove_partial": "Removed {removed} of {total} duplicates. Try again for the rest.",
+    "duplicate_tag": "Duplicate",
+    "duplicate_of": "Same song as track {position}",
+    "duplicates_none_marked": "{count} title matches are marked as different songs.",
+    "duplicates_review": "Review",
+    "duplicates_review_title": "Review duplicates",
+    "duplicates_review_hint": "Choose which copies to keep. Songs that only share a title can be marked as different.",
+    "duplicates_keep": "Keep",
+    "duplicates_remove_one": "Remove",
+    "duplicates_same_file": "Same file",
+    "duplicates_not_same": "Not the same song",
+    "duplicates_marked_different": "Marked as different songs",
+    "duplicates_mark_again": "Treat as duplicates again",
+    "duplicates_none_left": "No duplicates left to review.",
+    "duplicates_apply": "Remove {count} from playlist",
+    "duplicates_apply_none": "Nothing to remove",
+    "duplicates_read_only": "Only the playlist owner can remove entries.",
+    "duplicates_ignore_error": "Could not save this choice. Try again."
   },
   "player": {
     "now_playing": "Now Playing",
@@ -571,5 +594,28 @@
     "saved_title": "Lyrics saved",
     "not_found_title": "Lyrics unavailable",
     "not_found_body": "Could not find synchronized lyrics for this track."
+  },
+  "insights": {
+    "label": "Activity summary",
+    "downloads_title": "Downloads",
+    "plays_title": "Listening",
+    "today": "Today",
+    "last_7_days": "Last 7 days",
+    "failed": "Failed",
+    "artists_7_days": "Artists this week",
+    "downloads_per_day": "Downloads, last 14 days",
+    "plays_per_day": "Plays, last 14 days",
+    "days_ago": "{count} days ago",
+    "downloads_unit": "{count} downloads",
+    "plays_unit": "{count} plays",
+    "tracks_unit": "{count} tracks",
+    "top_playlists": "Where your downloads went",
+    "top_artists": "Most played artists, last 30 days"
+  },
+  "rail": {
+    "label": "Shortcuts",
+    "jump_back_in": "Jump back in",
+    "download_target": "Downloads go to",
+    "recently_added": "Recently added"
   }
 }

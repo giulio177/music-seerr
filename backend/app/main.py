@@ -1,6 +1,5 @@
 import os
 import re
-import random
 import asyncio
 import time
 from fastapi import FastAPI, Query, HTTPException, BackgroundTasks, Request, UploadFile, File, Form, Response
@@ -22,7 +21,7 @@ from app.services.jellyfin_service import JellyfinService
 from app.services.playlist_csv_service import PlaylistCSVService
 from app.services.user_data_service import UserDataService
 from app.services.jellyfin_connection import JellyfinConnection
-from app.services import library_import
+from app.services import library_import, recommendation_service
 from app.services.library_import import LibraryImporter
 
 app = FastAPI(
@@ -253,7 +252,7 @@ async def search_music(request: Request, q: str = Query(..., min_length=1, descr
 @app.get("/api/recommendations")
 async def get_recommendations(request: Request, limit: int = 12, user_id: Optional[str] = None):
     """
-    Restituisce brani consigliati basati sugli artisti presenti nella libreria Jellyfin dell'utente.
+    Personal picks from the user's listening history and own Jellyfin playlists (library artists as fallback).
     """
     principal = require_app_user(request)
     target_user_id = principal.get("id", "guest")
@@ -268,52 +267,41 @@ async def get_recommendations(request: Request, limit: int = 12, user_id: Option
         target_user_id = user_id
         target_name = target.get("name", target_user_id)
     is_guest_target = target_user_id.startswith("guest:")
-    artists_res = {"artists": []} if is_guest_target else await JellyfinService.get_artists(limit=100, user_id=target_user_id)
-    artists = artists_res.get("artists", []) if isinstance(artists_res, dict) else []
-
-    recent_plays = UserDataService.list_plays(user_id=target_user_id, limit=30)
-    recent_artists = list(dict.fromkeys(play["artist"] for play in recent_plays if play.get("artist")))
-    artist_pool = list(dict.fromkeys(recent_artists + [a.get("name") for a in artists if a.get("name")]))
-    if not artist_pool:
+    plays = UserDataService.list_plays(user_id=target_user_id, limit=300)
+    playlist_tracks: list = []
+    if not is_guest_target:
+        # Only playlists Jellyfin reports as owned by the target user shape the feed.
+        owned = [pl for pl in await get_playlists_with_owners(target_user_id) if pl.owner_user_id == target_user_id]
+        results = await asyncio.gather(*(JellyfinService.get_playlist_tracks(pl.id, user_id=target_user_id) for pl in owned[:10]),
+                                       return_exceptions=True)
+        for result in results:
+            if isinstance(result, dict):
+                playlist_tracks.extend(result.get("tracks") or [])
+    weights = recommendation_service.artist_weights(plays, playlist_tracks)
+    if len(weights) < 5 and not is_guest_target:
+        # Thin history: pad with library artists at a low weight so the feed still has variety.
+        artists_res = await JellyfinService.get_artists(limit=100, user_id=target_user_id)
+        for artist in (artists_res.get("artists", []) if isinstance(artists_res, dict) else []):
+            if artist.get("name") and artist["name"] not in weights:
+                weights[artist["name"]] = 0.2
+    known = {recommendation_service.track_key(item.get("title", ""), item.get("artist", "")) for item in [*plays, *playlist_tracks]}
+    seeds, tracks = await recommendation_service.build_feed(target_user_id, weights, known, limit)
+    if not tracks:
         tracks = await SearchService.search("Pop Top Hits", limit=limit)
-        return {"based_on_artists": [], "tracks": tracks, "for_user": target_name}
+        seeds = []
 
-    # Stable per-user daily sampling keeps the feed scoped and avoids one shared random feed.
-    seed = f"{target_user_id}:{time.strftime('%Y-%m-%d')}"
-    rng = random.Random(seed)
-    sample_size = min(4, len(artist_pool))
-    artist_names = rng.sample(artist_pool, sample_size)
-    
-    all_recs = []
-    for name in artist_names:
+    async def mark_library(track):
         try:
-            recs = await SearchService.search(name, limit=3)
-            all_recs.extend(recs)
-        except Exception:
-            continue
-            
-    seen_ids = set()
-    unique_recs = []
-    for r in all_recs:
-        if r.id not in seen_ids:
-            seen_ids.add(r.id)
-            unique_recs.append(r)
-            
-    # Controlla per ognuno se è già presente in Jellyfin
-    for t in unique_recs[:limit]:
-        try:
-            jt_match = await JellyfinService.find_track_id(t.title, t.artist, user_id=None if is_guest_target else target_user_id)
-            if jt_match:
-                t.in_jellyfin = True
-                t.jellyfin_id = jt_match
+            match = await JellyfinService.find_track_id(track.title, track.artist, user_id=None if is_guest_target else target_user_id, strict=True)
+            if match:
+                track.in_jellyfin = True
+                track.jellyfin_id = match
         except Exception:
             pass
-            
-    return {
-        "based_on_artists": artist_names,
-        "tracks": unique_recs[:limit],
-        "for_user": target_name
-    }
+    await asyncio.gather(*(mark_library(track) for track in tracks))
+    # Tracks still missing from the library come first; the feed is for discovery.
+    tracks.sort(key=lambda track: bool(track.in_jellyfin))
+    return {"based_on_artists": seeds, "tracks": tracks, "for_user": target_name}
 
 @app.get("/api/jellyfin/playlists", response_model=List[JellyfinPlaylist])
 async def list_jellyfin_playlists(request: Request):
@@ -457,6 +445,18 @@ async def get_jellyfin_image(item_id: str, request: Request):
     require_jellyfin_user(request)
     if not settings.JELLYFIN_URL or not settings.JELLYFIN_API_KEY:
         raise HTTPException(status_code=400, detail="Jellyfin is not configured.")
+    image_url = f"{settings.JELLYFIN_URL.rstrip('/')}/Items/{item_id}/Images/Primary"
+    return await _proxy_jellyfin_image(image_url, params={"maxWidth": 300, "maxHeight": 300})
+
+@app.get("/api/jellyfin/track-cover")
+async def get_jellyfin_track_cover(request: Request, title: str, artist: str = ""):
+    """Artwork of a library track found by title and artist, for history rows saved without a cover."""
+    require_jellyfin_user(request)
+    if not settings.JELLYFIN_URL or not settings.JELLYFIN_API_KEY:
+        raise HTTPException(status_code=400, detail="Jellyfin is not configured.")
+    item_id = await JellyfinService.find_track_id(title[:200], artist[:200], strict=bool(artist))
+    if not item_id:
+        raise HTTPException(status_code=404, detail="Track not found in the library.")
     image_url = f"{settings.JELLYFIN_URL.rstrip('/')}/Items/{item_id}/Images/Primary"
     return await _proxy_jellyfin_image(image_url, params={"maxWidth": 300, "maxHeight": 300})
 
@@ -1075,7 +1075,7 @@ async def match_playlist_csv(playlist_id: str, request: Request, owner_user_id: 
     _, access_user_id = await resolve_playlist_access(playlist_id, principal, owner_user_id=owner_user_id)
     return await PlaylistCSVService.match_playlist(playlist_id, user_id=access_user_id)
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class AddItemsRequest(BaseModel):
     item_ids: List[str]
@@ -1110,6 +1110,29 @@ async def set_jellyfin_favorite(item_id: str, payload: FavoriteRequest, request:
     if not await JellyfinService.set_favorite(item_id, principal.get("id"), payload.favorite):
         raise HTTPException(status_code=502, detail="Jellyfin could not update this favorite.")
     return {"success": True, "favorite": payload.favorite}
+
+class DuplicateIgnoreRequest(BaseModel):
+    item_ids: List[str] = Field(..., min_length=2, max_length=50)
+
+@app.get("/api/jellyfin/duplicate-ignores")
+async def list_duplicate_ignores(request: Request):
+    """Pairs of library track IDs that playlist duplicate detection must treat as different songs."""
+    require_jellyfin_user(request)
+    return {"pairs": UserDataService.list_duplicate_ignores()}
+
+@app.post("/api/jellyfin/duplicate-ignores")
+async def add_duplicate_ignores(payload: DuplicateIgnoreRequest, request: Request):
+    principal = require_jellyfin_user(request)
+    if len(set(payload.item_ids)) < 2:
+        raise HTTPException(status_code=400, detail="same_item")
+    UserDataService.add_duplicate_ignores(principal, payload.item_ids)
+    return {"success": True}
+
+@app.post("/api/jellyfin/duplicate-ignores/remove")
+async def remove_duplicate_ignores(payload: DuplicateIgnoreRequest, request: Request):
+    require_jellyfin_user(request)
+    UserDataService.remove_duplicate_ignores(payload.item_ids)
+    return {"success": True}
 
 class QueueDownloadsRequest(BaseModel):
     playlist_name: str

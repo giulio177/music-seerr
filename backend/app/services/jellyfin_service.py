@@ -361,7 +361,7 @@ class JellyfinService:
                 return False
 
     @classmethod
-    async def find_track_id(cls, title: str, artist: str, user_id: Optional[str] = None) -> Optional[str]:
+    async def find_track_id(cls, title: str, artist: str, user_id: Optional[str] = None, strict: bool = False) -> Optional[str]:
         """Cerca l'ID Jellyfin del brano appena scansionato"""
         if not settings.JELLYFIN_API_KEY or not settings.JELLYFIN_URL:
             return None
@@ -385,7 +385,7 @@ class JellyfinService:
                         item_artists = [a.lower() for a in item.get("Artists", [])]
                         if not artist or any(artist.lower() in a for a in item_artists) or artist.lower() in item.get("Name", "").lower():
                             return item.get("Id")
-                    if items:
+                    if items and not strict:
                         return items[0].get("Id")
             except Exception as e:
                 print(f"[JellyfinService] Errore find_track_id: {e}")

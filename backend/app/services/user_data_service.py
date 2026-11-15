@@ -72,6 +72,13 @@ class UserDataService:
                     value TEXT NOT NULL,
                     PRIMARY KEY(user_id, preference)
                 );
+                CREATE TABLE IF NOT EXISTS duplicate_ignores (
+                    item_a TEXT NOT NULL,
+                    item_b TEXT NOT NULL,
+                    user_id TEXT NOT NULL,
+                    created_at REAL NOT NULL,
+                    PRIMARY KEY(item_a, item_b)
+                );
             """)
             db.execute("UPDATE download_history SET status='interrupted', updated_at=? WHERE status IN ('pending','downloading','tagging','jellyfin_sync')", (time.time(),))
             db.execute("DELETE FROM app_sessions WHERE expires_at<=?", (time.time(),))
@@ -139,6 +146,42 @@ class UserDataService:
     def update_download_status(cls, job_id: str, status: str):
         with cls._connect() as db:
             db.execute("UPDATE download_history SET status=?,updated_at=? WHERE job_id=?", (status, time.time(), job_id))
+
+    @classmethod
+    def update_download_cover(cls, job_id: str, cover_url: str):
+        """Store artwork found during the download so the history row shows it."""
+        with cls._connect() as db:
+            row = db.execute("SELECT track_json FROM download_history WHERE job_id=?", (job_id,)).fetchone()
+            if not row:
+                return
+            track = json.loads(row["track_json"])
+            if track.get("cover_url"):
+                return
+            track["cover_url"] = cover_url
+            db.execute("UPDATE download_history SET track_json=? WHERE job_id=?", (json.dumps(track, ensure_ascii=False), job_id))
+
+    @staticmethod
+    def _item_pairs(item_ids: list[str]) -> list[tuple[str, str]]:
+        ids = sorted({str(item) for item in item_ids if item})
+        return [(a, b) for i, a in enumerate(ids) for b in ids[i + 1:]]
+
+    @classmethod
+    def list_duplicate_ignores(cls) -> list[list[str]]:
+        """Library tracks a user marked as different songs despite matching titles; shared by every account."""
+        with cls._connect() as db:
+            return [[row["item_a"], row["item_b"]] for row in db.execute("SELECT item_a,item_b FROM duplicate_ignores")]
+
+    @classmethod
+    def add_duplicate_ignores(cls, user: dict, item_ids: list[str]):
+        now = time.time()
+        with cls._connect() as db:
+            db.executemany("INSERT OR IGNORE INTO duplicate_ignores(item_a,item_b,user_id,created_at) VALUES(?,?,?,?)",
+                           [(a, b, cls._user_id(user), now) for a, b in cls._item_pairs(item_ids)])
+
+    @classmethod
+    def remove_duplicate_ignores(cls, item_ids: list[str]):
+        with cls._connect() as db:
+            db.executemany("DELETE FROM duplicate_ignores WHERE item_a=? AND item_b=?", cls._item_pairs(item_ids))
 
     @classmethod
     def list_downloads(cls, user_id: Optional[str] = None, limit: int = 100) -> list[dict]:

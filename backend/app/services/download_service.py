@@ -15,7 +15,7 @@ from app.services.user_data_service import UserDataService
 import mutagen
 from mutagen.id3 import ID3, TIT2, TPE1, TPE2, TALB, TRCK, TPOS, TDRC, TSRC, APIC, ID3NoHeaderError
 from mutagen.mp3 import MP3
-from app.services.library_layout import ReleaseInfo, resolve_release, album_directory, track_stem, find_existing_track
+from app.services.library_layout import ReleaseInfo, resolve_release, find_cover_url, album_directory, track_stem, find_existing_track
 
 class DownloadManager:
     MAX_ACTIVE_JOBS = 500
@@ -127,6 +127,11 @@ class DownloadManager:
 
         # Lidarr-style layout: Album Artist/Album (Year)/Album Artist - Album - NN - Title.mp3
         release = await resolve_release(track)
+        if not release.cover_url:
+            release.cover_url = await find_cover_url(track)
+        if release.cover_url and not track.cover_url:
+            track.cover_url = release.cover_url
+            UserDataService.update_download_cover(job.job_id, release.cover_url)
         music_root = os.path.realpath(settings.MUSIC_OUTPUT_DIR)
         dest_dir = album_directory(music_root, release)
         stem = track_stem(release)
@@ -155,6 +160,11 @@ class DownloadManager:
             "--no-cache-dir",
             "--output", os.path.join(dest_dir, stem.replace("%", "%%") + ".%(ext)s"),
             "--no-playlist",
+            # No catalog artwork: embed the video thumbnail, cropped square, so the file never lacks a cover.
+            *([] if release.cover_url else [
+                "--embed-thumbnail", "--convert-thumbnails", "jpg",
+                "--ppa", "ThumbnailsConvertor+ffmpeg_o:-c:v mjpeg -vf crop=\"'if(gt(ih,iw),iw,ih)':'if(gt(iw,ih),ih,iw)'\"",
+            ]),
             "--default-search", "ytsearch",
             search_query
         ]

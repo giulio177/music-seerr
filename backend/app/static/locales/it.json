@@ -80,7 +80,7 @@
     "page_eyebrow": "Scopri",
     "page_description": "Trova un brano, ascoltane l’anteprima e aggiungilo alla tua libreria.",
     "recommendations_title": "Scelti per te",
-    "recommendations_subtitle": "Basati sugli artisti nella tua libreria Jellyfin",
+    "recommendations_subtitle": "In base ai tuoi ascolti e alle tue playlist",
     "recommendations_loading": "Caricamento dei consigliati…",
     "recommendations_empty": "Non ci sono ancora brani consigliati.",
     "recommendations_error": "Impossibile caricare i consigliati.",
@@ -122,9 +122,10 @@
     "download_to_playlist": "Scarica e aggiungi a {playlist}",
     "hero_hint": "Scrivi nella barra di ricerca qui sopra, oppure premi / per iniziare.",
     "open_in_library": "Apri in libreria",
-    "recommendations_based_on_short": "In base agli artisti che ascolti",
+    "recommendations_based_on_short": "In base ai tuoi ascolti e alle tue playlist",
     "search_artist": "Cerca {artist}",
-    "download_progress": "Download {progress}%"
+    "download_progress": "Download {progress}%",
+    "recommendations_popular": "Brani popolari per iniziare"
   },
   "jellyfin": {
     "page_title": "Libreria Jellyfin",
@@ -251,7 +252,29 @@
     "without_lyrics_one": "1 senza testo",
     "csv_rematch": "Ripeti il confronto",
     "track_actions_for": "Altre azioni per {title}",
-    "pause": "Pausa"
+    "pause": "Pausa",
+    "duplicates_found_one": "1 brano compare più di una volta in questa playlist.",
+    "duplicates_found_other": "{count} brani compaiono più di una volta in questa playlist.",
+    "duplicates_removing": "Rimozione…",
+    "duplicates_removed": "Rimosse {count} voci dalla playlist.",
+    "duplicates_remove_partial": "Rimossi {removed} duplicati su {total}. Riprova per i restanti.",
+    "duplicate_tag": "Duplicato",
+    "duplicate_of": "Stesso brano della traccia {position}",
+    "duplicates_none_marked": "{count} titoli uguali sono segnati come brani diversi.",
+    "duplicates_review": "Controlla",
+    "duplicates_review_title": "Controlla i duplicati",
+    "duplicates_review_hint": "Scegli quali copie tenere. I brani che hanno solo lo stesso titolo si possono segnare come diversi.",
+    "duplicates_keep": "Tieni",
+    "duplicates_remove_one": "Rimuovi",
+    "duplicates_same_file": "Stesso file",
+    "duplicates_not_same": "Non sono la stessa canzone",
+    "duplicates_marked_different": "Segnati come brani diversi",
+    "duplicates_mark_again": "Considera di nuovo duplicati",
+    "duplicates_none_left": "Nessun duplicato da controllare.",
+    "duplicates_apply": "Rimuovi {count} dalla playlist",
+    "duplicates_apply_none": "Niente da rimuovere",
+    "duplicates_read_only": "Solo il proprietario della playlist può rimuovere le voci.",
+    "duplicates_ignore_error": "Impossibile salvare questa scelta. Riprova."
   },
   "player": {
     "now_playing": "In Riproduzione",
@@ -571,5 +594,28 @@
     "saved_title": "Testo salvato",
     "not_found_title": "Testo non disponibile",
     "not_found_body": "Impossibile trovare il testo sincronizzato per questo brano."
+  },
+  "insights": {
+    "label": "Riepilogo attività",
+    "downloads_title": "Download",
+    "plays_title": "Ascolti",
+    "today": "Oggi",
+    "last_7_days": "Ultimi 7 giorni",
+    "failed": "Non riusciti",
+    "artists_7_days": "Artisti questa settimana",
+    "downloads_per_day": "Download, ultimi 14 giorni",
+    "plays_per_day": "Ascolti, ultimi 14 giorni",
+    "days_ago": "{count} giorni fa",
+    "downloads_unit": "{count} download",
+    "plays_unit": "{count} ascolti",
+    "tracks_unit": "{count} brani",
+    "top_playlists": "Dove sono finiti i download",
+    "top_artists": "Artisti più ascoltati, ultimi 30 giorni"
+  },
+  "rail": {
+    "label": "Scorciatoie",
+    "jump_back_in": "Riprendi ad ascoltare",
+    "download_target": "I download vanno in",
+    "recently_added": "Aggiunti di recente"
   }
 }

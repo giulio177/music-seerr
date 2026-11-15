@@ -14,6 +14,7 @@ Lidarr and similar tools manage whole albums and discographies. Music Seerr cove
 
 - **Single tracks.** Download one song without grabbing the whole album.
 - **Listen first.** Preview a track before you download it.
+- **Covers included.** Album art is embedded in every download; when no catalog cover exists, the video thumbnail is used.
 - **Lyrics included.** Synchronized lyrics are saved as `.lrc` next to each track, and missing ones can be fetched for songs already in your library.
 - **One app.** Request a song, play your Jellyfin library, and read the lyrics without switching apps.
 - **Works alongside Lidarr.** Files use Lidarr's naming and tags, so both can share one library.
@@ -23,10 +24,12 @@ Planned: an iOS app to request songs from your phone.
 ## Features
 
 - **Search and preview** tracks before downloading; tracks already in your library are marked.
-- **Recommendations** based on the artists in your Jellyfin library.
+- **Picked for you**: recommendations from your listening history and your own Jellyfin playlists; tracks missing from your library come first.
 - **Download queue** with live progress, cancel, retry, and per-user history.
+- **Activity overview**: downloads and plays per day, failed downloads, top playlists, and most played artists.
 - **Save to playlist**: add a download straight to a Jellyfin playlist.
 - **Playlist CSV sync**: compare a CSV with a playlist, add matches, and queue missing tracks.
+- **Playlist duplicates**: spot songs added more than once, choose which copy to keep, or mark title matches as different songs.
 - **Built-in player** for your Jellyfin library with queue, shuffle, and synchronized lyrics from LRCLIB.
 - **Library import**: move existing folders or browser uploads into the library layout, keeping the best-quality copy.
 - **Admin controls**: settings, cross-user history, and playlist management for Jellyfin administrators.
@@ -62,7 +65,7 @@ Set these in a `.env` file next to `docker-compose.yml`.
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `JELLYFIN_URL` | `http://host.docker.internal:8096` | Jellyfin address as seen from the container. |
-| `MUSIC_SEERR_TAG` | `latest` | Image tag to run. Pin a release such as `0.1.0` for predictable updates. |
+| `MUSIC_SEERR_TAG` | `latest` | Image tag to run. Pin a release such as `0.2.0` for predictable updates. |
 | `MUSIC_SEERR_BIND` | `0.0.0.0` | Host address for port 8000. Use `127.0.0.1` behind a reverse proxy on the same host. |
 | `FORWARDED_ALLOW_IPS` | `127.0.0.1` | Reverse proxy address trusted for forwarded headers. |
 
