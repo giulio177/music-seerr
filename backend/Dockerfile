@@ -1,6 +1,11 @@
 FROM python:3.12-slim
 
+ARG APP_VERSION=dev
+
+LABEL org.opencontainers.image.source="https://github.com/giulio177/music-seerr"
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
+    MUSIC_SEERR_VERSION=${APP_VERSION} \
     PYTHONUNBUFFERED=1 \
     HOST=0.0.0.0 \
     PORT=8000 \

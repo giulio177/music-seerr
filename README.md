@@ -4,15 +4,23 @@ Music Seerr is a self-hosted web app for finding music, previewing tracks, downl
 
 ## Install with Docker Compose
 
-Requirements: Docker Engine with the Compose plugin, a reachable Jellyfin server, and enough disk space for your music library. The image targets `linux/amd64` and `linux/arm64` through the official Python base image; Raspberry Pi performance still depends on the model and storage.
+Requirements: Docker Engine with the Compose plugin, a reachable Jellyfin server, and enough disk space for your music library. Prebuilt images for `linux/amd64` and `linux/arm64` (including 64-bit Raspberry Pi OS) are published to the GitHub Container Registry as `ghcr.io/giulio177/music-seerr`; Raspberry Pi performance still depends on the model and storage.
 
 ```sh
-git clone https://github.com/giulio177/music-seerr.git
-cd music-seerr
+mkdir music-seerr && cd music-seerr
+curl -fsSLO https://raw.githubusercontent.com/giulio177/music-seerr/main/docker-compose.yml
 mkdir -p music backend/data
 sudo chown -R 10001:10001 music backend/data
-docker compose up -d --build
+docker compose up -d
 ```
+
+Image tags: `X.Y.Z` is a release, `X.Y` follows the latest patch of that release line, `latest` is the newest release, and `edge` is the current `main` branch. Compose uses `latest` unless `MUSIC_SEERR_TAG` is set in a root `.env` file; pin a release for predictable updates:
+
+```dotenv
+MUSIC_SEERR_TAG=0.1.0
+```
+
+To update, back up `backend/data` and `music`, change the tag if pinned, then run `docker compose pull && docker compose up -d`. `GET /api/health` reports the running version. To build the image yourself from a clone, run `docker build -t ghcr.io/giulio177/music-seerr:dev ./backend` and set `MUSIC_SEERR_TAG=dev`.
 
 Open `http://<server-ip>:8000` and complete the setup wizard. If Jellyfin is not reachable at `http://host.docker.internal:8096`, set `JELLYFIN_URL` in a root `.env` file before starting Compose:
 

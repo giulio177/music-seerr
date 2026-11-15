@@ -3,6 +3,11 @@
 !/README.md
 !/.gitignore
 !/docker-compose.yml
+!/.github/
+/.github/*
+!/.github/workflows/
+/.github/workflows/*
+!/.github/workflows/*.yml
 !/backend/
 /backend/*
 !/backend/Dockerfile

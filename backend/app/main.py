@@ -28,7 +28,7 @@ from app.services.library_import import LibraryImporter
 app = FastAPI(
     title="Music Seerr API",
     description="Backend per la ricerca musicale, preview, download e sync Jellyfin",
-    version="1.0.0"
+    version=os.environ.get("MUSIC_SEERR_VERSION", "dev")
 )
 
 # Cartella statica per la Web UI
@@ -191,7 +191,11 @@ async def health_check():
     music_ready = bool(settings.MUSIC_OUTPUT_DIR and os.path.isdir(settings.MUSIC_OUTPUT_DIR) and os.access(settings.MUSIC_OUTPUT_DIR, os.W_OK))
     if not music_ready:
         raise HTTPException(status_code=503, detail="The music folder is not writable.")
-    return {"status": "healthy", "jellyfin_configured": bool(settings.JELLYFIN_API_KEY)}
+    return {
+        "status": "healthy",
+        "version": os.environ.get("MUSIC_SEERR_VERSION", "dev"),
+        "jellyfin_configured": bool(settings.JELLYFIN_API_KEY),
+    }
 
 def _normalize_str(text: Optional[str]) -> str:
     if not text:

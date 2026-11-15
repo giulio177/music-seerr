@@ -1,9 +1,7 @@
 services:
   music-seerr:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    image: music-seerr:alpha
+    # Published for linux/amd64 and linux/arm64. Pin a release (e.g. MUSIC_SEERR_TAG=0.1.0) for predictable updates.
+    image: ghcr.io/giulio177/music-seerr:${MUSIC_SEERR_TAG:-latest}
     container_name: music-seerr
     restart: unless-stopped
     init: true
