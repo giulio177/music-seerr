@@ -3,6 +3,12 @@
 !/README.md
 !/.gitignore
 !/docker-compose.yml
+!/LICENSE
+!/docs/
+/docs/*
+!/docs/screenshots/
+/docs/screenshots/*
+!/docs/screenshots/*.png
 !/.github/
 /.github/*
 !/.github/workflows/

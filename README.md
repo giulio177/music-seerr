@@ -1,10 +1,43 @@
 # Music Seerr
 
-Music Seerr is a self-hosted web app for finding music, previewing tracks, downloading them into a local music library, and connecting that library to Jellyfin. It includes per-account download history and Jellyfin playlist integration.
+[![Release](https://img.shields.io/github/v/release/giulio177/music-seerr?sort=semver)](https://github.com/giulio177/music-seerr/releases)
+[![Docker image](https://github.com/giulio177/music-seerr/actions/workflows/docker.yml/badge.svg)](https://github.com/giulio177/music-seerr/pkgs/container/music-seerr)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## Install with Docker Compose
+Self-hosted music requests for Jellyfin: search a track, preview it, and send it to your library, tagged and in the right folder.
 
-Requirements: Docker Engine with the Compose plugin, a reachable Jellyfin server, and enough disk space for your music library. Prebuilt images for `linux/amd64` and `linux/arm64` (including 64-bit Raspberry Pi OS) are published to the GitHub Container Registry as `ghcr.io/giulio177/music-seerr`; Raspberry Pi performance still depends on the model and storage.
+![Search results with preview and download buttons](docs/screenshots/search.png)
+
+## Why
+
+Jellyfin plays music well but gives you no way to add it. Music Seerr fills that gap:
+
+- **No more manual downloads.** Search, click, and the track lands in your Jellyfin library.
+- **No more messy tags.** Album artist, track number, year, ISRC, and cover come from Deezer or iTunes.
+- **No more scattered folders.** Files follow Lidarr's naming, so it works alongside an existing library.
+- **No shared password.** Everyone signs in with their own Jellyfin account and gets their own history and playlists.
+- **Playlists move with you.** Upload a CSV exported from Spotify, Apple Music, or Soundiiz and download what is missing.
+
+## Features
+
+- **Search and preview** tracks before downloading; tracks already in your library are marked.
+- **Recommendations** based on the artists in your Jellyfin library.
+- **Download queue** with live progress, cancel, retry, and per-user history.
+- **Save to playlist**: add a download straight to a Jellyfin playlist.
+- **Playlist CSV sync**: compare a CSV with a playlist, add matches, and queue missing tracks.
+- **Built-in player** for your Jellyfin library with queue, shuffle, and synchronized lyrics from LRCLIB.
+- **Library import**: move existing folders or browser uploads into the library layout, keeping the best-quality copy.
+- **Admin controls**: settings, cross-user history, and playlist management for Jellyfin administrators.
+- **Guest access** for search and downloads without a Jellyfin account.
+- **Mobile layout**, English and Italian.
+
+| Sign in with Jellyfin | Mobile |
+| --- | --- |
+| ![Sign-in screen](docs/screenshots/login.png) | ![Search on a phone](docs/screenshots/search-mobile.png) |
+
+## Install
+
+Requirements: Docker Engine with the Compose plugin and a reachable Jellyfin server.
 
 ```sh
 mkdir music-seerr && cd music-seerr
@@ -14,44 +47,95 @@ sudo chown -R 10001:10001 music backend/data
 docker compose up -d
 ```
 
-Image tags: `X.Y.Z` is a release, `X.Y` follows the latest patch of that release line, `latest` is the newest release, and `edge` is the current `main` branch. Compose uses `latest` unless `MUSIC_SEERR_TAG` is set in a root `.env` file; pin a release for predictable updates:
+Open `http://<server-ip>:8000` and complete the setup wizard.
 
-```dotenv
-MUSIC_SEERR_TAG=0.1.0
+Mount the same `music/` folder into Jellyfin's music library so Jellyfin can scan the downloads. To use an existing library (for example one managed by Lidarr), mount its root folder as `/music`.
+
+Images are published for `linux/amd64` and `linux/arm64` (including 64-bit Raspberry Pi OS) as `ghcr.io/giulio177/music-seerr`.
+
+## Configuration
+
+Set these in a `.env` file next to `docker-compose.yml`.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `JELLYFIN_URL` | `http://host.docker.internal:8096` | Jellyfin address as seen from the container. |
+| `MUSIC_SEERR_TAG` | `latest` | Image tag to run. Pin a release such as `0.1.0` for predictable updates. |
+| `MUSIC_SEERR_BIND` | `0.0.0.0` | Host address for port 8000. Use `127.0.0.1` behind a reverse proxy on the same host. |
+| `FORWARDED_ALLOW_IPS` | `127.0.0.1` | Reverse proxy address trusted for forwarded headers. |
+
+| Mount | Required | Purpose |
+| --- | --- | --- |
+| `/music` | Yes | Music library root, writable. Share it with Jellyfin. |
+| `/app/data` | Yes | Configuration, sessions, history, and paired CSV files. |
+| `/import` | No | Extra folder (for example a downloads folder) offered in **Settings > Import into library**. |
+| `/jellyfin-playlists` | No | Jellyfin's `config/data/data/playlists` folder, read-only. Lets Music Seerr detect playlist owners. |
+
+Jellyfin's API does not tell an API key who owns a playlist. Without the `/jellyfin-playlists` mount, an owner is detected only when a single account can see the playlist; otherwise an administrator selects it.
+
+## Update
+
+| Tag | Meaning |
+| --- | --- |
+| `X.Y.Z` | A release. |
+| `X.Y` | Latest patch of that release line. |
+| `latest` | Newest release. |
+| `edge` | Current `main` branch. |
+
+Back up `backend/data` and `music`, change `MUSIC_SEERR_TAG` if pinned, then:
+
+```sh
+docker compose pull && docker compose up -d
 ```
 
-To update, back up `backend/data` and `music`, change the tag if pinned, then run `docker compose pull && docker compose up -d`. `GET /api/health` reports the running version. To build the image yourself from a clone, run `docker build -t ghcr.io/giulio177/music-seerr:dev ./backend` and set `MUSIC_SEERR_TAG=dev`.
+`GET /api/health` reports the running version. Releases follow Semantic Versioning.
 
-Open `http://<server-ip>:8000` and complete the setup wizard. If Jellyfin is not reachable at `http://host.docker.internal:8096`, set `JELLYFIN_URL` in a root `.env` file before starting Compose:
+To build the image yourself: `docker build -t ghcr.io/giulio177/music-seerr:dev ./backend`, then set `MUSIC_SEERR_TAG=dev`.
 
-```dotenv
-JELLYFIN_URL=http://<jellyfin-host>:8096
-```
+## Library layout
 
-Mount the same host `music/` directory into Jellyfin's music library so Jellyfin can scan downloaded files. App configuration and history persist under `backend/data`; downloaded audio is stored under `music/`. To share an existing library (for example one managed by Lidarr), mount its root folder as `/music`.
+Tracks are saved as `Album Artist/Album (Year)/Album Artist - Album - NN - Title.mp3`.
 
-Tracks are saved with Lidarr's default naming: `Album Artist/Album (Year)/Album Artist - Album - NN - Title.mp3`, with album artist, track number, year, ISRC, and cover tags taken from Deezer or iTunes. Existing artist and album folders are reused, and a track already present in its album folder is not downloaded again. To bring existing files into this layout, an administrator opens **Settings > Import into library**, picks a folder on the server (inside the music library or the optional `/import` mount) or uploads files from the browser, reviews the planned moves, and confirms. For tracks already in the library you choose whether to leave the extra copies or delete them and keep only the best quality (FLAC over MP3, then higher bitrate), matching `.lrc` files move with their tracks, and every import writes a manifest to `/app/data`. To offer a server folder outside the library, mount it at `/import` (for example `- /path/to/downloads:/import`). The same import runs from a shell with `python -m app.tools.reorganize_library <folder>` (add `--apply` to move).
+- Existing artist and album folders are reused.
+- A track already in its album folder is not downloaded again.
+- Featured artists are written as separate artist values, so "Song (feat. Guest)" appears under both artists.
 
-Featured artists are written as separate artist values (main artist first), so a track such as "Song (feat. Guest)" appears under both artists instead of creating a combined "Main feat. Guest" artist. To tidy a library that already has combined credits, album folders split by year, or an artist listed under a former name, run `python -m app.tools.tidy_library` inside the container: it prints the plan, `--alias "Old Name=New Name"` maps a former artist name (saved as `artist_aliases` in the config and applied to future downloads), `--apply` writes the changes, and `--undo <manifest>` restores them. Run it as the user that owns the music files.
+### Import existing music
 
-Jellyfin's API does not tell an API key who owns a playlist. To let Music Seerr detect owners (needed to add tracks or queue downloads into another user's playlist), mount Jellyfin's playlists folder read-only at `/jellyfin-playlists`, for example `- /path/to/jellyfin/config/data/data/playlists:/jellyfin-playlists:ro`. Without it, an owner is detected only when a single account can see the playlist; otherwise an administrator selects it.
+An administrator opens **Settings > Import into library**, picks a server folder or uploads files, reviews the planned moves, and confirms.
 
-If Jellyfin becomes unreachable, the sign-in screen offers an automatic search and a server address field to reconnect the same Jellyfin server without editing configuration files.
+- Duplicates: keep the extra copies, or delete them and keep the best quality (FLAC over MP3, then higher bitrate).
+- Matching `.lrc` files move with their tracks.
+- Every import writes a manifest to `/app/data`.
+- From a shell: `python -m app.tools.reorganize_library <folder>` (add `--apply` to move).
 
-The default web endpoint uses HTTP. Keep it on a trusted network, or put it behind a VPN or a TLS-enabled reverse proxy before remote access. Do not expose port 8000 directly to the public internet.
+### Tidy an existing library
+
+`python -m app.tools.tidy_library`, run inside the container as the user that owns the music files, fixes combined artist credits, album folders split by year, and artists listed under a former name.
+
+- Prints the plan by default; `--apply` writes the changes.
+- `--alias "Old Name=New Name"` maps a former artist name and applies it to future downloads.
+- `--undo <manifest>` restores the previous state.
+
+## Security
+
+- The web endpoint uses HTTP. Keep it on a trusted network.
+- For remote access, use a VPN or a TLS reverse proxy. Do not expose port 8000 to the internet.
+- The Jellyfin API key is stored in `backend/data`; protect that folder and its backups.
+- If Jellyfin becomes unreachable, the sign-in screen can reconnect the same server without editing files.
 
 ## Beta limitations
 
-- This is beta software. The setup, Jellyfin integration, and download sources can fail when external services change.
-- Queue execution state lives in process memory. A restart interrupts active jobs; they do not resume automatically. Download history is stored separately in SQLite.
-- SQLite stores app sessions and download history for a single app instance. There is no database migration or automatic backup workflow yet.
-- The application has not been validated on every Raspberry Pi model or storage setup. Check logs, free disk space, and Jellyfin library visibility after installation.
-- Downloads require a working `yt-dlp` source and `ffmpeg`; availability and quality vary by track and source.
-
-## Versioning
-
-Releases use Semantic Versioning. During beta, tags use prerelease versions such as `v0.1.0-alpha.1`; deploy a tagged release when you need a repeatable version.
+- External services change; setup, Jellyfin integration, and download sources can break.
+- A restart interrupts active downloads. They reappear in the queue for a manual retry.
+- SQLite stores sessions and history for a single instance, with no migrations or automatic backups yet.
+- Not validated on every Raspberry Pi model or storage setup.
+- Downloads depend on `yt-dlp` and `ffmpeg`; availability and quality vary by track.
 
 ## Disclaimer
 
-Music Seerr is vibecoded: it was built with AI-assisted coding and has received limited validation. It is provided as-is, without warranties. Review the code and keep backups before relying on it. Only download content you have the right to access and store. Music Seerr is not affiliated with Jellyfin.
+Music Seerr was built with AI-assisted coding and has received limited validation. Review the code and keep backups before relying on it. Only download content you have the right to access and store. Music Seerr is not affiliated with Jellyfin.
+
+## License
+
+[MIT](LICENSE)
