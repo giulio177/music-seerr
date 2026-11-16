@@ -48,7 +48,8 @@ def normalize_key(text: str) -> str:
 NEUTRAL_TITLE_QUALIFIER = re.compile(
     r"\s*[\(\[]\s*(?:feat\.?|ft\.?|featuring|with)\s[^\)\]]*[\)\]]"
     r"|\s*[\(\[][^\)\]]*\bremaster(?:ed)?\b[^\)\]]*[\)\]]"
-    r"|\s+-\s+(?:\d{4}\s+)?remaster(?:ed)?\b.*$",
+    r"|\s+-\s+(?:\d{4}\s+)?remaster(?:ed)?\b.*$"
+    r"|\s+-?\s*\b(?:feat\.|ft\.|featuring)\s.*$",
     re.IGNORECASE,
 )
 
@@ -207,6 +208,16 @@ def _match_score(track: TrackItem, title: str, short_title: str, artist: str, al
 
 
 MIN_MATCH_SCORE = 6
+MAX_DURATION_GAP = 10
+
+
+def _duration_fits(track: TrackItem, seconds) -> bool:
+    """A catalog hit whose length differs by more than 10 s is another recording (instrumental, live, edit)."""
+    try:
+        seconds = int(seconds or 0)
+    except (TypeError, ValueError):
+        return True
+    return not (track.duration and seconds) or abs(track.duration - seconds) <= MAX_DURATION_GAP
 
 
 async def _deezer_search(client: httpx.AsyncClient, track: TrackItem) -> Optional[ReleaseInfo]:
@@ -216,6 +227,7 @@ async def _deezer_search(client: httpx.AsyncClient, track: TrackItem) -> Optiona
     for query in (plain, f'artist:"{track.artist}" track:"{track.title}"'):
         res = await client.get(f"{DEEZER_API}/search", params={"q": query, "limit": 10})
         items += (res.json() or {}).get("data", []) if res.status_code == 200 else []
+    items = [item for item in items if _duration_fits(track, item.get("duration"))]
 
     def score(item: dict) -> int:
         return _match_score(track, item.get("title"), item.get("title_short"),
@@ -232,6 +244,7 @@ async def _itunes_search(client: httpx.AsyncClient, track: TrackItem) -> Optiona
     res = await client.get("https://itunes.apple.com/search",
                            params={"term": f"{track.artist} {track.title}", "entity": "song", "limit": 15, "country": "IT"})
     items = (res.json() or {}).get("results", []) if res.status_code == 200 else []
+    items = [item for item in items if _duration_fits(track, (item.get("trackTimeMillis") or 0) // 1000)]
 
     def score(item: dict) -> int:
         return _match_score(track, item.get("trackName"), item.get("trackCensoredName"),
@@ -353,9 +366,11 @@ def album_directory(music_root: str, info: ReleaseInfo, planned: Optional[dict] 
 
 
 def find_existing_tracks(album_dir: str, info: ReleaseInfo) -> List[str]:
-    """Return every audio file already in the album folder for the same track title."""
-    title_key = normalize_key(info.title)
-    if not title_key:
+    """Return every audio file already in the album folder for the same track title.
+    A file's title tag wins over its name: "03 - Believer.flac" tagged "Believer (Instrumentals)"
+    is a different song. Untagged files fall back to the name."""
+    wanted = title_key(info.title)
+    if not wanted:
         return []
     try:
         entries = sorted(os.scandir(album_dir), key=lambda entry: entry.name)
@@ -366,9 +381,12 @@ def find_existing_tracks(album_dir: str, info: ReleaseInfo) -> List[str]:
         stem, ext = os.path.splitext(entry.name)
         if ext.lower() not in AUDIO_EXTENSIONS or not entry.is_file():
             continue
-        last_part = stem.rsplit(" - ", 1)[-1]
-        if normalize_key(last_part) == title_key or normalize_key(stem) == title_key \
-                or normalize_key(_tag_title(entry.path)) == title_key:
+        tagged = _tag_title(entry.path)
+        if tagged:
+            same = title_key(tagged) == wanted
+        else:
+            same = wanted in (title_key(stem.rsplit(" - ", 1)[-1]), title_key(stem))
+        if same:
             found.append(entry.path)
     return found
 

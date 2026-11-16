@@ -32,6 +32,7 @@ Planned: an iOS app to request songs from your phone.
 - **Playlist duplicates**: spot songs added more than once, choose which copy to keep, or mark title matches as different songs.
 - **Built-in player** for your Jellyfin library with queue, shuffle, and synchronized lyrics from LRCLIB.
 - **Library import**: move existing folders or browser uploads into the library layout, keeping the best-quality copy.
+- **Library health**: find files whose name, folder, or tags disagree, then rename, move, delete, or ignore them one by one.
 - **Admin controls**: settings, cross-user history, and playlist management for Jellyfin administrators.
 - **Guest access** for search and downloads without a Jellyfin account.
 - **Mobile layout**, English and Italian.
@@ -102,7 +103,8 @@ To build the image yourself: `docker build -t ghcr.io/giulio177/music-seerr:dev 
 Tracks are saved as `Album Artist/Album (Year)/Album Artist - Album - NN - Title.mp3`.
 
 - Existing artist and album folders are reused.
-- A track already in its album folder is not downloaded again.
+- A track already in its album folder is not downloaded again. The title tag decides: "Believer (Instrumental)" does not count as "Believer".
+- An administrator can still download it ("Not this song"); the new file is saved as `... (2)` next to the old one.
 - Featured artists are written as separate artist values, so "Song (feat. Guest)" appears under both artists.
 
 ### Import existing music
@@ -113,6 +115,19 @@ An administrator opens **Settings > Import into library**, picks a server folder
 - Matching `.lrc` files move with their tracks.
 - Every import writes a manifest to `/app/data`.
 - From a shell: `python -m app.tools.reorganize_library <folder>` (add `--apply` to move).
+
+### Check library health
+
+An administrator opens **Settings > Library health** and runs a check. It reads tags only and changes nothing on its own.
+
+| Issue | Example | Fixes |
+| --- | --- | --- |
+| Title differs | `03 - Believer.flac` tagged "Believer (Instrumentals)" | Rename to match tags, move under the track artist, delete |
+| Wrong artist folder | Album artist tag names another artist | Move to the tag's artist, delete |
+| Same track number | Two different songs both numbered `01` | Delete |
+
+- `.lrc` files follow their tracks; every fix is logged to `/app/data/library-health.jsonl`.
+- Ignored files stay hidden in later checks until the ignores are cleared.
 
 ### Tidy an existing library
 

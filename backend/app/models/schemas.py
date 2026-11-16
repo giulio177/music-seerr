@@ -25,6 +25,8 @@ class DownloadRequest(BaseModel):
     playlist_id: Optional[str] = None
     playlist_name: Optional[str] = None
     owner_user_id: Optional[str] = None
+    # Administrators only: download even when the album folder already holds a file with this title.
+    force: bool = False
 
 class DownloadJob(BaseModel):
     job_id: str
@@ -36,6 +38,9 @@ class DownloadJob(BaseModel):
     progress: int = 0
     message: Optional[str] = None
     file_path: Optional[str] = None
+    # Library-relative path of the file that made the job skip the download ("already in the library").
+    existing_path: Optional[str] = None
+    force: bool = False
     owner_user_id: Optional[str] = None
     owner_name: Optional[str] = None
     created_at: float = Field(default_factory=time.time)

@@ -72,6 +72,13 @@ class UserDataService:
                     value TEXT NOT NULL,
                     PRIMARY KEY(user_id, preference)
                 );
+                CREATE TABLE IF NOT EXISTS health_ignores (
+                    issue_id TEXT PRIMARY KEY,
+                    path TEXT NOT NULL,
+                    code TEXT NOT NULL,
+                    user_id TEXT NOT NULL,
+                    created_at REAL NOT NULL
+                );
                 CREATE TABLE IF NOT EXISTS duplicate_ignores (
                     item_a TEXT NOT NULL,
                     item_b TEXT NOT NULL,
@@ -182,6 +189,23 @@ class UserDataService:
     def remove_duplicate_ignores(cls, item_ids: list[str]):
         with cls._connect() as db:
             db.executemany("DELETE FROM duplicate_ignores WHERE item_a=? AND item_b=?", cls._item_pairs(item_ids))
+
+    @classmethod
+    def list_health_ignores(cls) -> set:
+        """Library health issues an administrator marked as fine (keyed by issue code and file path)."""
+        with cls._connect() as db:
+            return {row["issue_id"] for row in db.execute("SELECT issue_id FROM health_ignores")}
+
+    @classmethod
+    def add_health_ignore(cls, user: dict, issue: dict):
+        with cls._connect() as db:
+            db.execute("INSERT OR IGNORE INTO health_ignores(issue_id,path,code,user_id,created_at) VALUES(?,?,?,?,?)",
+                       (issue["id"], issue["path"], issue["code"], cls._user_id(user), time.time()))
+
+    @classmethod
+    def clear_health_ignores(cls) -> int:
+        with cls._connect() as db:
+            return db.execute("DELETE FROM health_ignores").rowcount
 
     @classmethod
     def list_downloads(cls, user_id: Optional[str] = None, limit: int = 100) -> list[dict]:

@@ -23,6 +23,7 @@ from app.services.user_data_service import UserDataService
 from app.services.jellyfin_connection import JellyfinConnection
 from app.services import library_import, recommendation_service
 from app.services.library_import import LibraryImporter
+from app.services.library_health import LibraryHealth
 from app.services.library_layout import title_key
 
 app = FastAPI(
@@ -700,6 +701,8 @@ async def start_download(req: DownloadRequest, request: Request):
     Invia il comando di download con un click e associa la playlist scelta.
     """
     principal = require_app_user(request)
+    if req.force and not principal.get("is_admin"):
+        raise HTTPException(status_code=403, detail="This action is reserved for administrators.")
     playlist_user_id = None
     playlist_name = req.playlist_name
     if req.playlist_id:
@@ -712,7 +715,8 @@ async def start_download(req: DownloadRequest, request: Request):
         playlist_id=req.playlist_id,
         playlist_name=playlist_name,
         owner=principal,
-        playlist_user_id=playlist_user_id
+        playlist_user_id=playlist_user_id,
+        force=req.force,
     )
     return job
 
@@ -1150,6 +1154,7 @@ async def queue_playlist_downloads(playlist_id: str, req: QueueDownloadsRequest,
 # === LIBRARY IMPORT (administrators) ===
 IMPORT_ERROR_STATUS = {
     "folder_not_found": 404, "folder_not_allowed": 403, "upload_not_found": 404, "job_not_found": 404,
+    "issue_not_found": 404, "file_not_found": 404, "fix_not_allowed": 400, "target_exists": 409,
     "job_not_ready": 409, "busy": 409, "too_many_files": 413, "file_too_large": 413, "unsupported_file": 415,
 }
 
@@ -1238,6 +1243,49 @@ async def discard_import_job(job_id: str, request: Request):
     return {"success": True}
 
 
+
+# === LIBRARY HEALTH (administrators) ===
+@app.post("/api/library/health/scan")
+async def start_health_scan(request: Request):
+    require_admin(request)
+    try:
+        job = LibraryHealth.start_scan()
+    except ValueError as exc:
+        raise _import_error(exc)
+    return job.to_dict(UserDataService.list_health_ignores())
+
+@app.get("/api/library/health/jobs/{job_id}")
+async def get_health_job(job_id: str, request: Request):
+    require_admin(request)
+    job = LibraryHealth.jobs.get(job_id)
+    if not job:
+        raise _import_error(ValueError("job_not_found"))
+    return job.to_dict(UserDataService.list_health_ignores())
+
+@app.post("/api/library/health/jobs/{job_id}/issues/{issue_id}/fix")
+async def fix_health_issue(job_id: str, issue_id: str, payload: dict, request: Request):
+    principal = require_admin(request)
+    try:
+        return await LibraryHealth.fix(job_id, issue_id, str(payload.get("action") or ""), principal)
+    except ValueError as exc:
+        raise _import_error(exc)
+    except OSError:
+        raise _import_error(ValueError("file_not_found"))
+
+@app.post("/api/library/health/jobs/{job_id}/issues/{issue_id}/ignore")
+async def ignore_health_issue(job_id: str, issue_id: str, request: Request):
+    principal = require_admin(request)
+    try:
+        _, issue = LibraryHealth.find_issue(job_id, issue_id)
+    except ValueError as exc:
+        raise _import_error(exc)
+    UserDataService.add_health_ignore(principal, issue)
+    return {"success": True}
+
+@app.delete("/api/library/health/ignores")
+async def clear_health_ignores(request: Request):
+    require_admin(request)
+    return {"cleared": UserDataService.clear_health_ignores()}
 
 
 if __name__ == "__main__":

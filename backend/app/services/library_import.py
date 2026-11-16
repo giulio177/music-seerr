@@ -27,6 +27,7 @@ from app.services.library_layout import (
     find_existing_tracks,
     normalize_key,
     resolve_release,
+    title_key,
     track_stem,
 )
 
@@ -154,6 +155,7 @@ class ImportJob:
     entries: List[dict] = field(default_factory=list)
     moved: int = 0
     deleted: int = 0
+    tag_failures: List[str] = field(default_factory=list)
     error: str = ""
     manifest: str = ""
     created_at: float = field(default_factory=time.time)
@@ -176,6 +178,7 @@ class ImportJob:
             "unmatched": sum(not entry["matched"] for entry in self.entries),
             "moved": self.moved,
             "deleted": self.deleted,
+            "tag_failures": len(self.tag_failures),
             "error": self.error,
             "is_upload": bool(self.upload_session),
         }
@@ -185,6 +188,8 @@ class ImportJob:
                 "target": os.path.relpath(entry["target"], root),
                 "action": entry["action"],
                 "matched": entry["matched"],
+                # Shown when the file's own title tag names another version than the target name.
+                "source_title": entry["source_title"] if title_key(entry["source_title"]) != title_key(entry["release"]["title"]) else "",
                 "quality": entry.get("quality", ""),
                 "kept": os.path.relpath(entry["kept"], root) if entry.get("kept") else "",
                 "kept_quality": entry.get("kept_quality", ""),
@@ -299,6 +304,7 @@ class LibraryImporter:
                 "target": os.path.join(dest_dir, track_stem(release) + os.path.splitext(path)[1].lower()),
                 "action": "move",
                 "matched": release.matched,
+                "source_title": track.title,
                 "existing": await asyncio.to_thread(find_existing_tracks, dest_dir, release),
                 "release": {
                     "title": release.title, "artist": release.artist, "artists": release.artists,
@@ -378,6 +384,8 @@ class LibraryImporter:
             if record:
                 release = ReleaseInfo(matched=entry["matched"], **entry["release"])
                 await asyncio.to_thread(download_manager._tag_audio, entry["target"], release)
+                if not await asyncio.to_thread(_title_tag_is, entry["target"], release.title):
+                    job.tag_failures.append(entry["target"])
                 moved.append(record)
             job.processed += 1
 
@@ -404,6 +412,7 @@ class LibraryImporter:
             job.manifest = os.path.join(manifest_dir, f"import-{time.strftime('%Y%m%d-%H%M%S')}.json")
             with open(job.manifest, "w", encoding="utf-8") as handle:
                 json.dump({"source": job.label, "moved": moved, "renamed": renamed, "deleted": deleted,
+                           "tag_failures": job.tag_failures,
                            "delete_duplicates": delete_duplicates, "plan": job.entries}, handle, indent=2, ensure_ascii=False)
 
         if refresh and (moved or deleted) and settings.JELLYFIN_API_KEY:
@@ -417,6 +426,17 @@ class LibraryImporter:
             raise ValueError("job_not_ready")
         cls.jobs.pop(job_id, None)
         cls.discard_upload(job.upload_session)
+
+
+def _title_tag_is(path: str, title: str) -> bool:
+    """Re-read the title tag after tagging, so a silent write failure cannot leave name and tags apart."""
+    try:
+        audio = mutagen.File(path, easy=True)
+        written = (audio.tags or {}).get("title") if audio is not None else None
+    except Exception:
+        return False
+    written = written[0] if isinstance(written, list) and written else written
+    return title_key(str(written or "")) == title_key(title)
 
 
 def _move_entry(entry: dict) -> Optional[dict]:

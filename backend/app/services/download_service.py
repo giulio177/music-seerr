@@ -80,7 +80,7 @@ class DownloadManager:
             return jobs
         return [job for job in jobs if job.owner_user_id == owner_id]
 
-    async def create_job(self, track: TrackItem, playlist_id: Optional[str] = None, playlist_name: Optional[str] = None, owner: Optional[dict] = None, playlist_user_id: Optional[str] = None) -> DownloadJob:
+    async def create_job(self, track: TrackItem, playlist_id: Optional[str] = None, playlist_name: Optional[str] = None, owner: Optional[dict] = None, playlist_user_id: Optional[str] = None, force: bool = False) -> DownloadJob:
         active = sum(job.status in self.ACTIVE_STATUSES for job in self.jobs.values())
         if active >= self.MAX_ACTIVE_JOBS:
             raise HTTPException(status_code=429, detail="The queue has reached its 500 download limit. Wait for some tracks to finish.")
@@ -96,7 +96,8 @@ class DownloadManager:
             owner_name=owner.get("name", "Guest"),
             status="pending",
             progress=0,
-            message="Request queued"
+            message="Request queued",
+            force=force,
         )
         self.jobs[job_id] = job
         track_data = track.model_dump() if hasattr(track, "model_dump") else track.dict()
@@ -135,12 +136,17 @@ class DownloadManager:
         music_root = os.path.realpath(settings.MUSIC_OUTPUT_DIR)
         dest_dir = album_directory(music_root, release)
         stem = track_stem(release)
+        existing = find_existing_track(dest_dir, release)
+        if existing and job.force:
+            # "Not this song": keep the existing file and save the download under a free name next to it.
+            stem = _free_stem(dest_dir, stem)
+            existing = None
         final_mp3 = os.path.join(dest_dir, f"{stem}.mp3")
         relative_path = os.path.relpath(final_mp3, music_root)
 
-        existing = find_existing_track(dest_dir, release)
         if existing:
             job.file_path = existing
+            job.existing_path = os.path.relpath(existing, music_root)
             job.status = "completed"
             job.progress = 100
             job.message = f"Already in the library: {os.path.relpath(existing, music_root)}"
@@ -353,6 +359,18 @@ class DownloadManager:
             audio.save()
         except Exception as e:
             print(f"[Tagging] Could not write tags to {path}: {e}")
+
+
+def _free_stem(folder: str, stem: str) -> str:
+    """First of `stem`, `stem (2)`, `stem (3)`, ... that no audio or lyrics file in the folder uses."""
+    try:
+        taken = {os.path.splitext(name)[0].casefold() for name in os.listdir(folder)}
+    except OSError:
+        taken = set()
+    candidate, number = stem, 2
+    while candidate.casefold() in taken:
+        candidate, number = f"{stem} ({number})", number + 1
+    return candidate
 
 
 download_manager = DownloadManager()
