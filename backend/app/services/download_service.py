@@ -159,6 +159,9 @@ class DownloadManager:
             job.progress = 100
             job.message = f"Already in the library: {os.path.relpath(existing, music_root)}"
             UserDataService.update_download_status(job.job_id, job.status)
+            # The song is already there: still put it in the chosen playlist.
+            if job.playlist_id and settings.JELLYFIN_API_KEY:
+                asyncio.create_task(self._add_to_playlist_when_ready(job, existing))
             return
         os.makedirs(dest_dir, exist_ok=True)
 
@@ -244,30 +247,18 @@ class DownloadManager:
                 job.status = "jellyfin_sync"
                 UserDataService.update_download_status(job.job_id, job.status)
                 job.message = "Refreshing the Jellyfin library..."
-                await JellyfinService.refresh_library()
-
-                # Se l'utente ha chiesto di aggiungere a una playlist
-                if job.playlist_id:
-                    job.message = f"Waiting for Jellyfin to scan the track before adding it to '{job.playlist_name or job.playlist_id}'..."
-                    # Polling fino a 15 secondi per attendere che Jellyfin veda il brano
-                    jellyfin_item_id = None
-                    for _ in range(8):
-                        await asyncio.sleep(2)
-                        jellyfin_item_id = await JellyfinService.find_track_id(track.title, track.artist)
-                        if jellyfin_item_id:
-                            break
-                    
-                    if jellyfin_item_id:
-                        await JellyfinService.add_to_playlist(job.playlist_id, jellyfin_item_id, user_id=job.playlist_user_id)
-                        job.message = "Added to the playlist."
-                    else:
-                        job.message = "The file was downloaded, but Jellyfin has not added it to the playlist yet."
+                # Scan just the new file first; the full scan is a fallback for unusual library mounts.
+                if not await JellyfinService.notify_new_file(final_mp3):
+                    await JellyfinService.refresh_library()
 
             job.status = "completed"
             job.progress = 100
             UserDataService.update_download_status(job.job_id, job.status)
-            if not (job.playlist_id and settings.JELLYFIN_API_KEY) or "Waiting for Jellyfin" in job.message:
-                job.message = f"Completed. Saved to {relative_path}"
+            job.message = f"Completed. Saved to {relative_path}"
+            # Adding to the playlist waits for Jellyfin's scan in the background (minutes on large libraries)
+            # without holding one of the two download slots.
+            if job.playlist_id and settings.JELLYFIN_API_KEY:
+                asyncio.create_task(self._add_to_playlist_when_ready(job, final_mp3))
 
         except asyncio.CancelledError:
             self._mark_cancelled(job)
@@ -279,6 +270,26 @@ class DownloadManager:
             job.status = "failed"
             UserDataService.update_download_status(job.job_id, job.status)
             job.message = f"Download failed: {str(e)}"
+
+    async def _add_to_playlist_when_ready(self, job: DownloadJob, path: str):
+        """Wait until Jellyfin has indexed the track (up to ~6 minutes), then add it to the job's playlist."""
+        track = job.track
+        name = job.playlist_name or job.playlist_id
+        job.message = f"Saved. Adding to '{name}' as soon as Jellyfin has scanned it..."
+        delays = [3] * 10 + [10] * 12 + [30] * 6
+        for attempt, delay in enumerate(delays):
+            await asyncio.sleep(delay)
+            item_id = await JellyfinService.find_track_id(track.title, track.artist, user_id=job.playlist_user_id)
+            if item_id:
+                added = await JellyfinService.add_to_playlist(job.playlist_id, item_id, user_id=job.playlist_user_id)
+                job.message = f"Added to '{name}'." if added else f"Saved, but Jellyfin refused to add it to '{name}'."
+                print(f"[DownloadManager] Playlist add for {track.title}: {'ok' if added else 'refused'} after {sum(delays[:attempt + 1])}s")
+                return
+            if attempt == 9:
+                # Still unknown after 30 s: the targeted scan may not have matched Jellyfin's path; scan everything.
+                await JellyfinService.refresh_library()
+        job.message = f"Saved, but Jellyfin had not indexed it after 6 minutes; add it to '{name}' manually."
+        print(f"[DownloadManager] Playlist add for {track.title}: Jellyfin never indexed {path}")
 
     async def _run_replace(self, job: DownloadJob):
         """Download the chosen video's audio in the file's format, copy the old tags onto it, and swap the audio."""

@@ -362,6 +362,27 @@ class JellyfinService:
                 return False
 
     @classmethod
+    async def notify_new_file(cls, local_path: str) -> bool:
+        """Ask Jellyfin to scan just this file (much faster than a full library scan on large libraries).
+        The music-root path is translated to Jellyfin's own library path."""
+        if not settings.JELLYFIN_API_KEY or not settings.JELLYFIN_URL:
+            return False
+        music_root = os.path.realpath(settings.MUSIC_OUTPUT_DIR)
+        relative = os.path.relpath(os.path.realpath(local_path), music_root).replace(os.sep, "/")
+        if relative.startswith(".."):
+            return False
+        roots = await cls.get_music_library_paths() or [music_root]
+        updates = [{"Path": f"{root.rstrip('/')}/{relative}", "UpdateType": "Created"} for root in roots]
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            try:
+                res = await client.post(f"{settings.JELLYFIN_URL.rstrip('/')}/Library/Media/Updated",
+                                        json={"Updates": updates}, headers=cls._headers())
+                return res.status_code in (200, 204)
+            except Exception as e:
+                print(f"[JellyfinService] notify_new_file error: {e}")
+                return False
+
+    @classmethod
     async def find_track_id(cls, title: str, artist: str, user_id: Optional[str] = None, strict: bool = False) -> Optional[str]:
         """Cerca l'ID Jellyfin del brano appena scansionato"""
         if not settings.JELLYFIN_API_KEY or not settings.JELLYFIN_URL:
