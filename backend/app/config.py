@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import tempfile
 from typing import Dict, List, Optional
 
@@ -18,6 +19,8 @@ class Settings(BaseSettings):
     JELLYFIN_USER_ID: Optional[str] = None
     JELLYFIN_SERVER_ID: Optional[str] = None
     LANGUAGE: str = "en"
+    # Default accent color: a preset name ("pink", "violet", ...) or "#rrggbb"; users may pick their own.
+    ACCENT_COLOR: str = "pink"
     SPOTIFY_CLIENT_ID: Optional[str] = None
     SPOTIFY_CLIENT_SECRET: Optional[str] = None
     SETUP_COMPLETED: bool = False
@@ -71,6 +74,8 @@ def load_webapp_config():
                 settings.ARTIST_ALIASES = {str(k): str(v) for k, v in data["artist_aliases"].items() if k and v}
             if "language" in data:
                 settings.LANGUAGE = data["language"] or "en"
+            if valid_accent(data.get("accent_color")):
+                settings.ACCENT_COLOR = data["accent_color"]
             settings.SETUP_COMPLETED = bool(
                 data.get("setup_completed", data.get("jellyfin_url") and data.get("jellyfin_api_key"))
             )
@@ -81,6 +86,14 @@ def load_webapp_config():
 
     if music_dir_override:
         settings.MUSIC_OUTPUT_DIR = music_dir_override
+
+
+ACCENT_PRESETS = {"pink", "violet", "blue", "teal", "green", "orange", "gold", "red"}
+
+
+def valid_accent(value) -> bool:
+    """A preset accent name or a #rrggbb color."""
+    return isinstance(value, str) and (value in ACCENT_PRESETS or bool(re.fullmatch(r"#[0-9a-fA-F]{6}", value)))
 
 
 def save_webapp_config(data: dict):
@@ -97,6 +110,7 @@ def save_webapp_config(data: dict):
     else:
         jellyfin_server_id = settings.JELLYFIN_SERVER_ID or ""
     language = data.get("language", settings.LANGUAGE) or "en"
+    accent_color = data.get("accent_color") if valid_accent(data.get("accent_color")) else settings.ACCENT_COLOR
     setup_completed = data.get("setup_completed", settings.SETUP_COMPLETED)
     config_dict = {
         "music_dir": music_dir,
@@ -105,6 +119,7 @@ def save_webapp_config(data: dict):
         "jellyfin_user_id": jellyfin_user_id,
         "jellyfin_server_id": jellyfin_server_id,
         "language": language,
+        "accent_color": accent_color,
         "setup_completed": bool(setup_completed),
         "artist_aliases": dict(settings.ARTIST_ALIASES or {}),
     }
@@ -115,6 +130,7 @@ def save_webapp_config(data: dict):
     settings.JELLYFIN_USER_ID = jellyfin_user_id or None
     settings.JELLYFIN_SERVER_ID = jellyfin_server_id or None
     settings.LANGUAGE = language
+    settings.ACCENT_COLOR = accent_color
     settings.SETUP_COMPLETED = bool(setup_completed)
 
     _write_config(config_dict)

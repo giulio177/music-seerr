@@ -10,6 +10,18 @@ import uuid
 from typing import Any, Optional
 
 
+# Columns added after the first release; created on startup when missing.
+PLAY_HISTORY_COLUMNS = {
+    "listened_seconds": "REAL NOT NULL DEFAULT 0",
+    "duration": "REAL NOT NULL DEFAULT 0",
+    "cover_url": "TEXT NOT NULL DEFAULT ''",
+    "origin": "TEXT NOT NULL DEFAULT 'app'",
+    "client": "TEXT NOT NULL DEFAULT ''",
+    "jellyfin_marked": "INTEGER NOT NULL DEFAULT 0",
+    "updated_at": "REAL NOT NULL DEFAULT 0",
+}
+
+
 class UserDataService:
     SESSION_TTL = 60 * 60 * 24 * 30
     _db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "music_seerr.sqlite3")
@@ -87,6 +99,11 @@ class UserDataService:
                     PRIMARY KEY(item_a, item_b)
                 );
             """)
+            columns = {row["name"] for row in db.execute("PRAGMA table_info(play_history)")}
+            for name, ddl in PLAY_HISTORY_COLUMNS.items():
+                if name not in columns:
+                    db.execute(f"ALTER TABLE play_history ADD COLUMN {name} {ddl}")
+            db.execute("CREATE INDEX IF NOT EXISTS play_history_user_track ON play_history(user_id, track_id, played_at)")
             db.execute("UPDATE download_history SET status='interrupted', updated_at=? WHERE status IN ('pending','downloading','tagging','jellyfin_sync')", (time.time(),))
             db.execute("DELETE FROM app_sessions WHERE expires_at<=?", (time.time(),))
 
@@ -218,23 +235,94 @@ class UserDataService:
         return [dict(row) | {"track": json.loads(row["track_json"])} for row in rows]
 
     @classmethod
-    def record_play(cls, user: dict, track: dict, source: str = "preview") -> bool:
+    def record_play(cls, user: dict, track: dict, source: str = "preview") -> Optional[int]:
+        """Store a playback start and return its row ID (an existing row when the same track started within 30 s)."""
         user_id = cls._user_id(user)
-        track_id = str(track.get("id") or "")
-        title = str(track.get("title") or "")
-        artist = str(track.get("artist") or "")
+        track_id = str(track.get("id") or "")[:200]
+        title = str(track.get("title") or "")[:300]
+        artist = str(track.get("artist") or "")[:300]
         if not track_id or not title:
-            return False
+            return None
+        cover = str(track.get("cover_url") or "")
+        if not cover.startswith(("https://", "/api/")):
+            cover = ""
+        try:
+            duration = max(0.0, min(float(track.get("duration") or 0), 86400.0))
+        except (TypeError, ValueError):
+            duration = 0.0
         now = time.time()
         with cls._connect() as db:
-            exists = db.execute("""SELECT id FROM play_history
-                WHERE user_id=? AND track_id=? AND played_at>? LIMIT 1""", (user_id, track_id, now - 30)).fetchone()
-            if exists:
-                return False
-            db.execute("""INSERT INTO play_history(user_id,user_name,track_id,title,artist,album,source,played_at)
-                VALUES(?,?,?,?,?,?,?,?)""",
-                (user_id, user.get("name", "Guest"), track_id, title, artist, str(track.get("album") or ""), source, now))
-        return True
+            existing = db.execute("""SELECT id FROM play_history
+                WHERE user_id=? AND track_id=? AND origin='app' AND played_at>? ORDER BY played_at DESC LIMIT 1""", (user_id, track_id, now - 30)).fetchone()
+            if existing:
+                return existing["id"]
+            cursor = db.execute("""INSERT INTO play_history(user_id,user_name,track_id,title,artist,album,source,played_at,duration,cover_url,updated_at)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+                (user_id, user.get("name", "Guest"), track_id, title, artist, str(track.get("album") or "")[:300], source, now, duration, cover[:1000], now))
+            return cursor.lastrowid
+
+    @classmethod
+    def update_play_progress(cls, user: dict, play_id: int, listened: float, duration: float) -> Optional[dict]:
+        """Raise the listened time of the user's own play; returns the updated row."""
+        with cls._connect() as db:
+            row = db.execute("SELECT * FROM play_history WHERE id=? AND user_id=? AND origin='app'", (play_id, cls._user_id(user))).fetchone()
+            if not row:
+                return None
+            duration = duration if duration > 0 else row["duration"]
+            # Listened time can never exceed the wall-clock time since the play started.
+            ceiling = time.time() - row["played_at"] + 5
+            listened = max(row["listened_seconds"], min(listened, ceiling, duration or ceiling))
+            db.execute("UPDATE play_history SET listened_seconds=?, duration=?, updated_at=? WHERE id=?", (listened, duration, time.time(), play_id))
+            return dict(row) | {"listened_seconds": listened, "duration": duration}
+
+    @classmethod
+    def claim_jellyfin_mark(cls, play_id: int) -> bool:
+        """True once per play: the caller then reports it to Jellyfin."""
+        with cls._connect() as db:
+            return db.execute("UPDATE play_history SET jellyfin_marked=1 WHERE id=? AND jellyfin_marked=0", (play_id,)).rowcount == 1
+
+    @classmethod
+    def find_play_near(cls, user_id: str, track_id: str, start: float, end: float) -> Optional[dict]:
+        with cls._connect() as db:
+            row = db.execute("""SELECT * FROM play_history WHERE user_id=? AND track_id=? AND played_at BETWEEN ? AND ?
+                ORDER BY played_at DESC LIMIT 1""", (user_id, track_id, start, end)).fetchone()
+        return dict(row) if row else None
+
+    @classmethod
+    def record_external_play(cls, user_id: str, user_name: str, track: dict, played_at: float, listened: float, client: str) -> int:
+        """A play made in another Jellyfin client."""
+        with cls._connect() as db:
+            cursor = db.execute("""INSERT INTO play_history(user_id,user_name,track_id,title,artist,album,source,played_at,
+                listened_seconds,duration,origin,client,jellyfin_marked,updated_at) VALUES(?,?,?,?,?,?,'jellyfin',?,?,?,'jellyfin',?,1,?)""",
+                (user_id, user_name, track["id"], track["title"][:300], track.get("artist", "")[:300], track.get("album", "")[:300],
+                 played_at, listened, track.get("duration", 0), client[:100], time.time()))
+            return cursor.lastrowid
+
+    @classmethod
+    def set_external_listened(cls, play_id: int, listened: float):
+        with cls._connect() as db:
+            db.execute("""UPDATE play_history SET listened_seconds=MAX(listened_seconds, MIN(?, CASE WHEN duration>0 THEN duration ELSE ? END)),
+                updated_at=? WHERE id=? AND origin='jellyfin'""", (listened, listened, time.time(), play_id))
+
+    @classmethod
+    def jellyfin_session_users(cls) -> list[dict]:
+        """Jellyfin accounts with a live Music Seerr session; their Jellyfin plays are imported."""
+        with cls._connect() as db:
+            rows = db.execute("""SELECT user_id, MAX(display_name) AS name FROM app_sessions
+                WHERE is_guest=0 AND expires_at>? GROUP BY user_id""", (time.time(),)).fetchall()
+        return [{"id": row["user_id"], "name": row["name"]} for row in rows]
+
+    @classmethod
+    def get_preference(cls, user_id: str, preference: str) -> Optional[str]:
+        with cls._connect() as db:
+            row = db.execute("SELECT value FROM user_preferences WHERE user_id=? AND preference=?", (user_id, preference)).fetchone()
+        return row["value"] if row else None
+
+    @classmethod
+    def set_preference(cls, user_id: str, preference: str, value: str):
+        with cls._connect() as db:
+            db.execute("""INSERT INTO user_preferences(user_id,preference,value) VALUES(?,?,?)
+                ON CONFLICT(user_id,preference) DO UPDATE SET value=excluded.value""", (user_id, preference, value))
 
     @classmethod
     def list_plays(cls, user_id: Optional[str] = None, limit: int = 100) -> list[dict]:

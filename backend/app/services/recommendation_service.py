@@ -15,20 +15,70 @@ PLAY_HALF_LIFE_DAYS = 14
 PLAYLIST_TRACK_WEIGHT = 0.5
 
 
+SKIP_RATIO = 0.25
+SKIPPED_PLAYLIST_WEIGHT = 0.15
+
+
+def listen_ratio(play: dict) -> Optional[float]:
+    """Share of the track actually heard, or None for plays recorded before listening time was tracked."""
+    duration = float(play.get("duration") or 0)
+    listened = float(play.get("listened_seconds") or 0)
+    if duration <= 0 or (listened <= 0 and not play.get("updated_at")):
+        return None
+    return min(1.0, listened / duration)
+
+
+def play_signal(ratio: Optional[float], in_playlist: bool) -> float:
+    """How much one play says about liking the artist.
+
+    Full listens count 1, partial ones less. A skip (under a quarter heard) is a mild negative signal,
+    except for a song the user saved in a playlist: they chose it, so a skip there only means less interest now.
+    """
+    if ratio is None:
+        return 1.0
+    if ratio >= 0.8:
+        return 1.0
+    if ratio >= 0.5:
+        return 0.75
+    if ratio >= SKIP_RATIO:
+        return 0.4
+    return 0.0 if in_playlist else -0.3
+
+
 def artist_weights(plays: Iterable[dict], playlist_tracks: Iterable[dict], now: Optional[float] = None) -> Counter:
-    """Score artists: each play counts 1, halving every two weeks; each playlist entry counts 0.5."""
+    """Score artists from plays (scaled by how much was heard, halving every two weeks) and playlist entries.
+
+    Playlist entries count 0.5 each, but a playlist song the user keeps skipping lately and never finishes
+    counts only 0.15: their taste is drifting away from it.
+    """
     now = now or time.time()
+    plays = list(plays)
+    playlist_tracks = list(playlist_tracks)
+    playlist_keys = {track_key(t.get("title", ""), t.get("artist", "")) for t in playlist_tracks}
+    skips: Counter = Counter()
+    full_listens: set = set()
     weights: Counter = Counter()
     for play in plays:
         artist = (play.get("artist") or "").strip()
-        if artist:
-            age_days = max(0.0, (now - float(play.get("played_at") or now)) / 86400)
-            weights[artist] += 0.5 ** (age_days / PLAY_HALF_LIFE_DAYS)
+        if not artist:
+            continue
+        key = track_key(play.get("title", ""), artist)
+        ratio = listen_ratio(play)
+        age_days = max(0.0, (now - float(play.get("played_at") or now)) / 86400)
+        if age_days <= 30 and ratio is not None:
+            if ratio < SKIP_RATIO:
+                skips[key] += 1
+            elif ratio >= 0.8:
+                full_listens.add(key)
+        weights[artist] += play_signal(ratio, key in playlist_keys) * 0.5 ** (age_days / PLAY_HALF_LIFE_DAYS)
     for track in playlist_tracks:
+        key = track_key(track.get("title", ""), track.get("artist", ""))
+        drifting = skips[key] >= 2 and key not in full_listens
         for artist in track.get("artists") or [track.get("artist")]:
             if artist and artist.strip():
-                weights[artist.strip()] += PLAYLIST_TRACK_WEIGHT
-    return weights
+                weights[artist.strip()] += SKIPPED_PLAYLIST_WEIGHT if drifting else PLAYLIST_TRACK_WEIGHT
+    # Artists only ever skipped end up at zero or below and are not used as seeds.
+    return Counter({artist: weight for artist, weight in weights.items() if weight > 0})
 
 
 def track_key(title: str, artist: str) -> str:

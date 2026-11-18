@@ -3,6 +3,7 @@ import sys
 import re
 import uuid
 import asyncio
+import shutil
 import urllib.request
 from urllib.parse import urlsplit
 from typing import Dict, Optional
@@ -15,6 +16,7 @@ from app.services.user_data_service import UserDataService
 import mutagen
 from mutagen.id3 import ID3, TIT2, TPE1, TPE2, TALB, TRCK, TPOS, TDRC, TSRC, APIC, ID3NoHeaderError
 from mutagen.mp3 import MP3
+from app.services import file_replace_service
 from app.services.library_layout import ReleaseInfo, resolve_release, find_cover_url, album_directory, track_stem, find_existing_track
 
 class DownloadManager:
@@ -80,7 +82,7 @@ class DownloadManager:
             return jobs
         return [job for job in jobs if job.owner_user_id == owner_id]
 
-    async def create_job(self, track: TrackItem, playlist_id: Optional[str] = None, playlist_name: Optional[str] = None, owner: Optional[dict] = None, playlist_user_id: Optional[str] = None, force: bool = False) -> DownloadJob:
+    async def create_job(self, track: TrackItem, playlist_id: Optional[str] = None, playlist_name: Optional[str] = None, owner: Optional[dict] = None, playlist_user_id: Optional[str] = None, force: bool = False, replace: Optional[dict] = None) -> DownloadJob:
         active = sum(job.status in self.ACTIVE_STATUSES for job in self.jobs.values())
         if active >= self.MAX_ACTIVE_JOBS:
             raise HTTPException(status_code=429, detail="The queue has reached its 500 download limit. Wait for some tracks to finish.")
@@ -98,6 +100,9 @@ class DownloadManager:
             progress=0,
             message="Request queued",
             force=force,
+            replace_path=(replace or {}).get("path"),
+            replace_video_id=(replace or {}).get("video_id"),
+            replace_item_id=(replace or {}).get("item_id"),
         )
         self.jobs[job_id] = job
         track_data = track.model_dump() if hasattr(track, "model_dump") else track.dict()
@@ -120,6 +125,9 @@ class DownloadManager:
             UserDataService.update_download_status(job.job_id, job.status)
 
     async def _run_download(self, job: DownloadJob):
+        if job.replace_path:
+            await self._run_replace(job)
+            return
         track = job.track
         job.status = "downloading"
         UserDataService.update_download_status(job.job_id, job.status)
@@ -155,7 +163,10 @@ class DownloadManager:
         os.makedirs(dest_dir, exist_ok=True)
 
         # Cerca la traccia audio su YouTube Music / YouTube
-        search_query = f"ytsearch1:{track.artist} - {track.title} audio"
+        # Prefer the upload whose length matches the catalog (no video intros/outros); fall back to the first hit.
+        job.message = "Choosing the version with the right length..."
+        search_query = await file_replace_service.pick_source(track.artist, track.title, int(track.duration or 0)) \
+            or f"ytsearch1:{track.artist} - {track.title} audio"
         cmd = [
             sys.executable,
             "-m",
@@ -268,6 +279,78 @@ class DownloadManager:
             job.status = "failed"
             UserDataService.update_download_status(job.job_id, job.status)
             job.message = f"Download failed: {str(e)}"
+
+    async def _run_replace(self, job: DownloadJob):
+        """Download the chosen video's audio in the file's format, copy the old tags onto it, and swap the audio."""
+        old_path = job.replace_path
+        tmp_dir = os.path.join(file_replace_service.DATA_DIR, "replace-tmp")
+        tmp_base = os.path.join(tmp_dir, job.job_id)
+        try:
+            job.status = "downloading"
+            UserDataService.update_download_status(job.job_id, job.status)
+            job.progress = 20
+            job.message = "Downloading the chosen audio..."
+            os.makedirs(tmp_dir, exist_ok=True)
+            fmt = file_replace_service.output_format(old_path)
+            proc = await asyncio.create_subprocess_exec(
+                sys.executable, "-m", "yt_dlp", "--extract-audio", "--audio-format", fmt, "--audio-quality", "0",
+                "--no-cache-dir", "--no-playlist", "--output", tmp_base + ".%(ext)s",
+                f"https://www.youtube.com/watch?v={job.replace_video_id}",
+                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+            self._procs[job.job_id] = proc
+            try:
+                _, stderr = await asyncio.wait_for(proc.communicate(), timeout=3600)
+            finally:
+                self._procs.pop(job.job_id, None)
+            if job.job_id in self._cancelled:
+                raise asyncio.CancelledError()
+            if proc.returncode != 0:
+                raise Exception(f"yt-dlp error: {stderr.decode()[:300]}")
+            produced = [os.path.join(tmp_dir, name) for name in os.listdir(tmp_dir) if name.startswith(job.job_id + ".")]
+            if not produced:
+                raise Exception("yt-dlp produced no audio file")
+            new_audio = produced[0]
+
+            job.status = "tagging"
+            UserDataService.update_download_status(job.job_id, job.status)
+            job.progress = 70
+            job.message = "Keeping the existing tags and cover..."
+            target = old_path
+            if os.path.splitext(new_audio)[1].lower() == os.path.splitext(old_path)[1].lower():
+                file_replace_service.copy_tags(old_path, new_audio)
+            else:
+                # Unsupported source format: the replacement becomes an MP3 with the same tags written fresh.
+                target = os.path.splitext(old_path)[0] + ".mp3"
+                release = await resolve_release(job.track)
+                self._tag_audio(new_audio, release)
+            file_replace_service.backup_and_log(old_path, job.replace_item_id or "", job.replace_video_id, job.owner_name or "")
+            shutil.move(new_audio, target)
+            if target != old_path:
+                os.remove(old_path)
+            job.file_path = target
+
+            if settings.JELLYFIN_API_KEY:
+                job.status = "jellyfin_sync"
+                UserDataService.update_download_status(job.job_id, job.status)
+                job.message = "Refreshing the Jellyfin library..."
+                await JellyfinService.refresh_library()
+            job.status = "completed"
+            job.progress = 100
+            job.message = f"File replaced: {os.path.relpath(target, os.path.realpath(settings.MUSIC_OUTPUT_DIR))}"
+            UserDataService.update_download_status(job.job_id, job.status)
+        except asyncio.CancelledError:
+            self._mark_cancelled(job)
+        except Exception as exc:
+            if job.job_id in self._cancelled:
+                self._mark_cancelled(job)
+                return
+            job.status = "failed"
+            job.message = f"Replacement failed: {exc}"
+            UserDataService.update_download_status(job.job_id, job.status)
+        finally:
+            for name in (os.listdir(tmp_dir) if os.path.isdir(tmp_dir) else []):
+                if name.startswith(job.job_id + "."):
+                    os.remove(os.path.join(tmp_dir, name))
 
     def _tag_audio(self, mp3_path: str, track: ReleaseInfo):
         """Write ID3 metadata and the high-resolution cover into an MP3; other formats get text tags only."""

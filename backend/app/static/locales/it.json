@@ -63,7 +63,8 @@
     "recently": "Recentemente",
     "skip_to_content": "Vai al contenuto",
     "close": "Chiudi",
-    "clear_search": "Cancella ricerca"
+    "clear_search": "Cancella ricerca",
+    "refreshed": "Aggiornato"
   },
   "search": {
     "page_title": "Cerca musica",
@@ -278,7 +279,31 @@
     "duplicates_apply": "Rimuovi {count} dalla playlist",
     "duplicates_apply_none": "Niente da rimuovere",
     "duplicates_read_only": "Solo il proprietario della playlist può rimuovere le voci.",
-    "duplicates_ignore_error": "Impossibile salvare questa scelta. Riprova."
+    "duplicates_ignore_error": "Impossibile salvare questa scelta. Riprova.",
+    "add_to_playlist_menu": "Aggiungi a playlist",
+    "go_to_artist": "Vai all'artista",
+    "go_to_album": "Vai all'album",
+    "col_title": "Titolo",
+    "col_album": "Album",
+    "col_lyrics": "Testo",
+    "col_lyrics_hint": "Testo sincronizzato: la spunta indica che il brano ha un file .lrc",
+    "col_format": "Formato",
+    "not_downloaded": "Non scaricata",
+    "missing_count": "{count} non scaricate",
+    "download_missing": "Scarica le {count} tracce mancanti",
+    "download_missing_one": "Scarica la traccia mancante",
+    "queued_count": "{count} tracce in coda",
+    "not_in_library_title": "Non nella tua libreria",
+    "not_in_library_hint": "Aprine una per ascoltare l'anteprima e scaricarla",
+    "show_singles": "Mostra {count} singoli",
+    "hide_singles": "Nascondi singoli",
+    "release_album": "Album",
+    "release_ep": "EP",
+    "release_single": "Singolo",
+    "badge_catalog": "Album · non nella tua libreria",
+    "download_album": "Scarica album",
+    "catalog_searching": "Cerco i brani di questo album che non hai ancora…",
+    "catalog_searching_releases": "Cerco le uscite che non hai ancora…"
   },
   "player": {
     "now_playing": "In Riproduzione",
@@ -298,7 +323,8 @@
     "seek": "Posizione di riproduzione",
     "expand": "Espandi il player",
     "track_position": "Brano {current} di {total}",
-    "region": "Player"
+    "region": "Player",
+    "more_options": "Altre opzioni"
   },
   "lyrics_modal": {
     "close": "Chiudi Testi",
@@ -471,7 +497,9 @@
     "import_error_fix_not_allowed": "Questa correzione non è disponibile per questo file.",
     "import_error_target_exists": "Esiste già un file con il nuovo nome.",
     "import_title_differs": "Titolo nei tag: {title}",
-    "import_tag_failures": "Non è stato possibile scrivere i tag di {count} file; vedi il log dell'importazione."
+    "import_tag_failures": "Non è stato possibile scrivere i tag di {count} file; vedi il log dell'importazione.",
+    "accent_title": "Colore principale",
+    "accent_desc": "Colora il logo, i pulsanti e gli elementi in evidenza in tutta l'app."
   },
   "auth": {
     "checking_session": "Verifica della sessione…",
@@ -542,7 +570,8 @@
     "summary_storage": "Cartella Musica:",
     "summary_user": "Utente Attivo:",
     "summary_role": "Ruolo:",
-    "wizard_modal_close": "Chiudi Set-up"
+    "wizard_modal_close": "Chiudi Set-up",
+    "accent_label": "Scegli il colore dell'app"
   },
   "history": {
     "eyebrow": "La tua attività",
@@ -609,7 +638,12 @@
     "step_line": "Fase {current} di {total} · {step}",
     "clear_failed_confirm": "Rimuovere dalla coda tutti i download falliti?",
     "failures_count": "{count} falliti",
-    "needs_attention": "Da controllare"
+    "needs_attention": "Da controllare",
+    "play_preview": "Riproduci anteprima",
+    "skipped": "Saltata",
+    "listened_of": "Ascoltati {listened} di {total}",
+    "from_jellyfin": "Ascoltata in un'altra app Jellyfin",
+    "playing_elsewhere": "In riproduzione su {client}"
   },
   "users": {
     "scope_all": "Mostra tutti gli utenti",
@@ -654,5 +688,68 @@
     "jump_back_in": "Riprendi ad ascoltare",
     "download_target": "I download vanno in",
     "recently_added": "Aggiunti di recente"
+  },
+  "replace": {
+    "menu": "Cambia file",
+    "title": "Cambia file",
+    "hint": "Titolo, artista, album, copertina e testo restano come sono. Viene sostituito solo l'audio con la versione che scegli. Ascolta prima le anteprime.",
+    "current": "File attuale",
+    "listen_current": "Ascolta il file attuale",
+    "search_placeholder": "Cerca su YouTube",
+    "search": "Cerca",
+    "no_results": "Nessun risultato. Prova con altre parole.",
+    "error": "La ricerca non è riuscita. Riprova.",
+    "preview": "Anteprima",
+    "preview_error": "Non è stato possibile riprodurre questa anteprima.",
+    "use": "Usa questo",
+    "confirm": "Sostituire l'audio di \"{title}\" con \"{candidate}\"? Il file precedente viene conservato per 30 giorni.",
+    "confirm_btn": "Sostituisci",
+    "queued": "Sostituzione del file di {title} avviata. La trovi in Attività.",
+    "failed": "Impossibile avviare la sostituzione ({error}).",
+    "length_match": "Stessa durata",
+    "length_diff": "{diff} rispetto al file",
+    "views": "{count} visualizzazioni"
+  },
+  "accent": {
+    "pink": "Rosa",
+    "violet": "Viola",
+    "blue": "Blu",
+    "teal": "Verde acqua",
+    "green": "Verde",
+    "orange": "Arancione",
+    "gold": "Oro",
+    "red": "Rosso",
+    "custom": "Colore personalizzato"
+  },
+  "queue": {
+    "title": "Coda",
+    "play_next": "Riproduci dopo",
+    "add": "Aggiungi in coda",
+    "added": "{title} aggiunto alla coda",
+    "added_next": "{title} sarà il prossimo",
+    "remove": "Rimuovi {title} dalla coda",
+    "move": "Sposta {title}",
+    "move_hint": "Trascina per riordinare (oppure Alt + frecce)"
+  },
+  "edit": {
+    "menu": "Modifica file",
+    "title": "Modifica file",
+    "hint": "Trascina le due maniglie per tenere solo la canzone: togli intro, outro e silenzi dei video. Il taglio è senza perdita di qualità; tag, copertina e testo sincronizzato restano allineati.",
+    "loading": "Lettura dell'audio…",
+    "start": "Inizio",
+    "end": "Fine",
+    "kept": "Tieni {kept} · tagli {cut}",
+    "catalog_length": "durata originale {length}",
+    "catalog_diff": "{diff} rispetto all'uscita originale",
+    "play_selection": "Ascolta la selezione",
+    "pause": "Pausa",
+    "play_start": "Ascolta l'inizio",
+    "play_end": "Ascolta la fine",
+    "fit_catalog": "Adatta alla durata originale",
+    "save": "Taglia il file",
+    "saving": "Taglio in corso…",
+    "confirm": "Tenere solo {start} – {end} di \"{title}\"? Il file precedente viene conservato per 30 giorni.",
+    "saved": "{title} è stato tagliato. Jellyfin si sta aggiornando.",
+    "failed": "Impossibile modificare il file ({error})."
   }
 }

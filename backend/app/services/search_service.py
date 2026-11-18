@@ -1,5 +1,6 @@
 import httpx
 import asyncio
+import time
 from typing import List, Optional
 from app.models.schemas import TrackItem
 
@@ -96,8 +97,25 @@ class SearchService:
             pass
         return None
 
+    _cache: dict = {}
+    CACHE_TTL = 600
+
     @classmethod
     async def search(cls, query: str, limit: int = 25) -> List[TrackItem]:
+        """Catalog search (cached ten minutes per query); library flags are set by the caller on copies."""
+        key = (query.strip().casefold(), limit)
+        hit = cls._cache.get(key)
+        if hit and hit[0] > time.time():
+            return [track.model_copy() for track in hit[1]]
+        results = await cls._search_uncached(query, limit)
+        if results:
+            if len(cls._cache) > 500:
+                cls._cache.clear()
+            cls._cache[key] = (time.time() + cls.CACHE_TTL, [track.model_copy() for track in results])
+        return results
+
+    @classmethod
+    async def _search_uncached(cls, query: str, limit: int = 25) -> List[TrackItem]:
         """
         Ricerca ibrida avanzata: interroga Deezer e iTunes in parallelo.
         Se un brano su Deezer non ha la preview audio, recupera la preview da iTunes!

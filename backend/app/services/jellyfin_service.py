@@ -493,6 +493,7 @@ class JellyfinService:
             "duration": duration_formatted,
             "duration_sec": total_sec,
             "index_number": item.get("IndexNumber"),
+            "disc_number": item.get("ParentIndexNumber"),
             "has_lyrics": item.get("HasLyrics", False),
             "is_favorite": bool((item.get("UserData") or {}).get("IsFavorite")),
             "playlist_entry_id": item.get("PlaylistItemId"),
@@ -656,10 +657,12 @@ class JellyfinService:
             album_info = {}
             if album_info_res.status_code == 200:
                 it = album_info_res.json()
+                album_artists = it.get("AlbumArtists") or it.get("ArtistItems") or []
                 album_info = {
                     "id": it.get("Id"),
                     "name": it.get("Name"),
                     "artist": it.get("AlbumArtist") or (it.get("Artists", [""])[0] if it.get("Artists") else ""),
+                    "artist_id": album_artists[0].get("Id") if album_artists else None,
                     "year": it.get("ProductionYear"),
                     "cover_url": f"/api/jellyfin/image/{it.get('Id')}"
                 }

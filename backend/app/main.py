@@ -1,13 +1,14 @@
 import os
 import re
 import asyncio
+import httpx
 import time
 from fastapi import FastAPI, Query, HTTPException, BackgroundTasks, Request, UploadFile, File, Form, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from typing import List, Optional, Dict, Any
 
-from app.config import settings, save_webapp_config
+from app.config import settings, save_webapp_config, valid_accent
 from app.models.schemas import (
     SearchResponse,
     TrackItem,
@@ -25,6 +26,8 @@ from app.services import library_import, recommendation_service
 from app.services.library_import import LibraryImporter
 from app.services.library_health import LibraryHealth
 from app.services.library_layout import title_key
+from app.services.play_sync_service import PlaySync
+from app.services import catalog_service, file_replace_service
 
 app = FastAPI(
     title="Music Seerr API",
@@ -248,12 +251,27 @@ async def search_music(request: Request, q: str = Query(..., min_length=1, descr
         results=tracks
     )
 
+RECOMMENDATION_CACHE: Dict[tuple, tuple] = {}
+RECOMMENDATION_TTL = 1800
+
 @app.get("/api/recommendations")
-async def get_recommendations(request: Request, limit: int = 12, user_id: Optional[str] = None):
+async def get_recommendations(request: Request, limit: int = 12, user_id: Optional[str] = None, refresh: bool = False):
     """
     Personal picks from the user's listening history and own Jellyfin playlists (library artists as fallback).
+    Cached 30 minutes per requester and target; `refresh` rebuilds it.
     """
     principal = require_app_user(request)
+    cache_key = (principal.get("id"), user_id or "", limit, time.strftime("%Y-%m-%d"))
+    cached = RECOMMENDATION_CACHE.get(cache_key)
+    if cached and not refresh and cached[0] > time.time():
+        return cached[1]
+    result = await _build_recommendations(principal, limit, user_id)
+    if len(RECOMMENDATION_CACHE) > 200:
+        RECOMMENDATION_CACHE.clear()
+    RECOMMENDATION_CACHE[cache_key] = (time.time() + RECOMMENDATION_TTL, result)
+    return result
+
+async def _build_recommendations(principal: dict, limit: int, user_id: Optional[str]) -> dict:
     target_user_id = principal.get("id", "guest")
     target_name = principal.get("name", "Guest")
     if user_id:
@@ -300,7 +318,7 @@ async def get_recommendations(request: Request, limit: int = 12, user_id: Option
     await asyncio.gather(*(mark_library(track) for track in tracks))
     # Tracks still missing from the library come first; the feed is for discovery.
     tracks.sort(key=lambda track: bool(track.in_jellyfin))
-    return {"based_on_artists": seeds, "tracks": tracks, "for_user": target_name}
+    return {"based_on_artists": seeds, "tracks": [track.model_dump() for track in tracks], "for_user": target_name}
 
 @app.get("/api/jellyfin/playlists", response_model=List[JellyfinPlaylist])
 async def list_jellyfin_playlists(request: Request):
@@ -374,6 +392,49 @@ async def get_jellyfin_album_tracks(album_id: str, request: Request):
     require_jellyfin_user(request)
     return await JellyfinService.get_album_tracks(album_id=album_id)
 
+@app.get("/api/jellyfin/album/{album_id}/catalog")
+async def get_jellyfin_album_catalog(album_id: str, request: Request):
+    """Tracks of the same release on Deezer that the library album lacks (to show and download them)."""
+    require_jellyfin_user(request)
+    data = await JellyfinService.get_album_tracks(album_id=album_id)
+    album = data.get("album") or {}
+    if not album.get("name") or not album.get("artist"):
+        return {"catalog_album": None, "missing": []}
+    return await catalog_service.missing_album_tracks(album["name"], album["artist"], data.get("tracks") or [])
+
+@app.get("/api/jellyfin/artist/{artist_id}/catalog")
+async def get_jellyfin_artist_catalog(artist_id: str, request: Request):
+    """The artist's releases on Deezer with no library copy."""
+    require_jellyfin_user(request)
+    data = await JellyfinService.get_artist_tracks(artist_id=artist_id)
+    artist = (data.get("artist") or {}).get("name")
+    if not artist:
+        return {"releases": []}
+    return await catalog_service.missing_artist_releases(artist, data.get("tracks") or [])
+
+@app.get("/api/catalog/album/{album_id}")
+async def get_catalog_album(album_id: str, request: Request):
+    """A Deezer release with each track marked when the library already has it."""
+    principal = require_app_user(request)
+    provider, _, raw_id = album_id.partition(":")
+    if provider != "deezer" or not raw_id.isdigit():
+        raise HTTPException(status_code=404, detail="Album not found.")
+    info, tracks = await catalog_service.album_tracks(int(raw_id))
+    if not info:
+        raise HTTPException(status_code=404, detail="Album not found.")
+    user_id = None if principal.get("is_guest") else principal.get("id")
+
+    async def mark(track):
+        try:
+            match = await JellyfinService.find_track_id(track["title"], track["artist"], user_id=user_id, strict=True)
+        except Exception:
+            match = None
+        track["in_jellyfin"] = bool(match)
+        track["jellyfin_id"] = match
+    if user_id:
+        await asyncio.gather(*(mark(track) for track in tracks))
+    return {"album": info, "tracks": tracks}
+
 @app.get("/api/jellyfin/artists")
 async def get_jellyfin_artists(request: Request, q: Optional[str] = None, limit: int = 150, offset: int = 0):
     """Elenco artisti da Jellyfin"""
@@ -438,6 +499,107 @@ async def stream_jellyfin_track(item_id: str, request: Request, format: Optional
         await client.aclose()
         return RedirectResponse(url=stream_url, headers={"Access-Control-Allow-Origin": "*"})
 
+# === CHANGE FILE (administrators): replace a library file's audio, keep its tags ===
+
+@app.get("/api/library/replace/candidates")
+async def replace_file_candidates(request: Request, q: str = Query(..., min_length=1, max_length=200)):
+    require_admin(request)
+    try:
+        return {"results": await file_replace_service.search_candidates(q)}
+    except RuntimeError:
+        raise HTTPException(status_code=502, detail="search_failed")
+
+@app.api_route("/api/library/replace/preview/{video_id}", methods=["GET", "HEAD"])
+async def replace_file_preview(video_id: str, request: Request):
+    """The candidate's real audio, proxied with range support (the stream URL only works from this server)."""
+    from fastapi.responses import StreamingResponse
+    from starlette.background import BackgroundTask
+    require_admin(request)
+    try:
+        url = await file_replace_service.audio_url(video_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="invalid_video")
+    except RuntimeError:
+        raise HTTPException(status_code=502, detail="preview_failed")
+    headers = {"range": request.headers["range"]} if "range" in request.headers else {}
+    client = httpx.AsyncClient(timeout=60.0, follow_redirects=True)
+    try:
+        upstream = await client.send(client.build_request("GET", url, headers=headers), stream=True)
+    except httpx.HTTPError:
+        await client.aclose()
+        raise HTTPException(status_code=502, detail="preview_failed")
+    resp_headers = {"Content-Type": upstream.headers.get("content-type", "audio/mp4"), "Accept-Ranges": "bytes", "Cache-Control": "no-store"}
+    for name in ("content-range", "content-length"):
+        if name in upstream.headers:
+            resp_headers[name.title()] = upstream.headers[name]
+
+    async def close_upstream():
+        await upstream.aclose()
+        await client.aclose()
+    return StreamingResponse(upstream.aiter_raw(), status_code=upstream.status_code, headers=resp_headers,
+                             background=BackgroundTask(close_upstream))
+
+async def _library_file(principal: dict, item_id: str) -> tuple:
+    """The Jellyfin item and its file inside the music root, for administrator file tools."""
+    if not re.fullmatch(r"[0-9a-f]{32}", item_id or ""):
+        raise HTTPException(status_code=400, detail="invalid_request")
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        res = await client.get(f"{settings.JELLYFIN_URL.rstrip('/')}/Users/{principal['id']}/Items/{item_id}",
+                               params={"Fields": "Path"}, headers=JellyfinService._headers())
+    if res.status_code != 200:
+        raise HTTPException(status_code=404, detail="item_not_found")
+    item = res.json()
+    path = await file_replace_service.local_path_for(item.get("Path") or "")
+    if not path:
+        raise HTTPException(status_code=404, detail="file_not_found")
+    return item, path
+
+@app.get("/api/library/edit/{item_id}")
+async def edit_file_info(item_id: str, request: Request):
+    """Waveform and catalog length of a library file, for the trim editor."""
+    principal = require_admin(request)
+    item, path = await _library_file(principal, item_id)
+    info = JellyfinService._format_track_item(item)
+    wave, catalog = await asyncio.gather(file_replace_service.waveform(path),
+                                         catalog_service.catalog_duration(info["title"], info["artist"]))
+    return {**wave, "catalog_duration": catalog, "path": os.path.relpath(path, os.path.realpath(settings.MUSIC_OUTPUT_DIR))}
+
+EDIT_LOCK = asyncio.Lock()
+
+@app.post("/api/library/edit/{item_id}/trim")
+async def edit_file_trim(item_id: str, payload: dict, request: Request):
+    """Keep only [start, end] seconds of the file (lossless cut); the previous file is backed up."""
+    principal = require_admin(request)
+    item, path = await _library_file(principal, item_id)
+    try:
+        start, end = float(payload.get("start") or 0), float(payload.get("end") or 0)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="invalid_range")
+    if start < 0 or end - start < 5:
+        raise HTTPException(status_code=400, detail="invalid_range")
+    async with EDIT_LOCK:
+        try:
+            await file_replace_service.trim(path, start, end, item_id, principal.get("name", ""))
+        except RuntimeError as exc:
+            raise HTTPException(status_code=500, detail=f"trim_failed: {exc}")
+    asyncio.create_task(JellyfinService.refresh_library())
+    return {"success": True, "duration": round(end - start, 2)}
+
+@app.post("/api/library/replace")
+async def replace_file(payload: dict, request: Request):
+    """Queue the replacement of a library track's audio with a chosen YouTube video."""
+    principal = require_admin(request)
+    item_id, video_id = str(payload.get("item_id") or ""), str(payload.get("video_id") or "")
+    if not re.fullmatch(r"[0-9a-f]{32}", item_id) or not file_replace_service.VIDEO_ID.match(video_id):
+        raise HTTPException(status_code=400, detail="invalid_request")
+    item, path = await _library_file(principal, item_id)
+    info = JellyfinService._format_track_item(item)
+    track = TrackItem(id=f"jellyfin:{item_id}", title=info["title"][:300], artist=(info["artist"] or "Unknown artist")[:200],
+                      album=(info["album"] or "")[:200], duration=min(int(info["duration_sec"] or 0), 86400),
+                      cover_url=f"/api/jellyfin/image/{item_id}", source="replace", in_jellyfin=True, jellyfin_id=item_id)
+    job = await download_manager.create_job(track, owner=principal, replace={"path": path, "video_id": video_id, "item_id": item_id})
+    return {"job_id": job.job_id, "path": os.path.relpath(path, os.path.realpath(settings.MUSIC_OUTPUT_DIR))}
+
 @app.get("/api/jellyfin/image/{item_id}")
 async def get_jellyfin_image(item_id: str, request: Request):
     """Proxy Jellyfin artwork so browsers never need to resolve the container hostname."""
@@ -471,9 +633,23 @@ async def get_jellyfin_user_image(user_id: str, request: Request):
     return await _proxy_jellyfin_image(image_url)
 
 
+IMAGE_CACHE: Dict[tuple, tuple] = {}
+IMAGE_CACHE_TTL = 3600
+IMAGE_CACHE_MAX_BYTES = 64 * 1024 * 1024
+
+def _image_response(content: bytes, content_type: str) -> Response:
+    return Response(
+        content=content,
+        media_type=content_type,
+        headers={"Cache-Control": "private, max-age=86400, stale-while-revalidate=604800", "X-Content-Type-Options": "nosniff"},
+    )
+
 async def _proxy_jellyfin_image(image_url: str, params: Optional[dict] = None) -> Response:
-    """Fetch Jellyfin images inside the backend network and cache them briefly in the browser."""
-    import httpx
+    """Fetch Jellyfin images inside the backend network; keep recent ones in memory (one hour, 64 MB)."""
+    key = (image_url, tuple(sorted((params or {}).items())))
+    hit = IMAGE_CACHE.get(key)
+    if hit and hit[0] > time.time():
+        return _image_response(hit[1], hit[2])
     try:
         async with httpx.AsyncClient(timeout=12.0, follow_redirects=True) as client:
             image = await client.get(image_url, params=params, headers=JellyfinService._headers())
@@ -486,11 +662,10 @@ async def _proxy_jellyfin_image(image_url: str, params: Optional[dict] = None) -
         raise HTTPException(status_code=502, detail="Jellyfin returned a non-image response.")
     if len(image.content) > 8 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="The Jellyfin image is too large.")
-    return Response(
-        content=image.content,
-        media_type=content_type,
-        headers={"Cache-Control": "private, max-age=300", "X-Content-Type-Options": "nosniff"},
-    )
+    if sum(len(entry[1]) for entry in IMAGE_CACHE.values()) + len(image.content) > IMAGE_CACHE_MAX_BYTES:
+        IMAGE_CACHE.clear()
+    IMAGE_CACHE[key] = (time.time() + IMAGE_CACHE_TTL, image.content, content_type)
+    return _image_response(image.content, content_type)
 
 # === SETUP & AUTH ENDPOINTS ===
 
@@ -509,7 +684,8 @@ async def get_setup_status(request: Request):
         "music_dir": settings.MUSIC_OUTPUT_DIR if getattr(request.state, "app_user", None) and request.state.app_user.get("is_admin") else "",
         "music_dir_exists": music_dir_exists,
         "current_user_id": settings.JELLYFIN_USER_ID or "" if getattr(request.state, "app_user", None) and request.state.app_user.get("is_admin") else "",
-        "language": getattr(settings, "LANGUAGE", "en") or "en"
+        "language": getattr(settings, "LANGUAGE", "en") or "en",
+        "accent_color": settings.ACCENT_COLOR,
     }
 
 @app.post("/api/setup/complete")
@@ -528,6 +704,10 @@ async def complete_setup(payload: dict, request: Request):
         "jellyfin_url": settings.JELLYFIN_URL,
         "jellyfin_user_id": settings.JELLYFIN_USER_ID or ""
     }
+
+@app.on_event("startup")
+async def start_play_sync():
+    PlaySync.start()
 
 @app.on_event("startup")
 async def check_jellyfin_on_startup():
@@ -607,24 +787,53 @@ async def get_current_session(request: Request):
 @app.get("/api/me/preferences")
 async def get_user_preferences(request: Request):
     principal = require_app_user(request)
-    return {"show_other_users_controls": UserDataService.get_show_other_users_controls(principal)}
+    accent = None if principal.get("is_guest") else UserDataService.get_preference(principal.get("id"), "accent_color")
+    return {"show_other_users_controls": UserDataService.get_show_other_users_controls(principal),
+            "accent_color": accent if valid_accent(accent) else None,
+            "default_accent_color": settings.ACCENT_COLOR}
 
 @app.post("/api/me/preferences")
 async def update_user_preferences(payload: dict, request: Request):
-    principal = require_admin(request)
-    show_controls = bool(payload.get("show_other_users_controls", True))
-    UserDataService.set_show_other_users_controls(principal, show_controls)
-    return {"show_other_users_controls": show_controls}
+    """Personal preferences: any signed-in account may set its accent color; the visibility toggle is for administrators."""
+    principal = require_app_user(request)
+    result = {}
+    if "accent_color" in payload:
+        if principal.get("is_guest"):
+            raise HTTPException(status_code=403, detail="Guests keep their accent color in this browser only.")
+        accent = payload.get("accent_color")
+        if accent is not None and not valid_accent(accent):
+            raise HTTPException(status_code=400, detail="invalid_accent")
+        UserDataService.set_preference(principal.get("id"), "accent_color", accent or "")
+        result["accent_color"] = accent
+    if "show_other_users_controls" in payload:
+        if not principal.get("is_admin"):
+            raise HTTPException(status_code=403, detail="This action is reserved for administrators.")
+        show_controls = bool(payload.get("show_other_users_controls", True))
+        UserDataService.set_show_other_users_controls(principal, show_controls)
+        result["show_other_users_controls"] = show_controls
+    return result
 
 @app.get("/api/history/downloads")
 async def get_download_history(request: Request, limit: int = 100):
     principal = require_app_user(request)
     return UserDataService.list_downloads(user_id=principal.get("id"), limit=limit)
 
+def _with_live_flags(plays: list, user_id: Optional[str] = None) -> list:
+    live = PlaySync.active_clients(user_id)
+    for play in plays:
+        play["live"] = bool(live.get(play["id"]))
+    return plays
+
 @app.get("/api/history/plays")
 async def get_play_history(request: Request, limit: int = 100):
     principal = require_app_user(request)
-    return UserDataService.list_plays(user_id=principal.get("id"), limit=limit)
+    if not principal.get("is_guest"):
+        # Pull plays made in other Jellyfin clients first, so the list is current.
+        try:
+            await asyncio.wait_for(PlaySync.sync(principal.get("id")), timeout=4)
+        except asyncio.TimeoutError:
+            pass
+    return _with_live_flags(UserDataService.list_plays(user_id=principal.get("id"), limit=limit), principal.get("id"))
 
 @app.post("/api/history/plays")
 async def create_play_history(payload: dict, request: Request):
@@ -632,8 +841,50 @@ async def create_play_history(payload: dict, request: Request):
     source = payload.get("source", "preview")
     if source not in {"preview", "jellyfin", "downloaded"}:
         raise HTTPException(status_code=400, detail="Invalid playback source.")
-    saved = UserDataService.record_play(principal, payload.get("track") or {}, source=source)
-    return {"recorded": saved}
+    play_id = UserDataService.record_play(principal, payload.get("track") or {}, source=source)
+    return {"recorded": play_id is not None, "id": play_id}
+
+@app.post("/api/history/plays/{play_id}/progress")
+async def update_play_progress(play_id: int, payload: dict, request: Request):
+    """Listened seconds of the user's own play (sent periodically and by sendBeacon when the page closes)."""
+    principal = require_app_user(request)
+    try:
+        listened = max(0.0, float(payload.get("listened") or 0))
+        duration = max(0.0, min(float(payload.get("duration") or 0), 86400.0))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Invalid progress.")
+    row = await PlaySync.report_progress(principal, play_id, listened, duration)
+    if not row:
+        raise HTTPException(status_code=404, detail="Play not found.")
+    return {"listened_seconds": row["listened_seconds"], "duration": row["duration"]}
+
+@app.get("/api/preview/{track_id}")
+async def resolve_preview(track_id: str, request: Request):
+    """Fresh 30-second preview for a catalog track (Deezer preview links expire, so history rows keep only the ID)."""
+    require_app_user(request)
+    provider, _, raw_id = track_id.partition(":")
+    if not raw_id.isdigit() or provider not in {"deezer", "itunes"}:
+        raise HTTPException(status_code=404, detail="Preview not available.")
+    async with httpx.AsyncClient(timeout=8.0) as client:
+        try:
+            if provider == "deezer":
+                res = await client.get(f"https://api.deezer.com/track/{raw_id}")
+                data = res.json() if res.status_code == 200 else {}
+                preview, album = data.get("preview"), data.get("album") or {}
+                cover = album.get("cover_xl") or album.get("cover_big") or album.get("cover_medium")
+                duration = data.get("duration") or 0
+            else:
+                res = await client.get("https://itunes.apple.com/lookup", params={"id": raw_id})
+                results = (res.json().get("results") or []) if res.status_code == 200 else []
+                data = results[0] if results else {}
+                preview = data.get("previewUrl")
+                cover = (data.get("artworkUrl100") or "").replace("100x100", "600x600") or None
+                duration = (data.get("trackTimeMillis") or 0) // 1000
+        except (httpx.HTTPError, ValueError):
+            raise HTTPException(status_code=502, detail="Preview provider unreachable.")
+    if not preview:
+        raise HTTPException(status_code=404, detail="Preview not available.")
+    return {"preview_url": preview, "cover_url": cover, "duration": duration}
 
 @app.get("/api/admin/history/downloads")
 async def get_all_download_history(request: Request, limit: int = 200, user_id: Optional[str] = None):
@@ -643,7 +894,7 @@ async def get_all_download_history(request: Request, limit: int = 200, user_id: 
 @app.get("/api/admin/history/plays")
 async def get_all_play_history(request: Request, limit: int = 200, user_id: Optional[str] = None):
     require_admin(request)
-    return UserDataService.list_plays(user_id=user_id, limit=limit)
+    return _with_live_flags(UserDataService.list_plays(user_id=user_id, limit=limit))
 
 @app.get("/api/jellyfin/track-lyrics/{item_id}")
 async def get_jellyfin_track_lyrics(item_id: str, request: Request, title: Optional[str] = None, artist: Optional[str] = None):

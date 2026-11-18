@@ -63,7 +63,8 @@
     "recently": "Recently",
     "skip_to_content": "Skip to content",
     "close": "Close",
-    "clear_search": "Clear search"
+    "clear_search": "Clear search",
+    "refreshed": "Refreshed"
   },
   "search": {
     "page_title": "Search music",
@@ -278,7 +279,31 @@
     "duplicates_apply": "Remove {count} from playlist",
     "duplicates_apply_none": "Nothing to remove",
     "duplicates_read_only": "Only the playlist owner can remove entries.",
-    "duplicates_ignore_error": "Could not save this choice. Try again."
+    "duplicates_ignore_error": "Could not save this choice. Try again.",
+    "add_to_playlist_menu": "Add to playlist",
+    "go_to_artist": "Go to artist",
+    "go_to_album": "Go to album",
+    "col_title": "Title",
+    "col_album": "Album",
+    "col_lyrics": "Lyrics",
+    "col_lyrics_hint": "Synced lyrics: a check means the track has an .lrc file",
+    "col_format": "Format",
+    "not_downloaded": "Not downloaded",
+    "missing_count": "{count} not downloaded",
+    "download_missing": "Download {count} missing tracks",
+    "download_missing_one": "Download the missing track",
+    "queued_count": "{count} tracks queued",
+    "not_in_library_title": "Not in your library",
+    "not_in_library_hint": "Open one to preview and download it",
+    "show_singles": "Show {count} singles",
+    "hide_singles": "Hide singles",
+    "release_album": "Album",
+    "release_ep": "EP",
+    "release_single": "Single",
+    "badge_catalog": "Album · not in your library",
+    "download_album": "Download album",
+    "catalog_searching": "Looking for tracks of this album you don't have yet…",
+    "catalog_searching_releases": "Looking for releases you don't have yet…"
   },
   "player": {
     "now_playing": "Now Playing",
@@ -298,7 +323,8 @@
     "seek": "Playback position",
     "expand": "Expand player",
     "track_position": "Track {current} of {total}",
-    "region": "Player"
+    "region": "Player",
+    "more_options": "More options"
   },
   "lyrics_modal": {
     "close": "Close Lyrics",
@@ -471,7 +497,9 @@
     "import_error_fix_not_allowed": "This fix is not available for this file.",
     "import_error_target_exists": "A file with the new name already exists.",
     "import_title_differs": "Tag title: {title}",
-    "import_tag_failures": "Tags could not be written to {count} files; see the import log."
+    "import_tag_failures": "Tags could not be written to {count} files; see the import log.",
+    "accent_title": "Accent color",
+    "accent_desc": "Colors the logo, buttons and highlights across the app."
   },
   "auth": {
     "checking_session": "Checking your session…",
@@ -542,7 +570,8 @@
     "summary_storage": "Music Directory:",
     "summary_user": "Active User:",
     "summary_role": "Role:",
-    "wizard_modal_close": "Close Setup"
+    "wizard_modal_close": "Close Setup",
+    "accent_label": "Pick the app color"
   },
   "history": {
     "eyebrow": "Your activity",
@@ -609,7 +638,12 @@
     "step_line": "Step {current} of {total} · {step}",
     "clear_failed_confirm": "Remove all failed downloads from the queue?",
     "failures_count": "{count} failed",
-    "needs_attention": "Needs attention"
+    "needs_attention": "Needs attention",
+    "play_preview": "Play preview",
+    "skipped": "Skipped",
+    "listened_of": "Listened {listened} of {total}",
+    "from_jellyfin": "Played in another Jellyfin app",
+    "playing_elsewhere": "Playing on {client}"
   },
   "users": {
     "scope_all": "Show all users",
@@ -654,5 +688,68 @@
     "jump_back_in": "Jump back in",
     "download_target": "Downloads go to",
     "recently_added": "Recently added"
+  },
+  "replace": {
+    "menu": "Change file",
+    "title": "Change file",
+    "hint": "The title, artist, album, cover and lyrics stay as they are. Only the audio is replaced with the version you pick. Listen to the previews first.",
+    "current": "Current file",
+    "listen_current": "Play the current file",
+    "search_placeholder": "Search YouTube",
+    "search": "Search",
+    "no_results": "No results. Try different words.",
+    "error": "The search failed. Try again.",
+    "preview": "Preview",
+    "preview_error": "This preview could not be played.",
+    "use": "Use this",
+    "confirm": "Replace the audio of \"{title}\" with \"{candidate}\"? The previous file is kept for 30 days.",
+    "confirm_btn": "Replace",
+    "queued": "Replacing the file of {title}. Follow it in Activity.",
+    "failed": "Could not start the replacement ({error}).",
+    "length_match": "Same length",
+    "length_diff": "{diff} vs file",
+    "views": "{count} views"
+  },
+  "accent": {
+    "pink": "Pink",
+    "violet": "Violet",
+    "blue": "Blue",
+    "teal": "Teal",
+    "green": "Green",
+    "orange": "Orange",
+    "gold": "Gold",
+    "red": "Red",
+    "custom": "Custom color"
+  },
+  "queue": {
+    "title": "Queue",
+    "play_next": "Play next",
+    "add": "Add to queue",
+    "added": "{title} added to the queue",
+    "added_next": "{title} plays next",
+    "remove": "Remove {title} from the queue",
+    "move": "Move {title}",
+    "move_hint": "Drag to reorder (or Alt + arrow keys)"
+  },
+  "edit": {
+    "menu": "Edit file",
+    "title": "Edit file",
+    "hint": "Drag the two handles to keep only the song: cut video intros, outros, and silence. The cut is lossless; tags, cover, and synced lyrics stay aligned.",
+    "loading": "Reading the audio…",
+    "start": "Start",
+    "end": "End",
+    "kept": "Keeping {kept} · cutting {cut}",
+    "catalog_length": "original length {length}",
+    "catalog_diff": "{diff} vs the original release",
+    "play_selection": "Play selection",
+    "pause": "Pause",
+    "play_start": "Hear the start",
+    "play_end": "Hear the end",
+    "fit_catalog": "Match the original length",
+    "save": "Cut the file",
+    "saving": "Cutting…",
+    "confirm": "Keep only {start} – {end} of \"{title}\"? The previous file is kept for 30 days.",
+    "saved": "{title} was trimmed. Jellyfin is refreshing.",
+    "failed": "Could not edit the file ({error})."
   }
 }

@@ -6,7 +6,7 @@
 
 Request single songs for your Jellyfin library: search, preview, download with synced lyrics, and play them in the same app.
 
-![Search results with preview and download buttons](docs/screenshots/search.png)
+![Search results with a preview playing in the player](docs/screenshots/search.png)
 
 ## Why
 
@@ -23,17 +23,38 @@ Planned: an iOS app to request songs from your phone.
 
 ## Features
 
+**Find and download**
+
 - **Search and preview** tracks before downloading; tracks already in your library are marked.
-- **Picked for you**: recommendations from your listening history and your own Jellyfin playlists; tracks missing from your library come first.
+- **Right version, first time**: downloads pick the upload whose length matches the release, so video intros and outros are skipped.
+- **Picked for you**: recommendations from your listening history and your own Jellyfin playlists; full listens count more than skips, and tracks missing from your library come first.
+- **Complete your albums**: album pages show the tracks you are missing, and artist pages list releases not in your library, ready to preview and download.
 - **Download queue** with live progress, cancel, retry, and per-user history.
-- **Activity overview**: downloads and plays per day, failed downloads, top playlists, and most played artists.
 - **Save to playlist**: add a download straight to a Jellyfin playlist.
 - **Playlist CSV sync**: compare a CSV with a playlist, add matches, and queue missing tracks.
+
+**Listen**
+
+- **Built-in player** for your Jellyfin library with synchronized lyrics from LRCLIB.
+- **Editable queue**: play next, add to queue, drag to reorder, remove; shuffle reorders the queue itself.
+- **Track menu** on every song: add to a playlist, favorite, go to the artist or album.
+- **Listening history** that updates live, records how much of each track you heard, and replays previews.
+- **Jellyfin listening sync**: plays in other Jellyfin apps appear in Music Seerr within seconds, and library tracks you listen to in Music Seerr count as played in Jellyfin.
+- **Activity overview**: downloads and plays per day, failed downloads, top playlists, and most played artists.
+
+**Fix your library** (administrators)
+
+- **Edit file**: trim intros, outros, and silence on a waveform; the cut is lossless and synced lyrics stay aligned.
+- **Change file**: when a track's tags are right but the audio is another song, pick the right version from YouTube results with previews; only the audio is replaced.
 - **Playlist duplicates**: spot songs added more than once, choose which copy to keep, or mark title matches as different songs.
-- **Built-in player** for your Jellyfin library with queue, shuffle, and synchronized lyrics from LRCLIB.
 - **Library import**: move existing folders or browser uploads into the library layout, keeping the best-quality copy.
 - **Library health**: find files whose name, folder, or tags disagree, then rename, move, delete, or ignore them one by one.
 - **Admin controls**: settings, cross-user history, and playlist management for Jellyfin administrators.
+
+**Look and feel**
+
+- **Your color**: pick an accent color (or any custom one) for the whole app; the setup wizard sets the default.
+- **A logo that listens**: the logo and the rings around the playing cover move with the music.
 - **Guest access** for search and downloads without a Jellyfin account.
 - **Mobile layout**, English and Italian.
 
@@ -127,6 +148,15 @@ An administrator opens **Settings > Library health** and runs a check. It reads 
 | Same track number | Two different songs both numbered `01` | Delete |
 
 - `.lrc` files follow their tracks; every fix is logged to `/app/data/library-health.jsonl`.
+
+### Edit or change a file
+
+In any library track's menu, an administrator can:
+
+- **Edit file**: drag the start and end on the waveform, preview the result, or match the original release length, then cut. The cut is lossless and the `.lrc` lyrics shift with it.
+- **Change file**: search YouTube, preview each result's real audio, and replace the audio while keeping tags, cover, and lyrics.
+
+Both keep the previous file in `/app/data/replaced-files/` for 30 days and log the change to `/app/data/replaced-files.jsonl`.
 - Ignored files stay hidden in later checks until the ignores are cleared.
 
 ### Tidy an existing library
@@ -148,7 +178,7 @@ An administrator opens **Settings > Library health** and runs a check. It reads 
 
 - External services change; setup, Jellyfin integration, and download sources can break.
 - A restart interrupts active downloads. They reappear in the queue for a manual retry.
-- SQLite stores sessions and history for a single instance, with no migrations or automatic backups yet.
+- SQLite stores sessions and history for a single instance. New columns are added at startup; there are no automatic backups yet.
 - Not validated on every Raspberry Pi model or storage setup.
 - Downloads depend on `yt-dlp` and `ffmpeg`; availability and quality vary by track.
 
