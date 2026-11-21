@@ -3,6 +3,7 @@
 [![Release](https://img.shields.io/github/v/release/giulio177/music-seerr?sort=semver)](https://github.com/giulio177/music-seerr/releases)
 [![Docker image](https://github.com/giulio177/music-seerr/actions/workflows/docker.yml/badge.svg)](https://github.com/giulio177/music-seerr/pkgs/container/music-seerr)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-ffdd00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/giulio17)
 
 Request single songs for your Jellyfin library: search, preview, download with synced lyrics, and play them in the same app.
 
@@ -28,15 +29,19 @@ Planned: an iOS app to request songs from your phone.
 - **Search and preview** tracks before downloading; tracks already in your library are marked.
 - **Right version, first time**: downloads pick the upload whose length matches the release, so video intros and outros are skipped.
 - **Picked for you**: recommendations from your listening history and your own Jellyfin playlists; full listens count more than skips, and tracks missing from your library come first.
-- **Complete your albums**: album pages show the tracks you are missing, and artist pages list releases not in your library, ready to preview and download.
+- **Complete your albums**: album pages show the tracks you are missing, and artist pages list releases not in your library, ready to preview and download. When an album has several editions, the one matching your copy sets the track numbers.
 - **Download queue** with live progress, cancel, retry, and per-user history.
 - **Save to playlist**: add a download straight to a Jellyfin playlist.
+- **In Jellyfin right away**: after a download, Jellyfin scans just that album folder, so the song shows up in your library within seconds.
 - **Playlist CSV sync**: compare a CSV with a playlist, add matches, and queue missing tracks.
 
 **Listen**
 
 - **Built-in player** for your Jellyfin library with synchronized lyrics from LRCLIB.
-- **Editable queue**: play next, add to queue, drag to reorder, remove; shuffle reorders the queue itself.
+- **Editable queue**: play next, add to queue, drag to reorder, remove; shuffle reorders the queue itself. The queue panel shows each cover and stays open while you use the player.
+- **Repeat and crossfade**: loop the whole queue, and fade songs into each other (1 to 12 seconds, a personal setting).
+- **Previews don't lose your place**: preview a song while listening, then go back to the queue where you left it.
+- **Reorder playlists**: drag songs in a playlist; the new order is saved to Jellyfin.
 - **Track menu** on every song: add to a playlist, favorite, go to the artist or album.
 - **Listening history** that updates live, records how much of each track you heard, and replays previews.
 - **Jellyfin listening sync**: plays in other Jellyfin apps appear in Music Seerr within seconds, and library tracks you listen to in Music Seerr count as played in Jellyfin.
@@ -49,6 +54,7 @@ Planned: an iOS app to request songs from your phone.
 - **Playlist duplicates**: spot songs added more than once, choose which copy to keep, or mark title matches as different songs.
 - **Library import**: move existing folders or browser uploads into the library layout, keeping the best-quality copy.
 - **Library health**: find files whose name, folder, or tags disagree, then rename, move, delete, or ignore them one by one.
+- **Artist aliases**: map an artist's former name (for example on Deezer) to your library name, so their older releases are still found. Aliases are also added automatically when an album turns up under another name.
 - **Admin controls**: settings, cross-user history, and playlist management for Jellyfin administrators.
 
 **Look and feel**
@@ -87,9 +93,10 @@ Set these in a `.env` file next to `docker-compose.yml`.
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `JELLYFIN_URL` | `http://host.docker.internal:8096` | Jellyfin address as seen from the container. |
-| `MUSIC_SEERR_TAG` | `latest` | Image tag to run. Pin a release such as `0.2.0` for predictable updates. |
+| `MUSIC_SEERR_TAG` | `latest` | Image tag to run. Pin a release such as `0.8.0` for predictable updates. |
 | `MUSIC_SEERR_BIND` | `0.0.0.0` | Host address for port 8000. Use `127.0.0.1` behind a reverse proxy on the same host. |
 | `FORWARDED_ALLOW_IPS` | `127.0.0.1` | Reverse proxy address trusted for forwarded headers. |
+| `MUSIC_SEERR_SECRET` | (generated) | Key that encrypts the Jellyfin tokens kept with sessions. Any long random string. If unset, a key is created in `/app/data/secret.key`. Changing it only signs users out. |
 
 | Mount | Required | Purpose |
 | --- | --- | --- |
@@ -148,6 +155,7 @@ An administrator opens **Settings > Library health** and runs a check. It reads 
 | Same track number | Two different songs both numbered `01` | Delete |
 
 - `.lrc` files follow their tracks; every fix is logged to `/app/data/library-health.jsonl`.
+- Ignored files stay hidden in later checks until the ignores are cleared.
 
 ### Edit or change a file
 
@@ -157,14 +165,13 @@ In any library track's menu, an administrator can:
 - **Change file**: search YouTube, preview each result's real audio, and replace the audio while keeping tags, cover, and lyrics.
 
 Both keep the previous file in `/app/data/replaced-files/` for 30 days and log the change to `/app/data/replaced-files.jsonl`.
-- Ignored files stay hidden in later checks until the ignores are cleared.
 
 ### Tidy an existing library
 
 `python -m app.tools.tidy_library`, run inside the container as the user that owns the music files, fixes combined artist credits, album folders split by year, and artists listed under a former name.
 
 - Prints the plan by default; `--apply` writes the changes.
-- `--alias "Old Name=New Name"` maps a former artist name and applies it to future downloads.
+- `--alias "Old Name=New Name"` maps a former artist name and retags existing files. Aliases can also be managed in **Settings > Artist aliases**; those apply to lookups and future downloads only.
 - `--undo <manifest>` restores the previous state.
 
 ## Security
@@ -172,6 +179,8 @@ Both keep the previous file in `/app/data/replaced-files/` for 30 days and log t
 - The web endpoint uses HTTP. Keep it on a trusted network.
 - For remote access, use a VPN or a TLS reverse proxy. Do not expose port 8000 to the internet.
 - The Jellyfin API key is stored in `backend/data`; protect that folder and its backups.
+- Each signed-in account's Jellyfin token is kept encrypted with its session, never sent to the browser, and revoked in Jellyfin at sign-out or expiry. It is used only where Jellyfin refuses the API key (moving playlist songs).
+- Set `MUSIC_SEERR_SECRET` to keep the token key outside `backend/data`, so a copy of that folder alone cannot read the tokens.
 - If Jellyfin becomes unreachable, the sign-in screen can reconnect the same server without editing files.
 
 ## Beta limitations
@@ -181,6 +190,10 @@ Both keep the previous file in `/app/data/replaced-files/` for 30 days and log t
 - SQLite stores sessions and history for a single instance. New columns are added at startup; there are no automatic backups yet.
 - Not validated on every Raspberry Pi model or storage setup.
 - Downloads depend on `yt-dlp` and `ffmpeg`; availability and quality vary by track.
+
+## Support
+
+Music Seerr is free and developed in spare time. If it is useful to you, you can [buy me a coffee](https://buymeacoffee.com/giulio17). Bug reports and feedback in [Issues](https://github.com/giulio177/music-seerr/issues) help just as much.
 
 ## Disclaimer
 

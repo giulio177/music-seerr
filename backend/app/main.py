@@ -3,12 +3,13 @@ import re
 import asyncio
 import httpx
 import time
+import uuid
 from fastapi import FastAPI, Query, HTTPException, BackgroundTasks, Request, UploadFile, File, Form, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from typing import List, Optional, Dict, Any
 
-from app.config import settings, save_webapp_config, valid_accent
+from app.config import settings, save_webapp_config, valid_accent, save_artist_aliases
 from app.models.schemas import (
     SearchResponse,
     TrackItem,
@@ -25,7 +26,7 @@ from app.services.jellyfin_connection import JellyfinConnection
 from app.services import library_import, recommendation_service
 from app.services.library_import import LibraryImporter
 from app.services.library_health import LibraryHealth
-from app.services.library_layout import title_key
+from app.services.library_layout import normalize_key, title_key
 from app.services.play_sync_service import PlaySync
 from app.services import catalog_service, file_replace_service
 
@@ -582,7 +583,7 @@ async def edit_file_trim(item_id: str, payload: dict, request: Request):
             await file_replace_service.trim(path, start, end, item_id, principal.get("name", ""))
         except RuntimeError as exc:
             raise HTTPException(status_code=500, detail=f"trim_failed: {exc}")
-    asyncio.create_task(JellyfinService.refresh_library())
+    asyncio.create_task(JellyfinService.scan_file(path, wait=0, changed=True))
     return {"success": True, "duration": round(end - start, 2)}
 
 @app.post("/api/library/replace")
@@ -710,6 +711,10 @@ async def start_play_sync():
     PlaySync.start()
 
 @app.on_event("startup")
+async def start_session_cleanup():
+    asyncio.create_task(purge_expired_sessions_loop())
+
+@app.on_event("startup")
 async def check_jellyfin_on_startup():
     if getattr(settings, "SETUP_COMPLETED", False):
         asyncio.create_task(JellyfinConnection.repair())
@@ -741,6 +746,22 @@ async def get_auth_users(request: Request, jellyfin_url: Optional[str] = None, a
     users = await JellyfinService.get_users(jellyfin_url=jellyfin_url, api_key=api_key)
     return {"users": users}
 
+async def end_app_session(request: Request):
+    """Delete the browser's app session and revoke the Jellyfin token it held."""
+    credentials = UserDataService.delete_session(request.cookies.get(APP_SESSION_COOKIE))
+    if credentials:
+        await JellyfinService.revoke_user_token(credentials["token"], credentials["device_id"])
+
+async def purge_expired_sessions_loop():
+    """Hourly: drop expired app sessions and revoke their Jellyfin tokens."""
+    while True:
+        try:
+            for credentials in await asyncio.to_thread(UserDataService.purge_expired_sessions):
+                await JellyfinService.revoke_user_token(credentials["token"], credentials["device_id"])
+        except Exception as exc:
+            print(f"[Sessions] Expired session cleanup failed: {exc}")
+        await asyncio.sleep(3600)
+
 @app.post("/api/auth/login")
 async def auth_login(payload: dict, request: Request, response: Response):
     """Autentica l'utente con username e password Jellyfin"""
@@ -753,28 +774,30 @@ async def auth_login(payload: dict, request: Request, response: Response):
     if not username:
         raise HTTPException(status_code=400, detail="A username is required.")
 
-    res = await JellyfinService.authenticate_user(username=username, password=password, jellyfin_url=jellyfin_url)
+    device_id = f"MusicSeerr-{uuid.uuid4().hex}"
+    res = await JellyfinService.authenticate_user(username=username, password=password, jellyfin_url=jellyfin_url, device_id=device_id)
     if not res.get("success"):
         raise HTTPException(status_code=401, detail=res.get("message", "Invalid credentials."))
 
     user = res.get("user", {})
     if not user.get("id"):
         raise HTTPException(status_code=401, detail="Jellyfin did not return a valid identity.")
-    UserDataService.delete_session(request.cookies.get(APP_SESSION_COOKIE))
-    set_session_cookie(response, UserDataService.create_session(user), request)
-    # Do not return Jellyfin's access token to the browser.
+    await end_app_session(request)
+    credentials = {"token": res.get("token"), "device_id": device_id} if res.get("token") else None
+    set_session_cookie(response, UserDataService.create_session(user, jellyfin_credentials=credentials), request)
+    # Do not return Jellyfin's access token to the browser; the backend keeps it encrypted with the session.
     return {"success": True, "user": user}
 
 @app.post("/api/auth/logout")
 async def auth_logout(request: Request, response: Response):
     """Termina la sessione utente locale"""
-    UserDataService.delete_session(request.cookies.get(APP_SESSION_COOKIE))
+    await end_app_session(request)
     response.delete_cookie(APP_SESSION_COOKIE, path="/", httponly=True, samesite="lax")
     return {"success": True, "message": "Signed out successfully."}
 
 @app.post("/api/auth/guest")
 async def auth_guest(request: Request, response: Response):
-    UserDataService.delete_session(request.cookies.get(APP_SESSION_COOKIE))
+    await end_app_session(request)
     token = UserDataService.create_session(is_guest=True)
     set_session_cookie(response, token, request)
     return {"success": True, "user": {"name": "Guest", "is_guest": True, "is_admin": False}}
@@ -787,14 +810,27 @@ async def get_current_session(request: Request):
 @app.get("/api/me/preferences")
 async def get_user_preferences(request: Request):
     principal = require_app_user(request)
-    accent = None if principal.get("is_guest") else UserDataService.get_preference(principal.get("id"), "accent_color")
+    guest = principal.get("is_guest")
+    accent = None if guest else UserDataService.get_preference(principal.get("id"), "accent_color")
+    crossfade = None if guest else _crossfade_seconds(UserDataService.get_preference(principal.get("id"), "crossfade_seconds"))
     return {"show_other_users_controls": UserDataService.get_show_other_users_controls(principal),
             "accent_color": accent if valid_accent(accent) else None,
+            "crossfade_seconds": crossfade or 0,
             "default_accent_color": settings.ACCENT_COLOR}
+
+CROSSFADE_MAX_SECONDS = 12
+
+def _crossfade_seconds(value) -> Optional[int]:
+    """0 (off) to 12 seconds; None for anything else."""
+    try:
+        seconds = int(value)
+    except (TypeError, ValueError):
+        return None
+    return seconds if 0 <= seconds <= CROSSFADE_MAX_SECONDS and str(value).strip().lstrip("-").isdigit() else None
 
 @app.post("/api/me/preferences")
 async def update_user_preferences(payload: dict, request: Request):
-    """Personal preferences: any signed-in account may set its accent color; the visibility toggle is for administrators."""
+    """Personal preferences: any signed-in account sets its accent color and crossfade; the visibility toggle is for administrators."""
     principal = require_app_user(request)
     result = {}
     if "accent_color" in payload:
@@ -805,6 +841,14 @@ async def update_user_preferences(payload: dict, request: Request):
             raise HTTPException(status_code=400, detail="invalid_accent")
         UserDataService.set_preference(principal.get("id"), "accent_color", accent or "")
         result["accent_color"] = accent
+    if "crossfade_seconds" in payload:
+        if principal.get("is_guest"):
+            raise HTTPException(status_code=403, detail="Guests keep their crossfade in this browser only.")
+        seconds = _crossfade_seconds(payload.get("crossfade_seconds"))
+        if seconds is None:
+            raise HTTPException(status_code=400, detail="invalid_crossfade")
+        UserDataService.set_preference(principal.get("id"), "crossfade_seconds", str(seconds))
+        result["crossfade_seconds"] = seconds
     if "show_other_users_controls" in payload:
         if not principal.get("is_admin"):
             raise HTTPException(status_code=403, detail="This action is reserved for administrators.")
@@ -1206,6 +1250,37 @@ async def save_settings(payload: dict, request: Request):
         "setup_completed": getattr(settings, "SETUP_COMPLETED", False)
     }
 
+@app.get("/api/settings/artist-aliases")
+async def get_artist_aliases(request: Request):
+    """Former or alternate artist names mapped to the library name (administrators)."""
+    require_admin(request)
+    return {"aliases": dict(settings.ARTIST_ALIASES or {})}
+
+@app.post("/api/settings/artist-aliases")
+async def update_artist_aliases(payload: dict, request: Request):
+    """Replace the whole alias map; names are trimmed, at most 200 characters, and never map to themselves."""
+    require_admin(request)
+    raw = payload.get("aliases")
+    if not isinstance(raw, dict) or len(raw) > 500:
+        raise HTTPException(status_code=400, detail="invalid_aliases")
+    aliases, seen = {}, set()
+    for old, new in raw.items():
+        old, new = str(old or "").strip(), str(new or "").strip()
+        if not old or not new or len(old) > 200 or len(new) > 200:
+            raise HTTPException(status_code=400, detail="invalid_aliases")
+        key = normalize_key(old)
+        if key == normalize_key(new):
+            raise HTTPException(status_code=400, detail="alias_same_name")
+        if key in seen:
+            raise HTTPException(status_code=400, detail="alias_duplicate")
+        seen.add(key)
+        aliases[old] = new
+    try:
+        save_artist_aliases(aliases)
+    except (OSError, ValueError):
+        raise HTTPException(status_code=500, detail="config_not_saved")
+    return {"aliases": aliases}
+
 @app.post("/api/settings/test-jellyfin")
 async def test_jellyfin_connection(payload: dict, request: Request):
     """Verifica se l'URL e l'API Key di Jellyfin sono validi e raggiungibili"""
@@ -1356,6 +1431,32 @@ async def remove_item_from_playlist(playlist_id: str, entry_id: str, request: Re
     if not await JellyfinService.remove_from_playlist(playlist_id, entry_id, user_id=access_user_id):
         raise HTTPException(status_code=502, detail="Jellyfin could not remove this playlist entry.")
     return {"success": True}
+
+class PlaylistOrderRequest(BaseModel):
+    base_ids: List[str] = Field(..., max_length=5000)
+    item_ids: List[str] = Field(..., max_length=5000)
+    owner_user_id: Optional[str] = None
+
+@app.put("/api/jellyfin/playlist/{playlist_id}/items")
+async def set_playlist_items(playlist_id: str, req: PlaylistOrderRequest, request: Request):
+    """Reorder a playlist (or drop some of its entries): `base_ids` is the order the browser saw, `item_ids` the new one."""
+    principal = require_jellyfin_user(request)
+    _, access_user_id = await resolve_playlist_access(playlist_id, principal, for_mutation=True, owner_user_id=req.owner_user_id)
+    session_token = request.cookies.get(APP_SESSION_COOKIE)
+    # Jellyfin's move endpoint acts as the token's user, so only the owner's own token can move entries.
+    credentials = UserDataService.jellyfin_credentials(session_token) if access_user_id == principal.get("id") else None
+    outcome = await JellyfinService.reorder_playlist(playlist_id, req.base_ids, req.item_ids,
+                                                     user_id=access_user_id, credentials=credentials)
+    if outcome["token_rejected"]:
+        UserDataService.forget_jellyfin_credentials(session_token)
+    result = outcome["status"]
+    if result == "changed":
+        raise HTTPException(status_code=409, detail="playlist_changed")
+    if result == "invalid":
+        raise HTTPException(status_code=400, detail="invalid_items")
+    if result != "ok":
+        raise HTTPException(status_code=502, detail="playlist_not_saved")
+    return {"success": True, "method": outcome["method"]}
 
 @app.put("/api/jellyfin/items/{item_id}/favorite")
 async def set_jellyfin_favorite(item_id: str, payload: FavoriteRequest, request: Request):

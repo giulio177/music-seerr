@@ -52,6 +52,42 @@ class JellyfinService:
             headers["X-MediaBrowser-Token"] = key
         return headers
 
+    @staticmethod
+    def _user_headers(token: str, device_id: str) -> dict:
+        """Headers for a call made as the signed-in user (their own Jellyfin token, never sent to the browser)."""
+        auth = f'MediaBrowser Client="MusicSeerr", Device="Music Seerr", DeviceId="{device_id}", Version="1.0.0", Token="{token}"'
+        return {"Accept": "application/json", "Content-Type": "application/json", "Authorization": auth, "X-Emby-Authorization": auth}
+
+    @classmethod
+    async def revoke_user_token(cls, token: str, device_id: str) -> bool:
+        """End the Jellyfin session behind a stored user token (logout or expired app session)."""
+        if not settings.JELLYFIN_URL or not token:
+            return False
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            try:
+                res = await client.post(f"{settings.JELLYFIN_URL.rstrip('/')}/Sessions/Logout",
+                                        headers=cls._user_headers(token, device_id))
+                return res.status_code in (200, 204)
+            except httpx.HTTPError:
+                return False
+
+    @classmethod
+    async def move_playlist_item(cls, playlist_id: str, item_id: str, new_index: int, credentials: dict) -> str:
+        """Move one playlist entry with Jellyfin's own endpoint, as the playlist's owner.
+        Returns "ok", "unauthorized" (token no longer valid), or "failed"."""
+        if not settings.JELLYFIN_URL:
+            return "failed"
+        url = f"{settings.JELLYFIN_URL.rstrip('/')}/Playlists/{playlist_id}/Items/{item_id}/Move/{int(new_index)}"
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            try:
+                res = await client.post(url, headers=cls._user_headers(credentials["token"], credentials["device_id"]))
+            except httpx.HTTPError as e:
+                print(f"[JellyfinService] move_playlist_item error: {e}")
+                return "failed"
+        if res.status_code in (200, 204):
+            return "ok"
+        return "unauthorized" if res.status_code == 401 else "failed"
+
     @classmethod
     async def get_music_library_paths(cls, jellyfin_url: Optional[str] = None, api_key: Optional[str] = None) -> List[str]:
         """Rileva i percorsi fisici della libreria musicale configurata su Jellyfin"""
@@ -104,14 +140,16 @@ class JellyfinService:
         return paths
 
     @classmethod
-    async def authenticate_user(cls, username: str, password: str, jellyfin_url: Optional[str] = None) -> dict:
-        """Autentica l'utente con username e password Jellyfin tramite /Users/AuthenticateByName"""
+    async def authenticate_user(cls, username: str, password: str, jellyfin_url: Optional[str] = None,
+                                device_id: str = "MusicSeerr-Web") -> dict:
+        """Autentica l'utente con username e password Jellyfin tramite /Users/AuthenticateByName.
+        Jellyfin revokes earlier tokens of the same user and device ID, so each app session uses its own."""
         url = (jellyfin_url or settings.JELLYFIN_URL).rstrip('/')
         if not url:
             return {"success": False, "message": "Jellyfin URL is not configured."}
 
         auth_endpoint = f"{url}/Users/AuthenticateByName"
-        authorization = 'MediaBrowser Client="MusicSeerr", Device="Web", DeviceId="MusicSeerr-Web", Version="1.0.0"'
+        authorization = f'MediaBrowser Client="MusicSeerr", Device="Music Seerr", DeviceId="{device_id}", Version="1.0.0"'
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",
@@ -382,6 +420,92 @@ class JellyfinService:
                 print(f"[JellyfinService] notify_new_file error: {e}")
                 return False
 
+    _root_refreshed_at: dict = {}
+
+    @classmethod
+    async def scan_file(cls, local_path: str, wait: float = 20.0, changed: bool = False) -> Optional[str]:
+        """Make Jellyfin index one file now and return its item ID once it is in the library.
+
+        Refreshes the deepest library folder Jellyfin already knows (the album, else the artist), which
+        Jellyfin processes in about a second. `/Library/Media/Updated` instead waits for the library
+        monitor delay (60 s by default, restarted by every change) and is lost if Jellyfin restarts.
+        `changed` refreshes the folder of a file Jellyfin already has (replaced audio, new lyrics).
+        Returns None when the file could not be confirmed within `wait` seconds."""
+        if not settings.JELLYFIN_API_KEY or not settings.JELLYFIN_URL:
+            return None
+        music_root = os.path.realpath(settings.MUSIC_OUTPUT_DIR)
+        relative = os.path.relpath(os.path.realpath(local_path), music_root).replace(os.sep, "/")
+        if relative.startswith("..") or relative == ".":
+            return None
+        return await cls.scan_relative(relative, wait, changed)
+
+    @classmethod
+    async def scan_relative(cls, relative: str, wait: float = 20.0, changed: bool = False) -> Optional[str]:
+        base = settings.JELLYFIN_URL.rstrip("/")
+        headers = cls._headers()
+        parts = [part for part in relative.split("/") if part]
+        deadline = time.monotonic() + wait
+        async with httpx.AsyncClient(timeout=10.0) as client:
+
+            async def child(parent_id: str, path: str) -> Optional[str]:
+                res = await client.get(f"{base}/Items", params={"ParentId": parent_id, "Fields": "Path"}, headers=headers)
+                if res.status_code != 200:
+                    return None
+                return next((item.get("Id") for item in res.json().get("Items", []) if item.get("Path") == path), None)
+
+            async def locate(library_id: str, location: str) -> tuple:
+                """The deepest known folder on the way to the file, its depth, and the file's item ID if indexed."""
+                current, depth = library_id, 0
+                for index in range(len(parts)):
+                    found = await child(current, f"{location}/{'/'.join(parts[:index + 1])}")
+                    if not found:
+                        break
+                    if index == len(parts) - 1:
+                        return current, depth, found
+                    current, depth = found, index + 1
+                return current, depth, None
+
+            async def refresh(folder: str, root: bool, status: str):
+                if root:
+                    # Refreshing the library root rescans the whole library in the background (the new
+                    # artist folder appears within seconds), so never stack it on a running or recent scan.
+                    if status == "Active" or time.monotonic() - cls._root_refreshed_at.get(folder, -1e9) < 120:
+                        return
+                    cls._root_refreshed_at[folder] = time.monotonic()
+                await client.post(f"{base}/Items/{folder}/Refresh", headers=headers, params={
+                    "Recursive": "true", "MetadataRefreshMode": "Default", "ImageRefreshMode": "Default",
+                    "ReplaceAllMetadata": "false", "ReplaceAllImages": "false"})
+
+            try:
+                res = await client.get(f"{base}/Library/VirtualFolders", headers=headers)
+                if res.status_code != 200:
+                    return None
+                libraries = [(lib.get("ItemId"), loc.rstrip("/"), lib.get("RefreshStatus") or "") for lib in res.json()
+                             if (lib.get("CollectionType") or "").lower() == "music" and lib.get("ItemId")
+                             for loc in lib.get("Locations", []) if loc]
+                if not libraries:
+                    return None
+                # The library holding the file's artist folder; with a brand-new artist, the first one.
+                located = [(lib, await locate(lib[0], lib[1])) for lib in libraries]
+                (library_id, location, status), (folder, depth, item_id) = max(located, key=lambda entry: entry[1][1])
+                if item_id:
+                    if changed:
+                        await refresh(folder, depth == 0, status)
+                    return item_id
+                refreshed = None
+                while not item_id:
+                    if folder != refreshed:
+                        await refresh(folder, depth == 0, status)
+                        refreshed = folder
+                    if time.monotonic() >= deadline:
+                        return None
+                    await asyncio.sleep(1.0)
+                    folder, depth, item_id = await locate(library_id, location)
+                return item_id
+            except (httpx.HTTPError, ValueError) as e:
+                print(f"[JellyfinService] scan_file error for {relative}: {e}")
+                return None
+
     @classmethod
     async def find_track_id(cls, title: str, artist: str, user_id: Optional[str] = None, strict: bool = False) -> Optional[str]:
         """Cerca l'ID Jellyfin del brano appena scansionato"""
@@ -449,6 +573,122 @@ class JellyfinService:
             except Exception as e:
                 print(f"[JellyfinService] Error removing playlist entry: {e}")
                 return False
+
+    _playlist_locks: dict = {}
+
+    @classmethod
+    async def playlist_entry_ids(cls, playlist_id: str, user_id: Optional[str] = None) -> Optional[List[str]]:
+        """The playlist's audio item IDs in playlist order (duplicates included)."""
+        if not settings.JELLYFIN_API_KEY or not settings.JELLYFIN_URL:
+            return None
+        params = {"userId": user_id} if user_id else {}
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            try:
+                res = await client.get(f"{settings.JELLYFIN_URL.rstrip('/')}/Playlists/{playlist_id}/Items",
+                                       params=params, headers=cls._headers())
+                if res.status_code != 200:
+                    return None
+                return [item.get("Id") for item in res.json().get("Items", []) if item.get("Id")]
+            except (httpx.HTTPError, ValueError) as e:
+                print(f"[JellyfinService] playlist_entry_ids error: {e}")
+                return None
+
+    @staticmethod
+    def single_move(base_ids: List[str], item_ids: List[str]) -> Optional[tuple]:
+        """(from, to) when `item_ids` is `base_ids` with exactly one entry moved, else None."""
+        if len(base_ids) != len(item_ids) or base_ids == item_ids:
+            return None
+        first = next(i for i in range(len(base_ids)) if base_ids[i] != item_ids[i])
+        last = next(i for i in range(len(base_ids) - 1, -1, -1) if base_ids[i] != item_ids[i])
+        if base_ids[first + 1:last + 1] == item_ids[first:last] and base_ids[first] == item_ids[last]:
+            return first, last
+        if base_ids[first:last] == item_ids[first + 1:last + 1] and base_ids[last] == item_ids[first]:
+            return last, first
+        return None
+
+    @classmethod
+    async def reorder_playlist(cls, playlist_id: str, base_ids: List[str], item_ids: List[str],
+                               user_id: Optional[str] = None, credentials: Optional[dict] = None) -> dict:
+        """Save a new playlist order. A single moved song (that appears once) uses Jellyfin's own move endpoint
+        with the owner's token; anything else, or no usable token, rewrites the playlist (`rewrite_playlist`).
+        Returns {"status": ok|changed|invalid|failed, "method": move|rewrite|none, "token_rejected": bool}."""
+        move = cls.single_move(list(base_ids), list(item_ids))
+        token_rejected = False
+        if move and credentials and list(base_ids).count(base_ids[move[0]]) == 1:
+            lock = cls._playlist_locks.setdefault(playlist_id, asyncio.Lock())
+            async with lock:
+                current = await cls.playlist_entry_ids(playlist_id, user_id)
+                if current is not None and current != list(base_ids):
+                    return {"status": "changed", "method": "none", "token_rejected": False}
+                if current is not None:
+                    result = await cls.move_playlist_item(playlist_id, base_ids[move[0]], move[1], credentials)
+                    if result == "ok":
+                        after = await cls.playlist_entry_ids(playlist_id, user_id)
+                        if after == list(item_ids):
+                            return {"status": "ok", "method": "move", "token_rejected": False}
+                        print(f"[JellyfinService] Move left playlist {playlist_id} in an unexpected order; rewriting it")
+                        base_ids = after or base_ids
+                    token_rejected = result == "unauthorized"
+        status = await cls.rewrite_playlist(playlist_id, base_ids, item_ids, user_id)
+        return {"status": status, "method": "rewrite", "token_rejected": token_rejected}
+
+    @classmethod
+    async def rewrite_playlist(cls, playlist_id: str, base_ids: List[str], item_ids: List[str],
+                               user_id: Optional[str] = None) -> str:
+        """Replace the playlist's entries with `item_ids` (a reordering of the current entries, possibly minus some).
+
+        Jellyfin's own move endpoint needs a user token, and since Jellyfin 12 an entry ID equals its item ID, so
+        removing one copy of a repeated song removes all of them. Rewriting (remove every entry, then add the new
+        list in order) works with the server API key and keeps repeated songs. Returns "ok", "changed" (the
+        playlist no longer matches `base_ids`), "invalid" (`item_ids` is not drawn from it), or "failed"."""
+        from collections import Counter
+        base = f"{settings.JELLYFIN_URL.rstrip('/')}/Playlists/{playlist_id}/Items"
+        params = {"userId": user_id} if user_id else {}
+        lock = cls._playlist_locks.setdefault(playlist_id, asyncio.Lock())
+        async with lock:
+            current = await cls.playlist_entry_ids(playlist_id, user_id)
+            if current is None:
+                return "failed"
+            if current != list(base_ids):
+                return "changed"
+            if Counter(item_ids) - Counter(current):
+                return "invalid"
+            if list(item_ids) == current:
+                return "ok"
+            chunk = 50
+            async with httpx.AsyncClient(timeout=30.0) as client:
+
+                async def add(ids: List[str]) -> bool:
+                    for start in range(0, len(ids), chunk):
+                        res = await client.post(base, params={**params, "ids": ",".join(ids[start:start + chunk])},
+                                                headers=cls._headers())
+                        if res.status_code not in (200, 204):
+                            return False
+                    return True
+
+                try:
+                    distinct = list(dict.fromkeys(current))
+                    for start in range(0, len(distinct), chunk):
+                        res = await client.delete(base, params={**params, "entryIds": ",".join(distinct[start:start + chunk])},
+                                                  headers=cls._headers())
+                        if res.status_code not in (200, 204):
+                            # Nothing (or only part) was removed: put back whatever is missing, in order.
+                            left = await cls.playlist_entry_ids(playlist_id, user_id) or []
+                            if left != current:
+                                await client.delete(base, params={**params, "entryIds": ",".join(dict.fromkeys(left))},
+                                                    headers=cls._headers())
+                                await add(current)
+                            return "failed"
+                    if await add(list(item_ids)):
+                        return "ok"
+                    # Restore the original list rather than leave the playlist half written.
+                    await client.delete(base, params={**params, "entryIds": ",".join(dict.fromkeys(current + list(item_ids)))},
+                                        headers=cls._headers())
+                    await add(current)
+                    return "failed"
+                except httpx.HTTPError as e:
+                    print(f"[JellyfinService] rewrite_playlist error for {playlist_id}: {e}")
+                    return "failed"
 
     @classmethod
     async def set_favorite(cls, item_id: str, user_id: str, favorite: bool) -> bool:
@@ -934,7 +1174,8 @@ class JellyfinService:
                     with open(target_file_path, "w", encoding="utf-8") as f:
                         f.write(lrc_content)
                     saved_on_disk = True
-                    await cls.refresh_library()
+                    # Refreshing the album folder makes Jellyfin pick up the new sidecar right away.
+                    await cls.scan_file(target_file_path, wait=0)
                 except Exception as e:
                     print(f"[JellyfinService] Errore scrittura LRC {target_file_path}: {e}")
 

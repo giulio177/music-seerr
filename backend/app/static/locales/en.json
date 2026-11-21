@@ -303,7 +303,10 @@
     "badge_catalog": "Album · not in your library",
     "download_album": "Download album",
     "catalog_searching": "Looking for tracks of this album you don't have yet…",
-    "catalog_searching_releases": "Looking for releases you don't have yet…"
+    "catalog_searching_releases": "Looking for releases you don't have yet…",
+    "playlist_move_hint": "Drag to reorder (or Alt + arrow keys)",
+    "playlist_order_error": "The new order could not be saved to Jellyfin. The previous order is back.",
+    "playlist_changed_elsewhere": "This playlist was changed elsewhere, so it was reloaded. Try again."
   },
   "player": {
     "now_playing": "Now Playing",
@@ -324,7 +327,9 @@
     "expand": "Expand player",
     "track_position": "Track {current} of {total}",
     "region": "Player",
-    "more_options": "More options"
+    "more_options": "More options",
+    "repeat": "Repeat queue",
+    "back_to_queue": "Back to {title}"
   },
   "lyrics_modal": {
     "close": "Close Lyrics",
@@ -499,7 +504,22 @@
     "import_title_differs": "Tag title: {title}",
     "import_tag_failures": "Tags could not be written to {count} files; see the import log.",
     "accent_title": "Accent color",
-    "accent_desc": "Colors the logo, buttons and highlights across the app."
+    "accent_desc": "Colors the logo, buttons and highlights across the app.",
+    "crossfade_title": "Crossfade",
+    "crossfade_desc": "Fade out the end of each song while the next one fades in.",
+    "crossfade_length": "Crossfade length",
+    "crossfade_seconds": "{seconds} s",
+    "alias_title": "Artist aliases",
+    "alias_desc": "Map a former or alternate artist name (as Deezer shows it) to the name used in your library. Album and artist pages then find releases listed under the other name, and new downloads are saved under the library name. Aliases are also added automatically when an album is found under another name.",
+    "alias_old_placeholder": "Other name (e.g. on Deezer)",
+    "alias_new_placeholder": "Name in your library",
+    "alias_add": "Add",
+    "alias_remove": "Remove alias {name}",
+    "alias_empty": "No aliases yet.",
+    "alias_error_alias_same_name": "The two names are the same.",
+    "alias_error_alias_duplicate": "That name already has an alias.",
+    "alias_error_invalid_aliases": "Enter both names (up to 200 characters each).",
+    "alias_error_config_not_saved": "The aliases could not be saved."
   },
   "auth": {
     "checking_session": "Checking your session…",

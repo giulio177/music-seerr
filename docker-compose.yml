@@ -15,6 +15,8 @@ services:
       MUSIC_OUTPUT_DIR: /music
       MUSIC_SEERR_CONFIG: /app/data/config.json
       JELLYFIN_URL: ${JELLYFIN_URL:-http://host.docker.internal:8096}
+      # Optional: key for the stored Jellyfin session tokens (otherwise generated in /app/data/secret.key).
+      MUSIC_SEERR_SECRET: ${MUSIC_SEERR_SECRET:-}
     volumes:
       - ./music:/music
       - ./backend/data:/app/data

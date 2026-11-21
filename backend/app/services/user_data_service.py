@@ -7,7 +7,7 @@ import secrets
 import sqlite3
 import time
 import uuid
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 
 # Columns added after the first release; created on startup when missing.
@@ -52,7 +52,8 @@ class UserDataService:
                     is_admin INTEGER NOT NULL DEFAULT 0,
                     is_guest INTEGER NOT NULL DEFAULT 0,
                     created_at REAL NOT NULL,
-                    expires_at REAL NOT NULL
+                    expires_at REAL NOT NULL,
+                    jellyfin_credentials TEXT
                 );
                 CREATE TABLE IF NOT EXISTS download_history (
                     job_id TEXT PRIMARY KEY,
@@ -104,28 +105,77 @@ class UserDataService:
                 if name not in columns:
                     db.execute(f"ALTER TABLE play_history ADD COLUMN {name} {ddl}")
             db.execute("CREATE INDEX IF NOT EXISTS play_history_user_track ON play_history(user_id, track_id, played_at)")
+            session_columns = {row["name"] for row in db.execute("PRAGMA table_info(app_sessions)")}
+            if "jellyfin_credentials" not in session_columns:
+                db.execute("ALTER TABLE app_sessions ADD COLUMN jellyfin_credentials TEXT")
             db.execute("UPDATE download_history SET status='interrupted', updated_at=? WHERE status IN ('pending','downloading','tagging','jellyfin_sync')", (time.time(),))
-            db.execute("DELETE FROM app_sessions WHERE expires_at<=?", (time.time(),))
 
     @staticmethod
     def _hash_token(token: str) -> str:
         return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
+    # The signed-in user's own Jellyfin token (plus the device ID it was issued for) is kept encrypted with the
+    # session, only for calls Jellyfin refuses with the server API key (moving playlist entries). It never
+    # reaches the browser and is revoked in Jellyfin when the session ends.
     @classmethod
-    def create_session(cls, user: Optional[dict] = None, is_guest: bool = False) -> str:
+    def _seal_credentials(cls, credentials: Optional[dict]) -> Optional[str]:
+        if not credentials or not credentials.get("token") or not credentials.get("device_id"):
+            return None
+        from app.services import secret_box
+        return secret_box.encrypt(json.dumps({"token": credentials["token"], "device_id": credentials["device_id"]}),
+                                  os.path.dirname(cls._db_path))
+
+    @classmethod
+    def _open_credentials(cls, sealed: Optional[str]) -> Optional[dict]:
+        from app.services import secret_box
+        raw = secret_box.decrypt(sealed, os.path.dirname(cls._db_path))
+        try:
+            data = json.loads(raw) if raw else None
+        except ValueError:
+            return None
+        return data if isinstance(data, dict) and data.get("token") and data.get("device_id") else None
+
+    @classmethod
+    def create_session(cls, user: Optional[dict] = None, is_guest: bool = False, jellyfin_credentials: Optional[dict] = None) -> str:
         now = time.time()
         token = secrets.token_urlsafe(36)
         user = user or {}
         user_id = str(user.get("id") or f"guest:{uuid.uuid4()}")
         name = str(user.get("name") or "Guest")
         is_admin = bool(user.get("is_admin", False)) and not is_guest
+        sealed = None if is_guest else cls._seal_credentials(jellyfin_credentials)
         with cls._connect() as db:
-            db.execute("DELETE FROM app_sessions WHERE expires_at<=?", (now,))
             db.execute(
-                "INSERT INTO app_sessions(token_hash,user_id,display_name,is_admin,is_guest,created_at,expires_at) VALUES(?,?,?,?,?,?,?)",
-                (cls._hash_token(token), user_id, name, int(is_admin), int(is_guest), now, now + cls.SESSION_TTL),
+                "INSERT INTO app_sessions(token_hash,user_id,display_name,is_admin,is_guest,created_at,expires_at,jellyfin_credentials) VALUES(?,?,?,?,?,?,?,?)",
+                (cls._hash_token(token), user_id, name, int(is_admin), int(is_guest), now, now + cls.SESSION_TTL, sealed),
             )
         return token
+
+    @classmethod
+    def jellyfin_credentials(cls, token: Optional[str]) -> Optional[dict]:
+        """The session's own Jellyfin token and device ID, or None (guest, older session, unreadable key)."""
+        if not token:
+            return None
+        with cls._connect() as db:
+            row = db.execute("SELECT jellyfin_credentials FROM app_sessions WHERE token_hash=? AND expires_at>?",
+                             (cls._hash_token(token), time.time())).fetchone()
+        return cls._open_credentials(row["jellyfin_credentials"]) if row else None
+
+    @classmethod
+    def forget_jellyfin_credentials(cls, token: Optional[str]):
+        """Drop a stored Jellyfin token that Jellyfin no longer accepts."""
+        if token:
+            with cls._connect() as db:
+                db.execute("UPDATE app_sessions SET jellyfin_credentials=NULL WHERE token_hash=?", (cls._hash_token(token),))
+
+    @classmethod
+    def purge_expired_sessions(cls) -> List[dict]:
+        """Delete expired sessions; returns their Jellyfin credentials so the caller can revoke them."""
+        now = time.time()
+        with cls._connect() as db:
+            rows = db.execute("SELECT jellyfin_credentials FROM app_sessions WHERE expires_at<=?", (now,)).fetchall()
+            db.execute("DELETE FROM app_sessions WHERE expires_at<=?", (now,))
+        return [c for c in (cls._open_credentials(row["jellyfin_credentials"]) for row in rows) if c]
 
     @classmethod
     def get_session(cls, token: Optional[str]) -> Optional[dict]:
@@ -138,7 +188,7 @@ class UserDataService:
             if not row:
                 return None
             if row["expires_at"] <= now:
-                db.execute("DELETE FROM app_sessions WHERE token_hash=?", (token_hash,))
+                # Expired rows are removed by purge_expired_sessions, which also revokes their Jellyfin token.
                 return None
             return {
                 "id": row["user_id"],
@@ -148,10 +198,14 @@ class UserDataService:
             }
 
     @classmethod
-    def delete_session(cls, token: Optional[str]):
-        if token:
-            with cls._connect() as db:
-                db.execute("DELETE FROM app_sessions WHERE token_hash=?", (cls._hash_token(token),))
+    def delete_session(cls, token: Optional[str]) -> Optional[dict]:
+        """Delete the session; returns its Jellyfin credentials (if any) so the caller can revoke them."""
+        if not token:
+            return None
+        with cls._connect() as db:
+            row = db.execute("SELECT jellyfin_credentials FROM app_sessions WHERE token_hash=?", (cls._hash_token(token),)).fetchone()
+            db.execute("DELETE FROM app_sessions WHERE token_hash=?", (cls._hash_token(token),))
+        return cls._open_credentials(row["jellyfin_credentials"]) if row else None
 
     @classmethod
     def _user_id(cls, user: dict) -> str:

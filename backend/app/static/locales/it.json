@@ -303,7 +303,10 @@
     "badge_catalog": "Album · non nella tua libreria",
     "download_album": "Scarica album",
     "catalog_searching": "Cerco i brani di questo album che non hai ancora…",
-    "catalog_searching_releases": "Cerco le uscite che non hai ancora…"
+    "catalog_searching_releases": "Cerco le uscite che non hai ancora…",
+    "playlist_move_hint": "Trascina per riordinare (oppure Alt + frecce)",
+    "playlist_order_error": "Non è stato possibile salvare il nuovo ordine su Jellyfin. È stato ripristinato l'ordine precedente.",
+    "playlist_changed_elsewhere": "Questa playlist è stata modificata altrove ed è stata ricaricata. Riprova."
   },
   "player": {
     "now_playing": "In Riproduzione",
@@ -324,7 +327,9 @@
     "expand": "Espandi il player",
     "track_position": "Brano {current} di {total}",
     "region": "Player",
-    "more_options": "Altre opzioni"
+    "more_options": "Altre opzioni",
+    "repeat": "Ripeti la coda",
+    "back_to_queue": "Torna a {title}"
   },
   "lyrics_modal": {
     "close": "Chiudi Testi",
@@ -499,7 +504,22 @@
     "import_title_differs": "Titolo nei tag: {title}",
     "import_tag_failures": "Non è stato possibile scrivere i tag di {count} file; vedi il log dell'importazione.",
     "accent_title": "Colore principale",
-    "accent_desc": "Colora il logo, i pulsanti e gli elementi in evidenza in tutta l'app."
+    "accent_desc": "Colora il logo, i pulsanti e gli elementi in evidenza in tutta l'app.",
+    "crossfade_title": "Crossfade",
+    "crossfade_desc": "Sfuma la fine di ogni brano mentre il successivo entra gradualmente.",
+    "crossfade_length": "Durata del crossfade",
+    "crossfade_seconds": "{seconds} s",
+    "alias_title": "Alias artisti",
+    "alias_desc": "Collega un nome precedente o alternativo di un artista (come appare su Deezer) al nome usato nella tua libreria. Le pagine di album e artista trovano così anche le uscite elencate sotto l'altro nome, e i nuovi download vengono salvati con il nome della libreria. Gli alias vengono aggiunti anche in automatico quando un album viene trovato sotto un altro nome.",
+    "alias_old_placeholder": "Altro nome (es. su Deezer)",
+    "alias_new_placeholder": "Nome nella tua libreria",
+    "alias_add": "Aggiungi",
+    "alias_remove": "Rimuovi l'alias {name}",
+    "alias_empty": "Nessun alias.",
+    "alias_error_alias_same_name": "I due nomi sono uguali.",
+    "alias_error_alias_duplicate": "Quel nome ha già un alias.",
+    "alias_error_invalid_aliases": "Inserisci entrambi i nomi (massimo 200 caratteri ciascuno).",
+    "alias_error_config_not_saved": "Non è stato possibile salvare gli alias."
   },
   "auth": {
     "checking_session": "Verifica della sessione…",

@@ -94,12 +94,15 @@ async def discography(name: str) -> List[dict]:
     return [item for items in lists for item in items]
 
 
-async def find_album(album: str, artist: str) -> Optional[dict]:
-    """The Deezer release of the album artist matching a library album name (exact title, then edition-free)."""
+async def find_albums(album: str, artist: str) -> List[dict]:
+    """The album artist's Deezer releases matching a library album name: exact titles, else edition-free ones."""
     items = await discography(artist)
-    exact = normalize_key(album)
-    return next((a for a in items if normalize_key(a.get("title")) == exact), None) \
-        or next((a for a in items if album_key(a.get("title")) == album_key(album)), None)
+    exact = [a for a in items if normalize_key(a.get("title")) == normalize_key(album)]
+    matches = exact or [a for a in items if album_key(a.get("title")) == album_key(album)]
+    unique = {}
+    for item in matches:
+        unique.setdefault(item.get("id"), item)
+    return list(unique.values())
 
 
 async def album_tracks(deezer_album_id: int) -> tuple[dict, List[dict]]:
@@ -118,13 +121,75 @@ async def album_tracks(deezer_album_id: int) -> tuple[dict, List[dict]]:
     return info, [_track_payload(item, album) for item in items if item.get("id")]
 
 
+# Deezer search fallback: a release found by title is trusted only when it holds at least this many of the
+# library album's songs, and at least half of them.
+FALLBACK_MIN_SHARED = 2
+VARIOUS_ARTISTS = {"variousartists", "various", "va", "verschiedeneinterpreten", "artistivari"}
+
+
+async def search_albums(album: str, artist: str) -> List[dict]:
+    """Deezer releases titled like the library album, found by search instead of the artist's discography."""
+    found = {}
+    for query in (f'album:"{album}"', f"{artist} {album}"):
+        for item in (await _get("/search/album", q=query, limit=15)).get("data") or []:
+            if item.get("id") and album_key(item.get("title")) == album_key(album):
+                found.setdefault(item["id"], item)
+    return list(found.values())[:6]
+
+
+def _remember_alias(deezer_artist: str, library_artist: str):
+    """Save `deezer name -> library name` so artist pages and new downloads use the library name too."""
+    from app.config import save_artist_aliases, settings
+    old, new = (deezer_artist or "").strip(), (library_artist or "").strip()
+    if not old or not new or normalize_key(old) == normalize_key(new):
+        return
+    if normalize_key(old) in VARIOUS_ARTISTS or normalize_key(new) in VARIOUS_ARTISTS:
+        return
+    aliases = dict(settings.ARTIST_ALIASES or {})
+    if any(normalize_key(key) == normalize_key(old) for key in aliases):
+        return
+    aliases[old] = new
+    try:
+        save_artist_aliases(aliases)
+        print(f"[Catalog] Saved artist alias {old!r} -> {new!r}")
+    except (OSError, ValueError) as exc:
+        print(f"[Catalog] Could not save artist alias {old!r} -> {new!r}: {exc}")
+
+
 async def missing_album_tracks(album: str, artist: str, library_tracks: List[dict]) -> dict:
-    """Catalog tracks of a library album that have no library copy (matched by title key)."""
-    match = await find_album(album, artist)
-    if not match:
+    """Catalog tracks of a library album that have no library copy (matched by title key).
+
+    An album can have several editions with the same title (e.g. a reissue with a bonus first track), whose
+    track numbers differ; the edition holding the most library songs wins, then the fuller and newer one.
+    When the artist's discography has no edition with any library song (the release is listed under a former
+    or alternate artist name on Deezer), the album is searched by title and accepted only when it shares
+    enough songs with the library album; its Deezer artist name is then saved as an artist alias.
+    """
+    have = {title_key(t.get("title")) for t in library_tracks if t.get("title")}
+
+    async def best(candidates: List[dict]) -> tuple:
+        editions = await asyncio.gather(*(album_tracks(c["id"]) for c in candidates))
+
+        def rank(index: int):
+            info, tracks = editions[index]
+            keys = {title_key(t["title"]) for t in tracks}
+            return (bool(info), len(keys & have), len(tracks), candidates[index].get("release_date") or "")
+
+        index = max(range(len(candidates)), key=rank)
+        return candidates[index], editions[index], rank(index)[1]
+
+    candidates = await find_albums(album, artist)
+    chosen = await best(candidates) if candidates else None
+    if (not chosen or not chosen[2]) and len(have) >= FALLBACK_MIN_SHARED:
+        found = await search_albums(album, artist)
+        if found:
+            match = await best(found)
+            if match[2] >= FALLBACK_MIN_SHARED and match[2] * 2 >= len(have):
+                chosen = match
+                _remember_alias((match[0].get("artist") or {}).get("name") or match[1][0].get("artist"), artist)
+    if not chosen or not chosen[1][0]:
         return {"catalog_album": None, "missing": []}
-    info, tracks = await album_tracks(match["id"])
-    have = {title_key(t.get("title")) for t in library_tracks}
+    info, tracks = chosen[1]
     return {"catalog_album": info, "missing": [t for t in tracks if title_key(t["title"]) not in have]}
 
 
