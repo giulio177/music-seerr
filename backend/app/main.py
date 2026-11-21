@@ -42,11 +42,27 @@ os.makedirs(static_dir, exist_ok=True)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 APP_SESSION_COOKIE = "music_seerr_session"
+# Native clients (the iOS app) send this header on login and receive the session token in the body,
+# then authenticate with `Authorization: Bearer <token>` instead of the browser cookie.
+NATIVE_CLIENT_HEADER = "x-music-seerr-client"
+
+def session_token(request: Request) -> Optional[str]:
+    """The app session token: the browser cookie, else a bearer token from a native client."""
+    token = request.cookies.get(APP_SESSION_COOKIE)
+    if token:
+        return token
+    scheme, _, value = request.headers.get("authorization", "").partition(" ")
+    if scheme.lower() != "bearer":
+        return None
+    return value.strip() or None
+
+def is_native_client(request: Request) -> bool:
+    return bool(request.headers.get(NATIVE_CLIENT_HEADER))
 ADMIN_ROLE_CHECK_CACHE: dict[str, tuple[float, bool]] = {}
 
 @app.middleware("http")
 async def resolve_app_session(request: Request, call_next):
-    principal = UserDataService.get_session(request.cookies.get(APP_SESSION_COOKIE))
+    principal = UserDataService.get_session(session_token(request))
     if principal and principal.get("is_admin"):
         principal = dict(principal)
         cached = ADMIN_ROLE_CHECK_CACHE.get(principal.get("id"))
@@ -748,7 +764,7 @@ async def get_auth_users(request: Request, jellyfin_url: Optional[str] = None, a
 
 async def end_app_session(request: Request):
     """Delete the browser's app session and revoke the Jellyfin token it held."""
-    credentials = UserDataService.delete_session(request.cookies.get(APP_SESSION_COOKIE))
+    credentials = UserDataService.delete_session(session_token(request))
     if credentials:
         await JellyfinService.revoke_user_token(credentials["token"], credentials["device_id"])
 
@@ -784,8 +800,11 @@ async def auth_login(payload: dict, request: Request, response: Response):
         raise HTTPException(status_code=401, detail="Jellyfin did not return a valid identity.")
     await end_app_session(request)
     credentials = {"token": res.get("token"), "device_id": device_id} if res.get("token") else None
-    set_session_cookie(response, UserDataService.create_session(user, jellyfin_credentials=credentials), request)
-    # Do not return Jellyfin's access token to the browser; the backend keeps it encrypted with the session.
+    token = UserDataService.create_session(user, jellyfin_credentials=credentials)
+    # Do not return Jellyfin's access token to the client; the backend keeps it encrypted with the session.
+    if is_native_client(request):
+        return {"success": True, "user": user, "session_token": token}
+    set_session_cookie(response, token, request)
     return {"success": True, "user": user}
 
 @app.post("/api/auth/logout")
@@ -799,8 +818,11 @@ async def auth_logout(request: Request, response: Response):
 async def auth_guest(request: Request, response: Response):
     await end_app_session(request)
     token = UserDataService.create_session(is_guest=True)
+    user = {"name": "Guest", "is_guest": True, "is_admin": False}
+    if is_native_client(request):
+        return {"success": True, "user": user, "session_token": token}
     set_session_cookie(response, token, request)
-    return {"success": True, "user": {"name": "Guest", "is_guest": True, "is_admin": False}}
+    return {"success": True, "user": user}
 
 @app.get("/api/auth/session")
 async def get_current_session(request: Request):
@@ -1442,13 +1464,13 @@ async def set_playlist_items(playlist_id: str, req: PlaylistOrderRequest, reques
     """Reorder a playlist (or drop some of its entries): `base_ids` is the order the browser saw, `item_ids` the new one."""
     principal = require_jellyfin_user(request)
     _, access_user_id = await resolve_playlist_access(playlist_id, principal, for_mutation=True, owner_user_id=req.owner_user_id)
-    session_token = request.cookies.get(APP_SESSION_COOKIE)
+    token = session_token(request)
     # Jellyfin's move endpoint acts as the token's user, so only the owner's own token can move entries.
-    credentials = UserDataService.jellyfin_credentials(session_token) if access_user_id == principal.get("id") else None
+    credentials = UserDataService.jellyfin_credentials(token) if access_user_id == principal.get("id") else None
     outcome = await JellyfinService.reorder_playlist(playlist_id, req.base_ids, req.item_ids,
                                                      user_id=access_user_id, credentials=credentials)
     if outcome["token_rejected"]:
-        UserDataService.forget_jellyfin_credentials(session_token)
+        UserDataService.forget_jellyfin_credentials(token)
     result = outcome["status"]
     if result == "changed":
         raise HTTPException(status_code=409, detail="playlist_changed")
