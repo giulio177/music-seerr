@@ -623,8 +623,34 @@ async def get_jellyfin_image(item_id: str, request: Request):
     require_jellyfin_user(request)
     if not settings.JELLYFIN_URL or not settings.JELLYFIN_API_KEY:
         raise HTTPException(status_code=400, detail="Jellyfin is not configured.")
-    image_url = f"{settings.JELLYFIN_URL.rstrip('/')}/Items/{item_id}/Images/Primary"
-    return await _proxy_jellyfin_image(image_url, params={"maxWidth": 300, "maxHeight": 300})
+    base = settings.JELLYFIN_URL.rstrip('/')
+    params = {"maxWidth": 300, "maxHeight": 300}
+    response = await _proxy_jellyfin_image(f"{base}/Items/{item_id}/Images/Primary", params=params)
+    # Most songs have no artwork of their own: answer with the album's, so clients need one request.
+    if response.status_code == 404 and re.fullmatch(r"[0-9a-f]{32}", item_id):
+        album_id = await _album_of_item(item_id)
+        if album_id:
+            return await _proxy_jellyfin_image(f"{base}/Items/{album_id}/Images/Primary", params=params)
+    return response
+
+ALBUM_OF_ITEM: Dict[str, Optional[str]] = {}
+
+async def _album_of_item(item_id: str) -> Optional[str]:
+    """Album ID of a Jellyfin song (cached; None for items without an album)."""
+    if item_id in ALBUM_OF_ITEM:
+        return ALBUM_OF_ITEM[item_id]
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            res = await client.get(f"{settings.JELLYFIN_URL.rstrip('/')}/Items", params={"Ids": item_id, "Fields": "AlbumId"},
+                                   headers=JellyfinService._headers())
+        items = (res.json().get("Items") or []) if res.status_code == 200 else []
+    except (httpx.HTTPError, ValueError):
+        return None
+    album_id = items[0].get("AlbumId") if items else None
+    if len(ALBUM_OF_ITEM) > 20000:
+        ALBUM_OF_ITEM.clear()
+    ALBUM_OF_ITEM[item_id] = album_id if album_id and album_id != item_id else None
+    return ALBUM_OF_ITEM[item_id]
 
 @app.get("/api/jellyfin/track-cover")
 async def get_jellyfin_track_cover(request: Request, title: str, artist: str = ""):
