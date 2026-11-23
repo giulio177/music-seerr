@@ -41,10 +41,11 @@ class DownloadJob(BaseModel):
     # Library-relative path of the file that made the job skip the download ("already in the library").
     existing_path: Optional[str] = None
     force: bool = False
-    # "Change file": replace the audio of this library file with the chosen YouTube video, keeping its tags.
+    # "Change file": replace the audio of this library file with the chosen catalog song, keeping its tags.
     replace_path: Optional[str] = None
-    replace_video_id: Optional[str] = None
     replace_item_id: Optional[str] = None
+    # The catalog song picked in the search results: {title, artist, duration}.
+    replace_candidate: Optional[dict] = None
     owner_user_id: Optional[str] = None
     owner_name: Optional[str] = None
     created_at: float = Field(default_factory=time.time)

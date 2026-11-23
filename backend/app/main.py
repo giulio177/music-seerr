@@ -518,44 +518,6 @@ async def stream_jellyfin_track(item_id: str, request: Request, format: Optional
 
 # === CHANGE FILE (administrators): replace a library file's audio, keep its tags ===
 
-@app.get("/api/library/replace/candidates")
-async def replace_file_candidates(request: Request, q: str = Query(..., min_length=1, max_length=200)):
-    require_admin(request)
-    try:
-        return {"results": await file_replace_service.search_candidates(q)}
-    except RuntimeError:
-        raise HTTPException(status_code=502, detail="search_failed")
-
-@app.api_route("/api/library/replace/preview/{video_id}", methods=["GET", "HEAD"])
-async def replace_file_preview(video_id: str, request: Request):
-    """The candidate's real audio, proxied with range support (the stream URL only works from this server)."""
-    from fastapi.responses import StreamingResponse
-    from starlette.background import BackgroundTask
-    require_admin(request)
-    try:
-        url = await file_replace_service.audio_url(video_id)
-    except ValueError:
-        raise HTTPException(status_code=404, detail="invalid_video")
-    except RuntimeError:
-        raise HTTPException(status_code=502, detail="preview_failed")
-    headers = {"range": request.headers["range"]} if "range" in request.headers else {}
-    client = httpx.AsyncClient(timeout=60.0, follow_redirects=True)
-    try:
-        upstream = await client.send(client.build_request("GET", url, headers=headers), stream=True)
-    except httpx.HTTPError:
-        await client.aclose()
-        raise HTTPException(status_code=502, detail="preview_failed")
-    resp_headers = {"Content-Type": upstream.headers.get("content-type", "audio/mp4"), "Accept-Ranges": "bytes", "Cache-Control": "no-store"}
-    for name in ("content-range", "content-length"):
-        if name in upstream.headers:
-            resp_headers[name.title()] = upstream.headers[name]
-
-    async def close_upstream():
-        await upstream.aclose()
-        await client.aclose()
-    return StreamingResponse(upstream.aiter_raw(), status_code=upstream.status_code, headers=resp_headers,
-                             background=BackgroundTask(close_upstream))
-
 async def _library_file(principal: dict, item_id: str) -> tuple:
     """The Jellyfin item and its file inside the music root, for administrator file tools."""
     if not re.fullmatch(r"[0-9a-f]{32}", item_id or ""):
@@ -604,17 +566,25 @@ async def edit_file_trim(item_id: str, payload: dict, request: Request):
 
 @app.post("/api/library/replace")
 async def replace_file(payload: dict, request: Request):
-    """Queue the replacement of a library track's audio with a chosen YouTube video."""
+    """Queue the replacement of a library track's audio with a catalog song picked in the search results."""
     principal = require_admin(request)
-    item_id, video_id = str(payload.get("item_id") or ""), str(payload.get("video_id") or "")
-    if not re.fullmatch(r"[0-9a-f]{32}", item_id) or not file_replace_service.VIDEO_ID.match(video_id):
+    item_id = str(payload.get("item_id") or "")
+    candidate = payload.get("candidate") if isinstance(payload.get("candidate"), dict) else {}
+    title, artist = str(candidate.get("title") or "").strip()[:300], str(candidate.get("artist") or "").strip()[:200]
+    try:
+        duration = max(0, min(int(float(candidate.get("duration") or 0)), 86400))
+    except (TypeError, ValueError):
+        duration = 0
+    if not re.fullmatch(r"[0-9a-f]{32}", item_id) or not title or not artist:
         raise HTTPException(status_code=400, detail="invalid_request")
     item, path = await _library_file(principal, item_id)
     info = JellyfinService._format_track_item(item)
+    # The job shows the library song (its tags stay); the candidate only decides which audio is downloaded.
     track = TrackItem(id=f"jellyfin:{item_id}", title=info["title"][:300], artist=(info["artist"] or "Unknown artist")[:200],
                       album=(info["album"] or "")[:200], duration=min(int(info["duration_sec"] or 0), 86400),
                       cover_url=f"/api/jellyfin/image/{item_id}", source="replace", in_jellyfin=True, jellyfin_id=item_id)
-    job = await download_manager.create_job(track, owner=principal, replace={"path": path, "video_id": video_id, "item_id": item_id})
+    job = await download_manager.create_job(track, owner=principal, replace={
+        "path": path, "item_id": item_id, "candidate": {"title": title, "artist": artist, "duration": duration}})
     return {"job_id": job.job_id, "path": os.path.relpath(path, os.path.realpath(settings.MUSIC_OUTPUT_DIR))}
 
 @app.get("/api/jellyfin/image/{item_id}")

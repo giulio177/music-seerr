@@ -101,8 +101,8 @@ class DownloadManager:
             message="Request queued",
             force=force,
             replace_path=(replace or {}).get("path"),
-            replace_video_id=(replace or {}).get("video_id"),
             replace_item_id=(replace or {}).get("item_id"),
+            replace_candidate=(replace or {}).get("candidate"),
         )
         self.jobs[job_id] = job
         track_data = track.model_dump() if hasattr(track, "model_dump") else track.dict()
@@ -298,22 +298,29 @@ class DownloadManager:
         print(f"[DownloadManager] Playlist add for {track.title}: Jellyfin never indexed {path}")
 
     async def _run_replace(self, job: DownloadJob):
-        """Download the chosen video's audio in the file's format, copy the old tags onto it, and swap the audio."""
+        """Download the catalog song picked in "Change file" in the file's format, copy the old tags onto it,
+        swap the audio, and finish only once Jellyfin lists the new audio (same item, so playlists keep it)."""
         old_path = job.replace_path
+        item_id = job.replace_item_id or ""
+        candidate = job.replace_candidate or {}
+        artist, title = candidate.get("artist") or job.track.artist, candidate.get("title") or job.track.title
         tmp_dir = os.path.join(file_replace_service.DATA_DIR, "replace-tmp")
         tmp_base = os.path.join(tmp_dir, job.job_id)
         try:
             job.status = "downloading"
             UserDataService.update_download_status(job.job_id, job.status)
-            job.progress = 20
-            job.message = "Downloading the chosen audio..."
+            job.progress = 10
+            job.message = "Choosing the version with the right length..."
+            source = await file_replace_service.pick_source(artist, title, int(candidate.get("duration") or 0)) \
+                or f"ytsearch1:{artist} - {title} audio"
+            job.progress = 25
+            job.message = "Downloading the chosen song..."
             os.makedirs(tmp_dir, exist_ok=True)
             fmt = file_replace_service.output_format(old_path)
             proc = await asyncio.create_subprocess_exec(
                 sys.executable, "-m", "yt_dlp", "--extract-audio", "--audio-format", fmt, "--audio-quality", "0",
-                "--no-cache-dir", "--no-playlist", "--output", tmp_base + ".%(ext)s",
-                f"https://www.youtube.com/watch?v={job.replace_video_id}",
-                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+                "--no-cache-dir", "--no-playlist", "--default-search", "ytsearch", "--output", tmp_base + ".%(ext)s",
+                source, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
             self._procs[job.job_id] = proc
             try:
                 _, stderr = await asyncio.wait_for(proc.communicate(), timeout=3600)
@@ -330,7 +337,7 @@ class DownloadManager:
 
             job.status = "tagging"
             UserDataService.update_download_status(job.job_id, job.status)
-            job.progress = 70
+            job.progress = 60
             job.message = "Keeping the existing tags and cover..."
             target = old_path
             if os.path.splitext(new_audio)[1].lower() == os.path.splitext(old_path)[1].lower():
@@ -340,20 +347,36 @@ class DownloadManager:
                 target = os.path.splitext(old_path)[0] + ".mp3"
                 release = await resolve_release(job.track)
                 self._tag_audio(new_audio, release)
-            file_replace_service.backup_and_log(old_path, job.replace_item_id or "", job.replace_video_id, job.owner_name or "")
+            new_length = file_replace_service.audio_length(new_audio)
+            # A new extension means a new Jellyfin item: remember the playlists holding the old one first.
+            playlists = await JellyfinService.playlists_containing(item_id) if target != old_path and item_id else []
+            file_replace_service.backup_and_log(old_path, item_id, source, job.owner_name or "")
             shutil.move(new_audio, target)
             if target != old_path:
                 os.remove(old_path)
             job.file_path = target
+            relative = os.path.relpath(target, os.path.realpath(settings.MUSIC_OUTPUT_DIR))
 
+            note = ""
             if settings.JELLYFIN_API_KEY:
                 job.status = "jellyfin_sync"
                 UserDataService.update_download_status(job.job_id, job.status)
-                job.message = "Refreshing the Jellyfin library..."
-                await JellyfinService.scan_file(target, wait=0, changed=True)
+                job.progress = 80
+                job.message = "Updating the song in Jellyfin..."
+                if target == old_path:
+                    if not await JellyfinService.refresh_replaced_item(item_id, new_length):
+                        note = " Jellyfin is still reading the new audio; it shows up in a few minutes."
+                else:
+                    new_id = await JellyfinService.scan_file(target, wait=60, changed=True)
+                    if not new_id:
+                        note = " Jellyfin has not listed the new file yet; it shows up after its next scan."
+                    else:
+                        job.track.jellyfin_id = new_id
+                        for playlist_id, user_id, entries in playlists:
+                            await JellyfinService.swap_playlist_item(playlist_id, entries, item_id, new_id, user_id)
             job.status = "completed"
             job.progress = 100
-            job.message = f"File replaced: {os.path.relpath(target, os.path.realpath(settings.MUSIC_OUTPUT_DIR))}"
+            job.message = f"File replaced: {relative}.{note}"
             UserDataService.update_download_status(job.job_id, job.status)
         except asyncio.CancelledError:
             self._mark_cancelled(job)

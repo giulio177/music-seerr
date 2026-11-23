@@ -50,7 +50,7 @@ Planned: an iOS app to request songs from your phone.
 **Fix your library** (administrators)
 
 - **Edit file**: trim intros, outros, and silence on a waveform; the cut is lossless and synced lyrics stay aligned.
-- **Change file**: when a track's tags are right but the audio is another song, pick the right version from YouTube results with previews; only the audio is replaced.
+- **Change file**: when a track's tags are right but the audio is another song, pick the right song from the same results as the search page, with previews; only the audio is replaced, and playlists keep the song.
 - **Playlist duplicates**: spot songs added more than once, choose which copy to keep, or mark title matches as different songs.
 - **Library import**: move existing folders or browser uploads into the library layout, keeping the best-quality copy.
 - **Library health**: find files whose name, folder, or tags disagree, then rename, move, delete, or ignore them one by one.
@@ -162,7 +162,7 @@ An administrator opens **Settings > Library health** and runs a check. It reads 
 In any library track's menu, an administrator can:
 
 - **Edit file**: drag the start and end on the waveform, preview the result, or match the original release length, then cut. The cut is lossless and the `.lrc` lyrics shift with it.
-- **Change file**: search YouTube, preview each result's real audio, and replace the audio while keeping tags, cover, and lyrics.
+- **Change file**: search the catalog like the search page, preview the results, and replace the audio while keeping tags, cover, lyrics, and playlist entries. The job finishes once Jellyfin shows the new audio.
 
 Both keep the previous file in `/app/data/replaced-files/` for 30 days and log the change to `/app/data/replaced-files.jsonl`.
 

@@ -1,7 +1,7 @@
 """Replace the audio of a library file whose tags are right but whose recording is wrong.
 
-The administrator picks a YouTube result (previewed through the backend, so the preview is exactly the audio
-that will be downloaded); the download keeps the file's path, format, tags, cover, and lyrics sidecar.
+The administrator picks the right song among the catalog search results (the same ones as the search page);
+the download keeps the file's path, format, tags, cover, and lyrics sidecar, so Jellyfin keeps the same item.
 The previous audio is kept in `data/replaced-files/` for 30 days and every replacement is logged.
 """
 import asyncio
@@ -23,12 +23,11 @@ from app.services.jellyfin_service import JellyfinService
 
 VIDEO_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
 # yt-dlp --audio-format value per library extension; other formats are replaced by an MP3 next to them.
-AUDIO_FORMATS = {".mp3": "mp3", ".m4a": "m4a", ".flac": "flac", ".opus": "opus", ".ogg": "vorbis", ".wav": "wav"}
+AUDIO_FORMATS = {".mp3": "mp3", ".m4a": "m4a", ".flac": "flac", ".opus": "opus", ".ogg": "vorbis", ".wav": "wav", ".aac": "aac"}
 BACKUP_DAYS = 30
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data")
 
 _search_cache: dict = {}
-_url_cache: dict = {}
 
 
 async def _yt_dlp(*args: str, timeout: int = 60) -> str:
@@ -73,21 +72,6 @@ async def search_candidates(query: str, limit: int = 12) -> List[dict]:
     return results
 
 
-async def audio_url(video_id: str) -> str:
-    """Direct audio stream URL of a video (bound to this server's IP, so the backend proxies it)."""
-    if not VIDEO_ID.match(video_id):
-        raise ValueError("invalid_video")
-    hit = _url_cache.get(video_id)
-    if hit and hit[0] > time.time():
-        return hit[1]
-    url = (await _yt_dlp("-f", "bestaudio[ext=m4a]/bestaudio", "-g", "--no-playlist",
-                         f"https://www.youtube.com/watch?v={video_id}", timeout=45)).strip().splitlines()[0]
-    if len(_url_cache) > 200:
-        _url_cache.clear()
-    _url_cache[video_id] = (time.time() + 1800, url)
-    return url
-
-
 async def local_path_for(jellyfin_path: str) -> Optional[str]:
     """Map a path reported by Jellyfin to the file in the music root (Jellyfin may mount it elsewhere)."""
     music_root = os.path.realpath(settings.MUSIC_OUTPUT_DIR)
@@ -109,6 +93,15 @@ async def local_path_for(jellyfin_path: str) -> Optional[str]:
 
 def output_format(path: str) -> str:
     return AUDIO_FORMATS.get(os.path.splitext(path)[1].lower(), "mp3")
+
+
+def audio_length(path: str) -> float:
+    """Length of an audio file in seconds (0 when unreadable)."""
+    try:
+        audio = mutagen.File(path)
+        return float(audio.info.length) if audio is not None and audio.info else 0.0
+    except Exception:
+        return 0.0
 
 
 def copy_tags(source: str, target: str):
@@ -147,7 +140,7 @@ def copy_tags(source: str, target: str):
         new.save()
 
 
-def backup_and_log(old_path: str, item_id: str, video_id: str, user: str, extra: Optional[dict] = None) -> str:
+def backup_and_log(old_path: str, item_id: str, source: str, user: str, extra: Optional[dict] = None) -> str:
     """Keep the previous audio (30 days) and append the replacement to `replaced-files.jsonl`."""
     backup_dir = os.path.join(DATA_DIR, "replaced-files")
     os.makedirs(backup_dir, exist_ok=True)
@@ -160,7 +153,7 @@ def backup_and_log(old_path: str, item_id: str, video_id: str, user: str, extra:
     shutil.copy2(old_path, backup)
     with open(os.path.join(DATA_DIR, "replaced-files.jsonl"), "a", encoding="utf-8") as log:
         log.write(json.dumps({"at": time.time(), "path": old_path, "backup": backup, "jellyfin_item": item_id,
-                              "source": f"https://www.youtube.com/watch?v={video_id}" if video_id else None, "user": user, **(extra or {})}, ensure_ascii=False) + "\n")
+                              "source": source or None, "user": user, **(extra or {})}, ensure_ascii=False) + "\n")
     return backup
 
 

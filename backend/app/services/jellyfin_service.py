@@ -691,6 +691,79 @@ class JellyfinService:
                     return "failed"
 
     @classmethod
+    async def refresh_replaced_item(cls, item_id: str, new_length: float, wait: float = 90.0) -> bool:
+        """Make Jellyfin re-read a file whose audio was replaced at the same path (same item, so playlists,
+        favorites and play counts stay) and wait until it reports the new length. False on timeout."""
+        if not settings.JELLYFIN_API_KEY or not settings.JELLYFIN_URL or not re.fullmatch(r"[0-9a-f]{32}", item_id or ""):
+            return False
+        base, headers = settings.JELLYFIN_URL.rstrip("/"), cls._headers()
+        refresh = {"MetadataRefreshMode": "FullRefresh", "ImageRefreshMode": "Default",
+                   "ReplaceAllMetadata": "false", "ReplaceAllImages": "false"}
+        deadline = time.monotonic() + wait
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            try:
+                res = await client.get(f"{base}/Items", params={"Ids": item_id}, headers=headers)
+                items = res.json().get("Items", []) if res.status_code == 200 else []
+                old_length = (items[0].get("RunTimeTicks") or 0) / 10_000_000 if items else 0
+                await client.post(f"{base}/Items/{item_id}/Refresh", params=refresh, headers=headers)
+                # Same length as before: nothing to watch for, give the probe a moment.
+                if not new_length or abs(new_length - old_length) < 1.5:
+                    await asyncio.sleep(4)
+                    return True
+                attempt = 0
+                while time.monotonic() < deadline:
+                    await asyncio.sleep(1.5)
+                    attempt += 1
+                    res = await client.get(f"{base}/Items", params={"Ids": item_id}, headers=headers)
+                    items = res.json().get("Items", []) if res.status_code == 200 else []
+                    length = (items[0].get("RunTimeTicks") or 0) / 10_000_000 if items else 0
+                    if items and abs(length - new_length) < 1.5:
+                        return True
+                    if attempt % 10 == 0:
+                        await client.post(f"{base}/Items/{item_id}/Refresh", params=refresh, headers=headers)
+            except (httpx.HTTPError, ValueError) as e:
+                print(f"[JellyfinService] refresh_replaced_item error for {item_id}: {e}")
+        return False
+
+    @classmethod
+    async def playlists_containing(cls, item_id: str) -> List[tuple]:
+        """(playlist ID, owner user ID, entry IDs) of every user's playlist that holds the item."""
+        found, seen = [], set()
+        for user in await cls.get_users():
+            for playlist in await cls.get_playlists(user["id"]):
+                if playlist.id in seen:
+                    continue
+                seen.add(playlist.id)
+                owner = playlist.owner_user_id or user["id"]
+                entries = await cls.playlist_entry_ids(playlist.id, owner)
+                if entries and item_id in entries:
+                    found.append((playlist.id, owner, entries))
+        return found
+
+    @classmethod
+    async def swap_playlist_item(cls, playlist_id: str, entries: List[str], old_id: str, new_id: str,
+                                 user_id: Optional[str] = None) -> bool:
+        """Put `new_id` where `old_id` was in the playlist (entries read before the old file went away)."""
+        target = [new_id if entry == old_id else entry for entry in entries]
+        base = f"{settings.JELLYFIN_URL.rstrip('/')}/Playlists/{playlist_id}/Items"
+        params = {"userId": user_id} if user_id else {}
+        lock = cls._playlist_locks.setdefault(playlist_id, asyncio.Lock())
+        async with lock, httpx.AsyncClient(timeout=30.0) as client:
+            try:
+                current = list(dict.fromkeys(await cls.playlist_entry_ids(playlist_id, user_id) or []))
+                for start in range(0, len(current), 50):
+                    await client.delete(base, params={**params, "entryIds": ",".join(current[start:start + 50])},
+                                        headers=cls._headers())
+                for start in range(0, len(target), 50):
+                    res = await client.post(base, params={**params, "ids": ",".join(target[start:start + 50])}, headers=cls._headers())
+                    if res.status_code not in (200, 204):
+                        return False
+                return True
+            except httpx.HTTPError as e:
+                print(f"[JellyfinService] swap_playlist_item error for {playlist_id}: {e}")
+                return False
+
+    @classmethod
     async def set_favorite(cls, item_id: str, user_id: str, favorite: bool) -> bool:
         """Set a Jellyfin favorite for the verified user."""
         if not settings.JELLYFIN_API_KEY or not settings.JELLYFIN_URL:
