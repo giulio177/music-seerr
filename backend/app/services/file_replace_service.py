@@ -140,6 +140,26 @@ def copy_tags(source: str, target: str):
         new.save()
 
 
+def install_file(new_file: str, target: str, mode_from: Optional[str] = None):
+    """Put `new_file` at `target` by renaming a copy made in the target's folder.
+
+    Library files may be read-only for the container user (owned by the host user, mode 644) while their folder
+    is writable: a rename only needs the folder, so the file is never opened for writing. The new file keeps
+    the old file's permissions plus group write, so later edits work too."""
+    folder = os.path.dirname(target)
+    staging = os.path.join(folder, f".{os.path.basename(target)}.replacing")
+    try:
+        shutil.copyfile(new_file, staging)
+        source_mode = os.stat(mode_from or target).st_mode if os.path.exists(mode_from or target) else 0o644
+        os.chmod(staging, (source_mode & 0o777) | 0o664)
+        os.replace(staging, target)
+    except BaseException:
+        if os.path.exists(staging):
+            os.remove(staging)
+        raise
+    os.remove(new_file)
+
+
 def backup_and_log(old_path: str, item_id: str, source: str, user: str, extra: Optional[dict] = None) -> str:
     """Keep the previous audio (30 days) and append the replacement to `replaced-files.jsonl`."""
     backup_dir = os.path.join(DATA_DIR, "replaced-files")
@@ -225,8 +245,12 @@ def _shift_lrc(lrc_path: str, offset: float, end: float):
                     kept.append(f"[{int(value // 60):02d}:{value % 60:05.2f}]")
             if kept:
                 out.append("".join(kept) + text)
-    with open(lrc_path, "w", encoding="utf-8") as handle:
+    tmp_dir = os.path.join(DATA_DIR, "replace-tmp")
+    os.makedirs(tmp_dir, exist_ok=True)
+    tmp = os.path.join(tmp_dir, f"lrc-{os.getpid()}-{time.time_ns()}.lrc")
+    with open(tmp, "w", encoding="utf-8") as handle:
         handle.writelines(out)
+    install_file(tmp, lrc_path)
 
 
 async def trim(path: str, start: float, end: float, item_id: str, user: str) -> str:
@@ -246,6 +270,6 @@ async def trim(path: str, start: float, end: float, item_id: str, user: str) -> 
             os.remove(tmp)
         raise RuntimeError(stderr.decode(errors="replace")[:300] or "ffmpeg failed")
     backup = backup_and_log(path, item_id, "", user, {"trim": [round(start, 3), round(end, 3)]})
-    shutil.move(tmp, path)
+    install_file(tmp, path)
     _shift_lrc(os.path.splitext(path)[0] + ".lrc", start, end)
     return backup

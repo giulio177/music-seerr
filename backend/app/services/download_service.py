@@ -351,7 +351,7 @@ class DownloadManager:
             # A new extension means a new Jellyfin item: remember the playlists holding the old one first.
             playlists = await JellyfinService.playlists_containing(item_id) if target != old_path and item_id else []
             file_replace_service.backup_and_log(old_path, item_id, source, job.owner_name or "")
-            shutil.move(new_audio, target)
+            file_replace_service.install_file(new_audio, target, mode_from=old_path)
             if target != old_path:
                 os.remove(old_path)
             job.file_path = target
