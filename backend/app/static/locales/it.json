@@ -751,7 +751,8 @@
     "failed": "Impossibile avviare la sostituzione ({error}).",
     "error_file_not_found": "Questo server non raggiunge il file del brano: non è nella sua cartella della musica. Usa il Music Seerr che gira accanto alla libreria.",
     "error_item_not_found": "Jellyfin non ha più questo brano. Ricarica la libreria e riprova.",
-    "error_invalid_request": "Questo brano non si può cambiare (non è un file della libreria)."
+    "error_invalid_request": "Questo brano non si può cambiare (non è un file della libreria).",
+    "becomes_mp3": "Il nuovo audio non è lossless, quindi questo file {format} diventa un MP3."
   },
   "accent": {
     "pink": "Rosa",

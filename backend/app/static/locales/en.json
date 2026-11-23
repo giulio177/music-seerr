@@ -751,7 +751,8 @@
     "failed": "Could not start the replacement ({error}).",
     "error_file_not_found": "This server cannot reach the song's file: it is not inside its music folder. Use the Music Seerr that runs next to the library.",
     "error_item_not_found": "Jellyfin no longer has this song. Reload the library and try again.",
-    "error_invalid_request": "This song cannot be changed (it is not a library file)."
+    "error_invalid_request": "This song cannot be changed (it is not a library file).",
+    "becomes_mp3": "The new audio is not lossless, so this {format} file becomes an MP3."
   },
   "accent": {
     "pink": "Pink",

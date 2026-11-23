@@ -343,10 +343,16 @@ class DownloadManager:
             if os.path.splitext(new_audio)[1].lower() == os.path.splitext(old_path)[1].lower():
                 file_replace_service.copy_tags(old_path, new_audio)
             else:
-                # Unsupported source format: the replacement becomes an MP3 with the same tags written fresh.
+                # Lossless or unsupported format: the replacement becomes an MP3 next to it (the old file goes),
+                # keeping the old file's tags and cover; without readable tags they are written from the catalog.
                 target = os.path.splitext(old_path)[0] + ".mp3"
-                release = await resolve_release(job.track)
-                self._tag_audio(new_audio, release)
+                try:
+                    copied = file_replace_service.copy_tags_to_mp3(old_path, new_audio)
+                except Exception as exc:
+                    print(f"[Replace] Tag copy to MP3 failed for {old_path}: {exc}")
+                    copied = False
+                if not copied:
+                    self._tag_audio(new_audio, await resolve_release(job.track))
             new_length = file_replace_service.audio_length(new_audio)
             # A new extension means a new Jellyfin item: remember the playlists holding the old one first.
             playlists = await JellyfinService.playlists_containing(item_id) if target != old_path and item_id else []

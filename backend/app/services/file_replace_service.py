@@ -15,7 +15,8 @@ from typing import List, Optional
 
 import mutagen
 from mutagen.flac import FLAC
-from mutagen.id3 import ID3, ID3NoHeaderError
+from mutagen.easyid3 import EasyID3
+from mutagen.id3 import APIC, ID3, ID3NoHeaderError, USLT
 from mutagen.mp4 import MP4
 
 from app.config import settings
@@ -23,7 +24,8 @@ from app.services.jellyfin_service import JellyfinService
 
 VIDEO_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
 # yt-dlp --audio-format value per library extension; other formats are replaced by an MP3 next to them.
-AUDIO_FORMATS = {".mp3": "mp3", ".m4a": "m4a", ".flac": "flac", ".opus": "opus", ".ogg": "vorbis", ".wav": "wav", ".aac": "aac"}
+# Lossless files (FLAC, WAV) are not listed: the downloaded audio is lossy, so it becomes an honest MP3.
+AUDIO_FORMATS = {".mp3": "mp3", ".m4a": "m4a", ".opus": "opus", ".ogg": "vorbis", ".aac": "aac"}
 BACKUP_DAYS = 30
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data")
 
@@ -138,6 +140,37 @@ def copy_tags(source: str, target: str):
         for key, value in old.tags.items():
             new.tags[key] = value
         new.save()
+
+
+def copy_tags_to_mp3(source: str, target: str) -> bool:
+    """Copy the tags, cover, and embedded lyrics of a FLAC or WAV file onto a new MP3. False when it had none."""
+    old = mutagen.File(source)
+    if old is None or not old.tags:
+        return False
+    if isinstance(old.tags, ID3):  # WAV keeps ID3 frames: copy them as they are
+        tags = ID3()
+        for frame in old.tags.values():
+            tags.add(frame)
+        tags.save(target, v2_version=3)
+        return True
+    comments = {key.lower(): values for key, values in old.tags.items()}
+    easy = EasyID3()
+    for key, values in comments.items():
+        if key in EasyID3.valid_keys and values:
+            easy[key] = [str(value) for value in values]
+    for number, totals in (("tracknumber", ("tracktotal", "totaltracks")), ("discnumber", ("disctotal", "totaldiscs"))):
+        total = next((comments[name][0] for name in totals if comments.get(name)), None)
+        if total and number in easy and "/" not in easy[number][0]:
+            easy[number] = f"{easy[number][0]}/{total}"
+    easy.save(target, v2_version=3)
+    tags = ID3(target)
+    for picture in getattr(old, "pictures", []):
+        tags.add(APIC(encoding=3, mime=picture.mime, type=picture.type, desc=picture.desc, data=picture.data))
+    lyrics = (comments.get("lyrics") or comments.get("unsyncedlyrics") or [None])[0]
+    if lyrics:
+        tags.add(USLT(encoding=3, lang="eng", desc="", text=str(lyrics)))
+    tags.save(target, v2_version=3)
+    return True
 
 
 def install_file(new_file: str, target: str, mode_from: Optional[str] = None):
