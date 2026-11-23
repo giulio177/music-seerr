@@ -273,3 +273,36 @@ async def trim(path: str, start: float, end: float, item_id: str, user: str) -> 
     install_file(tmp, path)
     _shift_lrc(os.path.splitext(path)[0] + ".lrc", start, end)
     return backup
+
+
+# ---------------------------------------------------------------- lyrics editor
+
+LYRICS_MAX_BYTES = 512 * 1024
+
+
+def lyrics_path(audio_path: str) -> str:
+    return os.path.splitext(audio_path)[0] + ".lrc"
+
+
+def read_lyrics(audio_path: str) -> Optional[str]:
+    """The `.lrc` sidecar text as stored on disk, or None when the track has none."""
+    path = lyrics_path(audio_path)
+    if not os.path.isfile(path):
+        return None
+    with open(path, encoding="utf-8-sig", errors="replace") as handle:
+        return handle.read(LYRICS_MAX_BYTES + 1)
+
+
+def write_lyrics(audio_path: str, content: str, item_id: str, user: str):
+    """Replace (or create) the `.lrc` sidecar; the previous one is backed up and logged like a file change."""
+    path = lyrics_path(audio_path)
+    existed = os.path.isfile(path)
+    if existed:
+        backup_and_log(path, item_id, "", user, {"lyrics_edit": True})
+    tmp_dir = os.path.join(DATA_DIR, "replace-tmp")
+    os.makedirs(tmp_dir, exist_ok=True)
+    tmp = os.path.join(tmp_dir, f"lrc-{os.getpid()}-{time.time_ns()}.lrc")
+    with open(tmp, "w", encoding="utf-8", newline="\n") as handle:
+        handle.write(content)
+    install_file(tmp, path, None if existed else audio_path)
+

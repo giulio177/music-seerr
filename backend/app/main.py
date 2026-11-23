@@ -564,6 +564,32 @@ async def edit_file_trim(item_id: str, payload: dict, request: Request):
     asyncio.create_task(JellyfinService.scan_file(path, wait=0, changed=True))
     return {"success": True, "duration": round(end - start, 2)}
 
+@app.get("/api/library/lyrics/{item_id}")
+async def edit_lyrics_get(item_id: str, request: Request):
+    """The track's `.lrc` sidecar exactly as stored, for the lyrics editor (None when there is no file)."""
+    principal = require_admin(request)
+    _, path = await _library_file(principal, item_id)
+    content = file_replace_service.read_lyrics(path)
+    return {"exists": content is not None, "content": content}
+
+@app.put("/api/library/lyrics/{item_id}")
+async def edit_lyrics_save(item_id: str, payload: dict, request: Request):
+    """Write the edited synced lyrics to the track's `.lrc` sidecar (previous file backed up)."""
+    principal = require_admin(request)
+    content = payload.get("content")
+    if not isinstance(content, str) or not content.strip() or len(content.encode("utf-8")) > file_replace_service.LYRICS_MAX_BYTES:
+        raise HTTPException(status_code=400, detail="invalid_lyrics")
+    _, path = await _library_file(principal, item_id)
+    content = content.replace("\r\n", "\n").replace("\r", "\n")
+    async with EDIT_LOCK:
+        try:
+            file_replace_service.write_lyrics(path, content if content.endswith("\n") else content + "\n",
+                                              item_id, principal.get("name", ""))
+        except OSError as exc:
+            raise HTTPException(status_code=500, detail=f"lyrics_save_failed: {exc}")
+    asyncio.create_task(JellyfinService.scan_file(path, wait=0, changed=True))
+    return {"success": True}
+
 @app.post("/api/library/replace")
 async def replace_file(payload: dict, request: Request):
     """Queue the replacement of a library track's audio with a catalog song picked in the search results."""
