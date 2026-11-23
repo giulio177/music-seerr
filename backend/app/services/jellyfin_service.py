@@ -941,7 +941,7 @@ class JellyfinService:
             return {"total": 0, "tracks": []}
 
     @classmethod
-    async def get_albums(cls, q: Optional[str] = None, limit: int = 150, offset: int = 0) -> dict:
+    async def get_albums(cls, q: Optional[str] = None, limit: int = 150, offset: int = 0, sort: str = "name") -> dict:
         if not settings.JELLYFIN_API_KEY or not settings.JELLYFIN_URL:
             return {"total": 0, "albums": []}
         user_id = cls.get_scoped_user_id()
@@ -949,7 +949,8 @@ class JellyfinService:
         params = {
             "includeItemTypes": "MusicAlbum",
             "recursive": "true",
-            "sortBy": "SortName",
+            "sortBy": "DateCreated,SortName" if sort == "recent" else "SortName",
+            "sortOrder": "Descending,Ascending" if sort == "recent" else "Ascending",
             "limit": limit,
             "startIndex": offset
         }

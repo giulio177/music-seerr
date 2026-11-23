@@ -398,10 +398,10 @@ async def get_jellyfin_library_tracks(
     )
 
 @app.get("/api/jellyfin/albums")
-async def get_jellyfin_albums(request: Request, q: Optional[str] = None, limit: int = 150, offset: int = 0):
-    """Elenco album da Jellyfin"""
+async def get_jellyfin_albums(request: Request, q: Optional[str] = None, limit: int = 150, offset: int = 0, sort: str = "name"):
+    """Library albums by name, or newest additions first with `sort=recent`."""
     require_jellyfin_user(request)
-    return await JellyfinService.get_albums(q=q, limit=limit, offset=offset)
+    return await JellyfinService.get_albums(q=q, limit=limit, offset=offset, sort=sort)
 
 @app.get("/api/jellyfin/album/{album_id}/tracks")
 async def get_jellyfin_album_tracks(album_id: str, request: Request):
