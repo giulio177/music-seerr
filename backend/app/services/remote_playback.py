@@ -11,7 +11,8 @@ Messages are JSON objects with a `type`:
 - client -> server: `hello` (first: `device_id`, `name`, `kind`, `playing`), `state` (active device only),
   `claim`, `command` (`action`, `args`).
 - server -> client: `welcome` (`device_id`), `devices` (`devices`, `active`), `state` (`state`; `queue` only
-  when it changed for that device), `command`, `release`, `granted` (`state`, `queue`, `position`).
+  when it changed for that device), `command`, `release`, `granted` (`state`, `queue`, `position`),
+  `preferences` (the account preferences changed: read `/api/me/preferences` again).
 """
 import asyncio
 import re
@@ -170,6 +171,13 @@ class RemotePlayback:
     @classmethod
     async def broadcast_state(cls, room: Room, skip: Optional[str] = None) -> None:
         await asyncio.gather(*(_send(d, room.state_message(d)) for d in list(room.devices.values()) if d.id != skip))
+
+    @classmethod
+    async def notify(cls, user_id: str, message: dict) -> None:
+        """Tells every open device of the account, e.g. that its preferences changed."""
+        room = cls.rooms.get(user_id)
+        if room:
+            await asyncio.gather(*(_send(d, message) for d in list(room.devices.values())))
 
     @classmethod
     async def join(cls, user_id: str, socket: WebSocket, hello: dict) -> Optional[Device]:

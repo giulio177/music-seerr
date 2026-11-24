@@ -904,6 +904,9 @@ async def update_user_preferences(payload: dict, request: Request):
         show_controls = bool(payload.get("show_other_users_controls", True))
         UserDataService.set_show_other_users_controls(principal, show_controls)
         result["show_other_users_controls"] = show_controls
+    if result and principal.get("id"):
+        # The account's other open clients (web tabs, iOS app) read the new values at once.
+        await RemotePlayback.notify(principal["id"], {"type": "preferences"})
     return result
 
 @app.get("/api/history/downloads")

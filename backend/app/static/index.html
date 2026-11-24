@@ -6881,6 +6881,11 @@
                         if (!globalAudio.paused) globalAudio.pause();
                         if (self.active === deviceId) self.active = null;
                         break;
+                    case 'welcome':
+                    case 'preferences':
+                        // Changed on another device (crossfade, accent), or possibly while this one was away.
+                        refreshSharedPreferences();
+                        break;
                     case 'granted':
                         if (Array.isArray(message.queue)) self.queue = message.queue;
                         self.active = deviceId;
@@ -9629,6 +9634,16 @@
         function crossfadeLength() {
             const saved = parseInt(safeLocalStorageGet('crossfade_length'), 10);
             return saved >= 1 && saved <= 12 ? saved : 6;
+        }
+        async function refreshSharedPreferences() {
+            if (!currentAppUser || currentAppUser.is_guest) return;
+            try {
+                const response = await fetch('/api/me/preferences', { credentials: 'same-origin', cache: 'no-store' });
+                if (!response.ok) return;
+                const preferences = await response.json();
+                syncAccentFromServer(preferences.accent_color, preferences.default_accent_color);
+                applyCrossfadeSetting(preferences.crossfade_seconds || 0);
+            } catch (error) {}
         }
         function applyCrossfadeSetting(seconds) {
             const value = Math.max(0, Math.min(12, parseInt(seconds, 10) || 0));
