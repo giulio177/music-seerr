@@ -631,10 +631,10 @@ async def get_jellyfin_image(item_id: str, request: Request):
             return await _proxy_jellyfin_image(f"{base}/Items/{album_id}/Images/Primary", params=params)
     return response
 
-ALBUM_OF_ITEM: Dict[str, Optional[str]] = {}
+ALBUM_OF_ITEM: Dict[str, str] = {}
 
 async def _album_of_item(item_id: str) -> Optional[str]:
-    """Album ID of a Jellyfin song (cached; None for items without an album)."""
+    """Album ID of a Jellyfin song (cached once known; None for items without an album yet)."""
     if item_id in ALBUM_OF_ITEM:
         return ALBUM_OF_ITEM[item_id]
     try:
@@ -645,10 +645,13 @@ async def _album_of_item(item_id: str) -> Optional[str]:
     except (httpx.HTTPError, ValueError):
         return None
     album_id = items[0].get("AlbumId") if items else None
+    if not album_id or album_id == item_id:
+        # Not cached: a song just added may get its album only after Jellyfin finishes the scan.
+        return None
     if len(ALBUM_OF_ITEM) > 20000:
         ALBUM_OF_ITEM.clear()
-    ALBUM_OF_ITEM[item_id] = album_id if album_id and album_id != item_id else None
-    return ALBUM_OF_ITEM[item_id]
+    ALBUM_OF_ITEM[item_id] = album_id
+    return album_id
 
 @app.get("/api/jellyfin/track-cover")
 async def get_jellyfin_track_cover(request: Request, title: str, artist: str = ""):
