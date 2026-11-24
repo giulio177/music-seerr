@@ -702,7 +702,7 @@
     "saved_body": "Il file .lrc è stato aggiornato.",
     "save_failed": "Impossibile salvare le lyrics ({error}).",
     "load_failed": "Impossibile aprire il file delle lyrics ({error}).",
-    "no_synced": "Si possono modificare solo le lyrics sincronizzate.",
+    "no_synced": "Non ci sono lyrics da modificare per questa canzone.",
     "other_song": "Sta suonando un'altra canzone: riproduci di nuovo questa per usare i pulsanti di tempo.",
     "discard_title": "Annullare le modifiche?",
     "discard_body": "Le modifiche a queste lyrics non sono state salvate.",
@@ -710,7 +710,10 @@
     "keep_editing": "Continua a modificare",
     "offset_hint": "Fai partire la canzone e tocca una frase nel momento in cui inizia: tutta la canzone si sposta con lei. Rifinisci con i pulsanti.",
     "edit_lines": "Modifica singole frasi",
-    "sync_whole": "Torna alla sincronizzazione"
+    "sync_whole": "Torna alla sincronizzazione",
+    "plain_hint": "Queste lyrics non hanno ancora i tempi. Fai partire la canzone e premi l'orologio su ogni frase quando inizia: viene selezionata la frase successiva, quindi puoi continuare premendo Spazio.",
+    "untimed_title": "Frasi senza tempo",
+    "untimed_left": "{count} frasi non hanno ancora un tempo. Dai un tempo a ogni frase prima di salvare."
   },
   "insights": {
     "label": "Riepilogo attività",
