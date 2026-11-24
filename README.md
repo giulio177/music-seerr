@@ -40,6 +40,7 @@ Planned: an iOS app to request songs from your phone.
 - **Built-in player** for your Jellyfin library with synchronized lyrics from LRCLIB.
 - **Editable queue**: play next, add to queue, drag to reorder, remove; shuffle reorders the queue itself. The queue panel shows each cover and stays open while you use the player.
 - **Repeat and crossfade**: loop the whole queue, and fade songs into each other (1 to 12 seconds, a personal setting).
+- **One player across devices**: the web app and the iOS app of the same account show the same song, queue, and progress, and control each other. The audio plays on one device; **Play on this device** moves it.
 - **Previews don't lose your place**: preview a song while listening, then go back to the queue where you left it.
 - **Reorder playlists**: drag songs in a playlist; the new order is saved to Jellyfin.
 - **Track menu** on every song: add to a playlist, favorite, go to the artist or album.
@@ -50,6 +51,7 @@ Planned: an iOS app to request songs from your phone.
 **Fix your library** (administrators)
 
 - **Edit file**: trim intros, outros, and silence on a waveform; the cut is lossless and synced lyrics stay aligned.
+- **Edit lyrics**: shift synced lyrics or fix single lines while the song plays, and time plain lyrics line by line.
 - **Change file**: when a track's tags are right but the audio is another song, pick the right song from the same results as the search page, with previews; only the audio is replaced, and playlists keep the song.
 - **Playlist duplicates**: spot songs added more than once, choose which copy to keep, or mark title matches as different songs.
 - **Library import**: move existing folders or browser uploads into the library layout, keeping the best-quality copy.
@@ -187,6 +189,7 @@ Both keep the previous file in `/app/data/replaced-files/` for 30 days and log t
 
 - External services change; setup, Jellyfin integration, and download sources can break.
 - A restart interrupts active downloads. They reappear in the queue for a manual retry.
+- Shared playback between devices is kept in memory: run a single backend process, and a restart forgets the last shared queue.
 - SQLite stores sessions and history for a single instance. New columns are added at startup; there are no automatic backups yet.
 - Not validated on every Raspberry Pi model or storage setup.
 - Downloads depend on `yt-dlp` and `ffmpeg`; availability and quality vary by track.

@@ -329,7 +329,10 @@
     "region": "Player",
     "more_options": "Altre opzioni",
     "repeat": "Ripeti la coda",
-    "back_to_queue": "Torna a {title}"
+    "back_to_queue": "Torna a {title}",
+    "playing_on": "In riproduzione su {name}",
+    "playing_elsewhere": "In riproduzione su un altro dispositivo",
+    "play_here": "Riproduci su questo dispositivo"
   },
   "lyrics_modal": {
     "close": "Chiudi Testi",

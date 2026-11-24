@@ -1,10 +1,11 @@
 import os
+import json
 import re
 import asyncio
 import httpx
 import time
 import uuid
-from fastapi import FastAPI, Query, HTTPException, BackgroundTasks, Request, UploadFile, File, Form, Response
+from fastapi import FastAPI, Query, HTTPException, BackgroundTasks, Request, UploadFile, File, Form, Response, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from typing import List, Optional, Dict, Any
@@ -28,6 +29,7 @@ from app.services.library_import import LibraryImporter
 from app.services.library_health import LibraryHealth
 from app.services.library_layout import normalize_key, title_key
 from app.services.play_sync_service import PlaySync
+from app.services.remote_playback import RemotePlayback
 from app.services import catalog_service, file_replace_service
 
 app = FastAPI(
@@ -1682,6 +1684,63 @@ async def ignore_health_issue(job_id: str, issue_id: str, request: Request):
 async def clear_health_ignores(request: Request):
     require_admin(request)
     return {"cleared": UserDataService.clear_health_ignores()}
+
+
+# --- Shared playback between an account's devices (see services/remote_playback.py) ---
+SESSION_RECHECK_SECONDS = 60
+PLAYBACK_MESSAGE_LIMIT = 4 * 1024 * 1024
+
+def _same_origin(websocket: WebSocket) -> bool:
+    """Browsers send cookies on cross-site WebSocket requests too: accept a browser only from this site."""
+    origin = websocket.headers.get("origin")
+    if not origin:
+        return True
+    host = websocket.headers.get("host", "")
+    return origin.split("://", 1)[-1].rstrip("/") == host
+
+@app.websocket("/api/playback/ws")
+async def playback_socket(websocket: WebSocket):
+    token = session_token(websocket)
+    principal = UserDataService.get_session(token)
+    if not principal or principal.get("is_guest") or not principal.get("id") or not _same_origin(websocket):
+        await websocket.close(code=4401)
+        return
+    user_id = principal["id"]
+    await websocket.accept()
+    device = None
+    checked = time.monotonic()
+    try:
+        hello = await asyncio.wait_for(websocket.receive_json(), timeout=15)
+        if not isinstance(hello, dict) or hello.get("type") != "hello":
+            await websocket.close(code=4400)
+            return
+        device = await RemotePlayback.join(user_id, websocket, hello)
+        if not device:
+            await websocket.close(code=4400)
+            return
+        while True:
+            text = await websocket.receive_text()
+            if len(text) > PLAYBACK_MESSAGE_LIMIT:
+                continue
+            if time.monotonic() - checked > SESSION_RECHECK_SECONDS:
+                # Signed out or expired meanwhile: drop the device.
+                if not UserDataService.get_session(token):
+                    await websocket.close(code=4401)
+                    break
+                checked = time.monotonic()
+            try:
+                message = json.loads(text)
+            except ValueError:
+                continue
+            if isinstance(message, dict):
+                await RemotePlayback.handle(user_id, device, message)
+    except (WebSocketDisconnect, asyncio.TimeoutError):
+        pass
+    except Exception as exc:
+        print(f"[RemotePlayback] socket error: {exc}")
+    finally:
+        if device:
+            await RemotePlayback.leave(user_id, device)
 
 
 if __name__ == "__main__":
