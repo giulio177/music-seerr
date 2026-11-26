@@ -1,22 +1,22 @@
 services:
-  music-seerr:
-    # Published for linux/amd64 and linux/arm64. Pin a release (e.g. MUSIC_SEERR_TAG=0.1.0) for predictable updates.
-    image: ghcr.io/giulio177/music-seerr:${MUSIC_SEERR_TAG:-latest}
-    container_name: music-seerr
+  sonalis:
+    # Published for linux/amd64 and linux/arm64. Pin a release (e.g. SONALIS_TAG=0.1.0) for predictable updates.
+    image: ghcr.io/giulio177/sonalis:${SONALIS_TAG:-latest}
+    container_name: sonalis
     restart: unless-stopped
     init: true
     ports:
-      - "${MUSIC_SEERR_BIND:-0.0.0.0}:8000:8000"
+      - "${SONALIS_BIND:-0.0.0.0}:8000:8000"
     environment:
       HOST: 0.0.0.0
       PORT: 8000
       DEBUG: "false"
       FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-127.0.0.1}
       MUSIC_OUTPUT_DIR: /music
-      MUSIC_SEERR_CONFIG: /app/data/config.json
+      SONALIS_CONFIG: /app/data/config.json
       JELLYFIN_URL: ${JELLYFIN_URL:-http://host.docker.internal:8096}
       # Optional: key for the stored Jellyfin session tokens (otherwise generated in /app/data/secret.key).
-      MUSIC_SEERR_SECRET: ${MUSIC_SEERR_SECRET:-}
+      SONALIS_SECRET: ${SONALIS_SECRET:-}
     volumes:
       - ./music:/music
       - ./backend/data:/app/data

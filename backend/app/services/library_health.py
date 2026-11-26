@@ -345,7 +345,7 @@ class LibraryHealth:
 
     @staticmethod
     def _log(record: dict):
-        data_dir = os.path.dirname(os.environ.get("MUSIC_SEERR_CONFIG") or "/app/data/config.json")
+        data_dir = os.path.dirname(os.environ.get("SONALIS_CONFIG") or "/app/data/config.json")
         if not os.path.isdir(data_dir):
             return
         with open(os.path.join(data_dir, "library-health.jsonl"), "a", encoding="utf-8") as handle:

@@ -1,6 +1,6 @@
 """Encryption at rest for per-user Jellyfin access tokens kept by the backend.
 
-The key comes from the `MUSIC_SEERR_SECRET` environment variable (any string; preferred, because it lives
+The key comes from the `SONALIS_SECRET` environment variable (any string; preferred, because it lives
 outside the data folder) or, when that is not set, from `secret.key` in the data folder, created once with
 owner-only permissions. Changing or losing the key only makes stored tokens unreadable: users sign in again.
 """
@@ -20,7 +20,7 @@ def _key_file(data_dir: str) -> str:
 
 
 def _load_key(data_dir: str) -> bytes:
-    secret = os.environ.get("MUSIC_SEERR_SECRET", "").strip()
+    secret = os.environ.get("SONALIS_SECRET", "").strip()
     if secret:
         return base64.urlsafe_b64encode(hashlib.sha256(secret.encode("utf-8")).digest())
     path = _key_file(data_dir)

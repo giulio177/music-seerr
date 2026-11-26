@@ -24,7 +24,7 @@ PLAY_HISTORY_COLUMNS = {
 
 class UserDataService:
     SESSION_TTL = 60 * 60 * 24 * 30
-    _db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "music_seerr.sqlite3")
+    _db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "sonalis.sqlite3")
 
     @classmethod
     def _connect(cls):
@@ -360,7 +360,7 @@ class UserDataService:
 
     @classmethod
     def jellyfin_session_users(cls) -> list[dict]:
-        """Jellyfin accounts with a live Music Seerr session; their Jellyfin plays are imported."""
+        """Jellyfin accounts with a live Sonalis session; their Jellyfin plays are imported."""
         with cls._connect() as db:
             rows = db.execute("""SELECT user_id, MAX(display_name) AS name FROM app_sessions
                 WHERE is_guest=0 AND expires_at>? GROUP BY user_id""", (time.time(),)).fetchall()

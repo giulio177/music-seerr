@@ -45,7 +45,7 @@ class JellyfinService:
             "Content-Type": "application/json"
         }
         if key:
-            auth_str = f'MediaBrowser Client="MusicSeerr", Device="Server", DeviceId="MusicSeerr-1", Version="1.0.0", Token="{key}"'
+            auth_str = f'MediaBrowser Client="Sonalis", Device="Server", DeviceId="Sonalis-1", Version="1.0.0", Token="{key}"'
             headers["Authorization"] = auth_str
             headers["X-Emby-Authorization"] = auth_str
             headers["X-Emby-Token"] = key
@@ -55,7 +55,7 @@ class JellyfinService:
     @staticmethod
     def _user_headers(token: str, device_id: str) -> dict:
         """Headers for a call made as the signed-in user (their own Jellyfin token, never sent to the browser)."""
-        auth = f'MediaBrowser Client="MusicSeerr", Device="Music Seerr", DeviceId="{device_id}", Version="1.0.0", Token="{token}"'
+        auth = f'MediaBrowser Client="Sonalis", Device="Sonalis", DeviceId="{device_id}", Version="1.0.0", Token="{token}"'
         return {"Accept": "application/json", "Content-Type": "application/json", "Authorization": auth, "X-Emby-Authorization": auth}
 
     @classmethod
@@ -141,7 +141,7 @@ class JellyfinService:
 
     @classmethod
     async def authenticate_user(cls, username: str, password: str, jellyfin_url: Optional[str] = None,
-                                device_id: str = "MusicSeerr-Web") -> dict:
+                                device_id: str = "Sonalis-Web") -> dict:
         """Autentica l'utente con username e password Jellyfin tramite /Users/AuthenticateByName.
         Jellyfin revokes earlier tokens of the same user and device ID, so each app session uses its own."""
         url = (jellyfin_url or settings.JELLYFIN_URL).rstrip('/')
@@ -149,7 +149,7 @@ class JellyfinService:
             return {"success": False, "message": "Jellyfin URL is not configured."}
 
         auth_endpoint = f"{url}/Users/AuthenticateByName"
-        authorization = f'MediaBrowser Client="MusicSeerr", Device="Music Seerr", DeviceId="{device_id}", Version="1.0.0"'
+        authorization = f'MediaBrowser Client="Sonalis", Device="Sonalis", DeviceId="{device_id}", Version="1.0.0"'
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",

@@ -33,9 +33,9 @@ from app.services.remote_playback import RemotePlayback
 from app.services import catalog_service, file_replace_service
 
 app = FastAPI(
-    title="Music Seerr API",
+    title="Sonalis API",
     description="Backend per la ricerca musicale, preview, download e sync Jellyfin",
-    version=os.environ.get("MUSIC_SEERR_VERSION", "dev")
+    version=os.environ.get("SONALIS_VERSION", "dev")
 )
 
 # Cartella statica per la Web UI
@@ -43,10 +43,10 @@ static_dir = os.path.join(os.path.dirname(__file__), "static")
 os.makedirs(static_dir, exist_ok=True)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
-APP_SESSION_COOKIE = "music_seerr_session"
+APP_SESSION_COOKIE = "sonalis_session"
 # Native clients (the iOS app) send this header on login and receive the session token in the body,
 # then authenticate with `Authorization: Bearer <token>` instead of the browser cookie.
-NATIVE_CLIENT_HEADER = "x-music-seerr-client"
+NATIVE_CLIENT_HEADER = "x-sonalis-client"
 
 def session_token(request: Request) -> Optional[str]:
     """The app session token: the browser cookie, else a bearer token from a native client."""
@@ -207,7 +207,7 @@ async def serve_index():
     index_file = os.path.join(static_dir, "index.html")
     if os.path.exists(index_file):
         return FileResponse(index_file)
-    return {"message": "Music Seerr API is running! Access /docs for API documentation."}
+    return {"message": "Sonalis API is running! Access /docs for API documentation."}
 
 @app.get("/api/health")
 async def health_check():
@@ -216,7 +216,7 @@ async def health_check():
         raise HTTPException(status_code=503, detail="The music folder is not writable.")
     return {
         "status": "healthy",
-        "version": os.environ.get("MUSIC_SEERR_VERSION", "dev"),
+        "version": os.environ.get("SONALIS_VERSION", "dev"),
         "jellyfin_configured": bool(settings.JELLYFIN_API_KEY),
     }
 
@@ -817,7 +817,7 @@ async def auth_login(payload: dict, request: Request, response: Response):
     if not username:
         raise HTTPException(status_code=400, detail="A username is required.")
 
-    device_id = f"MusicSeerr-{uuid.uuid4().hex}"
+    device_id = f"Sonalis-{uuid.uuid4().hex}"
     res = await JellyfinService.authenticate_user(username=username, password=password, jellyfin_url=jellyfin_url, device_id=device_id)
     if not res.get("success"):
         raise HTTPException(status_code=401, detail=res.get("message", "Invalid credentials."))

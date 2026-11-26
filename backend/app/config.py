@@ -37,7 +37,7 @@ settings = Settings()
 
 
 def get_possible_config_paths() -> List[str]:
-    configured_path = os.environ.get("MUSIC_SEERR_CONFIG")
+    configured_path = os.environ.get("SONALIS_CONFIG")
     if configured_path:
         return [configured_path]
     app_dir = os.path.dirname(os.path.abspath(__file__))

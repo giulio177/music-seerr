@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Music Seerr",
+    "name": "Sonalis",
     "subtitle": "Self-hosted Music & Lyrics Downloader for Jellyfin"
   },
   "nav": {
@@ -91,7 +91,7 @@
     "download_forbidden": "You do not have permission to modify this playlist.",
     "download_playlist_owner": "Jellyfin did not identify this playlist owner. Ask an administrator to enable cross-user controls, select the owner, and retry.",
     "download_queue_full": "The download queue is full. Try again when a slot is available.",
-    "download_connection_error": "Could not reach the Music Seerr server.",
+    "download_connection_error": "Could not reach the Sonalis server.",
     "playlist_owner": "Playlist owner:",
     "select_playlist_owner": "Choose the playlist owner",
     "playlist_owner_required": "Choose the owner account before queuing this download.",
@@ -357,10 +357,10 @@
     "crowdin_badge": "Crowdin Ready",
     "crowdin_info": "Translations are synchronized with Crowdin. To add new languages or refine translations, join the project on Crowdin.",
     "music_dir_title": "Music Library Folder",
-    "music_dir_desc": "Path where Music Seerr will save downloaded audio files and look for .lrc synchronized lyric files.",
+    "music_dir_desc": "Path where Sonalis will save downloaded audio files and look for .lrc synchronized lyric files.",
     "music_dir_label": "Server folder path",
     "jellyfin_detected_paths_title": "Jellyfin Monitored Storage Path",
-    "jellyfin_detected_paths_desc": "Jellyfin has no media upload API. It scans audio files directly from the server disk. Files downloaded by Music Seerr must go into this storage so Jellyfin can index them.",
+    "jellyfin_detected_paths_desc": "Jellyfin has no media upload API. It scans audio files directly from the server disk. Files downloaded by Sonalis must go into this storage so Jellyfin can index them.",
     "jellyfin_path_detected_label": "Monitored by Jellyfin:",
     "jellyfin_path_not_detected": "No music path detected yet. Verify your Jellyfin connection.",
     "btn_use_jellyfin_path": "Use Jellyfin Path",
@@ -383,7 +383,7 @@
     "btn_rerun_setup": "Run setup",
     "btn_logout": "Sign Out",
     "import_title": "Import into library",
-    "import_desc": "Pick a folder on the server or upload files from this device. Music Seerr identifies each track and moves it into the library as Artist / Album (Year) / Artist - Album - NN - Title.",
+    "import_desc": "Pick a folder on the server or upload files from this device. Sonalis identifies each track and moves it into the library as Artist / Album (Year) / Artist - Album - NN - Title.",
     "import_browse_server": "Choose a server folder",
     "import_upload_folder": "Upload a folder",
     "import_upload_files": "Upload files",
@@ -470,7 +470,7 @@
     "leave_without_saving": "Leave without saving",
     "profile_server": "Signed in on {server}",
     "storage_mismatch_summary": "Folder is writable, but Jellyfin reads music from a different path",
-    "use_this_path_hint": "Only use this if Music Seerr sees the same folder at this path",
+    "use_this_path_hint": "Only use this if Sonalis sees the same folder at this path",
     "url_invalid": "Start the address with http:// or https://",
     "use_jellyfin_path": "Use Jellyfin's path",
     "health_title": "Library health",
@@ -526,7 +526,7 @@
   },
   "auth": {
     "checking_session": "Checking your session…",
-    "login_title": "Sign in to Music Seerr",
+    "login_title": "Sign in to Sonalis",
     "login_subtitle": "Use your Jellyfin account.",
     "select_account": "Select account:",
     "username_label": "Username",
@@ -545,7 +545,7 @@
     "error_credentials": "Invalid username or password.",
     "error_connection": "Cannot reach Jellyfin server. Please verify settings.",
     "connection_title": "Jellyfin server unreachable",
-    "connection_detail_dns": "The address {url} cannot be resolved from the Music Seerr server.",
+    "connection_detail_dns": "The address {url} cannot be resolved from the Sonalis server.",
     "connection_detail_unreachable": "No Jellyfin server answered at {url}.",
     "connection_detail_different_server": "A different Jellyfin server answers at {url}.",
     "connection_detail_not_configured": "No Jellyfin server is configured.",
@@ -565,7 +565,7 @@
     "or": "or"
   },
   "setup": {
-    "wizard_title": "Music Seerr Setup",
+    "wizard_title": "Sonalis Setup",
     "wizard_subtitle": "Complete these quick steps to connect Jellyfin and configure your music library.",
     "step_server": "1. Jellyfin Server",
     "step_storage": "2. Music Storage",
@@ -574,7 +574,7 @@
     "server_desc": "Enter your Jellyfin server address and API key to establish connection.",
     "storage_desc": "Set the folder where downloaded music files and lyrics will be saved.",
     "user_desc": "Sign in with your Jellyfin username and password to verify user access.",
-    "finish_desc": "Review your configuration and start using Music Seerr.",
+    "finish_desc": "Review your configuration and start using Sonalis.",
     "btn_next": "Next Step",
     "btn_back": "Back",
     "btn_finish": "Complete Setup & Launch",
@@ -755,7 +755,7 @@
     "confirm_btn": "Replace",
     "queued": "Replacing the file of {title}. When Activity says it is done, the library already plays the new audio.",
     "failed": "Could not start the replacement ({error}).",
-    "error_file_not_found": "This server cannot reach the song's file: it is not inside its music folder. Use the Music Seerr that runs next to the library.",
+    "error_file_not_found": "This server cannot reach the song's file: it is not inside its music folder. Use the Sonalis instance that runs next to the library.",
     "error_item_not_found": "Jellyfin no longer has this song. Reload the library and try again.",
     "error_invalid_request": "This song cannot be changed (it is not a library file).",
     "becomes_mp3": "The new audio is not lossless, so this {format} file becomes an MP3."

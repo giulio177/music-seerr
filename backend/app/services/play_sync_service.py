@@ -1,8 +1,8 @@
 """Two-way listening sync with Jellyfin.
 
-- Music Seerr -> Jellyfin: a library track listened past the scrobble threshold is marked played for that
+- Sonalis -> Jellyfin: a library track listened past the scrobble threshold is marked played for that
   Jellyfin user (play count and last played date), once per play.
-- Jellyfin -> Music Seerr: other Jellyfin clients' plays of users with a Music Seerr session are imported,
+- Jellyfin -> Sonalis: other Jellyfin clients' plays of users with a Sonalis session are imported,
   live from `/Sessions` (position = listened time) and from each user's recently played items as fallback.
 """
 import asyncio
@@ -20,7 +20,7 @@ from app.services.user_data_service import UserDataService
 SYNC_INTERVAL = 20
 ON_DEMAND_MIN_GAP = 8
 BACKFILL_DAYS = 30
-OWN_CLIENT = "MusicSeerr"
+OWN_CLIENT = "Sonalis"
 JELLYFIN_ID = re.compile(r"^[0-9a-f]{32}$")
 WATERMARK_PREF = "jellyfin_play_watermark"
 
@@ -160,7 +160,7 @@ class PlaySync:
             newest = max(newest, played_at)
             track = _track(item)
             runtime = track["duration"]
-            # A play Music Seerr reported, or one already followed live, is already in the history.
+            # A play Sonalis reported, or one already followed live, is already in the history.
             near = UserDataService.find_play_near(user_id, track["id"], played_at - runtime - 900, played_at + 120)
             if near:
                 if near["origin"] == "jellyfin":

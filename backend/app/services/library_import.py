@@ -33,7 +33,7 @@ from app.services.library_layout import (
 
 SIDE_FILE_EXTENSIONS = (".lrc",)
 DISPOSABLE_EXTENSIONS = (".nfo", ".jpg", ".jpeg", ".png", ".txt", ".cue", ".log", ".db", ".ini", ".ds_store")
-STAGING_DIRNAME = ".musicseerr-import"
+STAGING_DIRNAME = ".sonalis-import"
 UPLOAD_EXTENSIONS = AUDIO_EXTENSIONS + SIDE_FILE_EXTENSIONS
 MAX_UPLOAD_FILE_BYTES = 200 * 1024 * 1024
 MAX_UPLOAD_SESSION_FILES = 5000
@@ -407,7 +407,7 @@ class LibraryImporter:
             protected = {root["path"] for root in browse_roots()}
             await asyncio.to_thread(_clean_source, job.source, protected)
 
-        manifest_dir = os.path.dirname(os.environ.get("MUSIC_SEERR_CONFIG") or "/app/data/config.json")
+        manifest_dir = os.path.dirname(os.environ.get("SONALIS_CONFIG") or "/app/data/config.json")
         if os.path.isdir(manifest_dir):
             job.manifest = os.path.join(manifest_dir, f"import-{time.strftime('%Y%m%d-%H%M%S')}.json")
             with open(job.manifest, "w", encoding="utf-8") as handle:

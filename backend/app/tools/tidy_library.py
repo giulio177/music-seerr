@@ -286,7 +286,7 @@ async def main():
 
     manifest = apply(lib, moves, changes)
     path = args.manifest or os.path.join(
-        os.path.dirname(os.path.realpath(os.environ.get("MUSIC_SEERR_CONFIG", "/app/data/config.json"))),
+        os.path.dirname(os.path.realpath(os.environ.get("SONALIS_CONFIG", "/app/data/config.json"))),
         f"tidy-{time.strftime('%Y%m%d-%H%M%S')}.json")
     with open(path, "w", encoding="utf-8") as handle:
         json.dump(manifest, handle, ensure_ascii=False, indent=1)
