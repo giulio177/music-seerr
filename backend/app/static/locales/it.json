@@ -306,7 +306,11 @@
     "catalog_searching_releases": "Cerco le uscite che non hai ancora…",
     "playlist_move_hint": "Trascina per riordinare (oppure Alt + frecce)",
     "playlist_order_error": "Non è stato possibile salvare il nuovo ordine su Jellyfin. È stato ripristinato l'ordine precedente.",
-    "playlist_changed_elsewhere": "Questa playlist è stata modificata altrove ed è stata ricaricata. Riprova."
+    "playlist_changed_elsewhere": "Questa playlist è stata modificata altrove ed è stata ricaricata. Riprova.",
+    "new_playlist": "Nuova playlist",
+    "new_playlist_name": "Nome della playlist",
+    "create_playlist": "Crea",
+    "playlist_created": "Playlist \"{name}\" creata."
   },
   "player": {
     "now_playing": "In Riproduzione",
@@ -681,7 +685,9 @@
     "owner_unknown": "Proprietario sconosciuto",
     "filter_user": "Filtra per utente",
     "all_users": "Tutti gli utenti",
-    "load_error": "Impossibile caricare gli utenti Jellyfin."
+    "load_error": "Impossibile caricare gli utenti Jellyfin.",
+    "lyrics_edit_title": "Modifica lyrics per gli utenti",
+    "lyrics_edit_description": "Permetti a ogni account Jellyfin di modificare le lyrics sincronizzate, non solo agli amministratori."
   },
   "lyrics": {
     "found_title": "Testo trovato",

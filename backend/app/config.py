@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     SETUP_COMPLETED: bool = False
     # Former or alternate artist names mapped to the name used in the library, e.g. {"tha Supreme": "thasup"}.
     ARTIST_ALIASES: Dict[str, str] = {}
+    # Regular (non-administrator) Jellyfin accounts may edit synced lyrics.
+    LYRICS_EDIT_USERS: bool = False
 
     class Config:
         env_file = ".env"
@@ -72,6 +74,7 @@ def load_webapp_config():
                 settings.JELLYFIN_SERVER_ID = data["jellyfin_server_id"] or None
             if isinstance(data.get("artist_aliases"), dict):
                 settings.ARTIST_ALIASES = {str(k): str(v) for k, v in data["artist_aliases"].items() if k and v}
+            settings.LYRICS_EDIT_USERS = bool(data.get("lyrics_edit_users", False))
             if "language" in data:
                 settings.LANGUAGE = data["language"] or "en"
             if valid_accent(data.get("accent_color")):
@@ -112,6 +115,9 @@ def save_webapp_config(data: dict):
     language = data.get("language", settings.LANGUAGE) or "en"
     accent_color = data.get("accent_color") if valid_accent(data.get("accent_color")) else settings.ACCENT_COLOR
     setup_completed = data.get("setup_completed", settings.SETUP_COMPLETED)
+    lyrics_edit_users = data.get("lyrics_edit_users", settings.LYRICS_EDIT_USERS)
+    if not isinstance(lyrics_edit_users, bool):
+        lyrics_edit_users = settings.LYRICS_EDIT_USERS
     config_dict = {
         "music_dir": music_dir,
         "jellyfin_url": jellyfin_url,
@@ -122,6 +128,7 @@ def save_webapp_config(data: dict):
         "accent_color": accent_color,
         "setup_completed": bool(setup_completed),
         "artist_aliases": dict(settings.ARTIST_ALIASES or {}),
+        "lyrics_edit_users": lyrics_edit_users,
     }
 
     settings.MUSIC_OUTPUT_DIR = music_dir
@@ -132,6 +139,7 @@ def save_webapp_config(data: dict):
     settings.LANGUAGE = language
     settings.ACCENT_COLOR = accent_color
     settings.SETUP_COMPLETED = bool(setup_completed)
+    settings.LYRICS_EDIT_USERS = lyrics_edit_users
 
     _write_config(config_dict)
 

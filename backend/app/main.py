@@ -9,6 +9,7 @@ from fastapi import FastAPI, Query, HTTPException, BackgroundTasks, Request, Upl
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from typing import List, Optional, Dict, Any
+from pydantic import BaseModel, Field
 
 from app.config import settings, save_webapp_config, valid_accent, save_artist_aliases
 from app.models.schemas import (
@@ -96,6 +97,18 @@ def require_admin(request: Request) -> dict:
     principal = require_app_user(request)
     if not principal.get("is_admin"):
         raise HTTPException(status_code=403, detail="This action is reserved for administrators.")
+    return principal
+
+def can_edit_lyrics(user: dict) -> bool:
+    """Administrators always; other Jellyfin accounts when the administrator allows it (`lyrics_edit_users`)."""
+    if user.get("is_admin"):
+        return True
+    return bool(settings.LYRICS_EDIT_USERS) and not user.get("is_guest") and bool(user.get("id"))
+
+def require_lyrics_editor(request: Request) -> dict:
+    principal = require_app_user(request)
+    if not can_edit_lyrics(principal):
+        raise HTTPException(status_code=403, detail="lyrics_edit_not_allowed")
     return principal
 
 def require_jellyfin_user(request: Request) -> dict:
@@ -199,6 +212,7 @@ def _user_payload(user: dict) -> dict:
         "name": user.get("name"),
         "is_admin": bool(user.get("is_admin")),
         "is_guest": bool(user.get("is_guest")),
+        "can_edit_lyrics": can_edit_lyrics(user),
         "image_url": f"/api/jellyfin/user-image/{user.get('id')}" if user.get("id") and not user.get("is_guest") else "",
     }
 
@@ -569,7 +583,7 @@ async def edit_file_trim(item_id: str, payload: dict, request: Request):
 @app.get("/api/library/lyrics/{item_id}")
 async def edit_lyrics_get(item_id: str, request: Request):
     """The track's `.lrc` sidecar exactly as stored, for the lyrics editor (None when there is no file)."""
-    principal = require_admin(request)
+    principal = require_lyrics_editor(request)
     _, path = await _library_file(principal, item_id)
     content = file_replace_service.read_lyrics(path)
     return {"exists": content is not None, "content": content}
@@ -577,7 +591,7 @@ async def edit_lyrics_get(item_id: str, request: Request):
 @app.put("/api/library/lyrics/{item_id}")
 async def edit_lyrics_save(item_id: str, payload: dict, request: Request):
     """Write the edited synced lyrics to the track's `.lrc` sidecar (previous file backed up)."""
-    principal = require_admin(request)
+    principal = require_lyrics_editor(request)
     content = payload.get("content")
     if not isinstance(content, str) or not content.strip() or len(content.encode("utf-8")) > file_replace_service.LYRICS_MAX_BYTES:
         raise HTTPException(status_code=400, detail="invalid_lyrics")
@@ -1131,6 +1145,33 @@ async def cancel_download_job(job_id: str, request: Request):
         raise HTTPException(status_code=409, detail="This download can no longer be cancelled.")
     return job
 
+class JobPlaylistRequest(BaseModel):
+    playlist_id: str
+    owner_user_id: Optional[str] = None
+
+@app.post("/api/download/job/{job_id}/playlist")
+async def set_job_playlist(job_id: str, req: JobPlaylistRequest, request: Request):
+    """Put a requested song in a playlist: a running job adds it when it finishes, a completed one at once."""
+    principal = require_jellyfin_user(request)
+    job = download_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    if job.owner_user_id != principal.get("id"):
+        raise HTTPException(status_code=403, detail="This download belongs to another user.")
+    playlist, playlist_user_id = await resolve_playlist_access(req.playlist_id, principal, for_mutation=True,
+                                                               owner_user_id=req.owner_user_id)
+    if job.status in {"pending", "downloading", "tagging"} and not job.replace_path:
+        job.playlist_id, job.playlist_name, job.playlist_user_id = playlist.id, playlist.name, playlist_user_id
+        return {"status": "queued", "playlist_name": playlist.name}
+    if job.status == "completed" or job.status == "jellyfin_sync":
+        item_id = await JellyfinService.find_track_id(job.track.title, job.track.artist, user_id=playlist_user_id)
+        if not item_id:
+            raise HTTPException(status_code=409, detail="not_in_library_yet")
+        if not await JellyfinService.add_to_playlist(playlist.id, item_id, user_id=playlist_user_id):
+            raise HTTPException(status_code=502, detail="playlist_not_saved")
+        return {"status": "added", "playlist_name": playlist.name}
+    raise HTTPException(status_code=409, detail="job_not_active")
+
 @app.post("/api/download/job/{job_id}/dismiss", response_model=DownloadJob)
 async def dismiss_download_job(job_id: str, request: Request):
     """Remove one of the signed-in user's failed/interrupted jobs from the live queue."""
@@ -1279,6 +1320,7 @@ async def get_settings(request: Request):
         "jellyfin_user_id": settings.JELLYFIN_USER_ID or "",
         "language": getattr(settings, "LANGUAGE", "en") or "en",
         "setup_completed": getattr(settings, "SETUP_COMPLETED", False),
+        "lyrics_edit_users": bool(settings.LYRICS_EDIT_USERS),
         "jellyfin_music_paths": jellyfin_paths
     }
 
@@ -1473,6 +1515,25 @@ async def add_items_to_playlist(playlist_id: str, req: AddItemsRequest, request:
     principal = require_jellyfin_user(request)
     _, access_user_id = await resolve_playlist_access(playlist_id, principal, for_mutation=True, owner_user_id=req.owner_user_id)
     return await PlaylistCSVService.add_tracks_to_playlist(playlist_id, req.item_ids, user_id=access_user_id)
+
+class CreatePlaylistRequest(BaseModel):
+    name: str = Field(..., max_length=200)
+    item_ids: List[str] = Field(default_factory=list, max_length=500)
+
+@app.post("/api/jellyfin/playlists")
+async def create_jellyfin_playlist(req: CreatePlaylistRequest, request: Request):
+    """Create a Jellyfin playlist owned by the signed-in account, optionally with its first songs."""
+    principal = require_jellyfin_user(request)
+    name = req.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="invalid_name")
+    if any(not re.fullmatch(r"[0-9a-f]{32}", item_id or "") for item_id in req.item_ids):
+        raise HTTPException(status_code=400, detail="invalid_items")
+    playlist_id = await JellyfinService.create_playlist(name, principal["id"], req.item_ids)
+    if not playlist_id:
+        raise HTTPException(status_code=502, detail="playlist_not_created")
+    return {"id": playlist_id, "name": name, "track_count": len(req.item_ids),
+            "owner_user_id": principal["id"], "owner_name": principal.get("name")}
 
 @app.delete("/api/jellyfin/playlist/{playlist_id}/items/{entry_id}")
 async def remove_item_from_playlist(playlist_id: str, entry_id: str, request: Request, owner_user_id: Optional[str] = None):

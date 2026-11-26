@@ -306,7 +306,11 @@
     "catalog_searching_releases": "Looking for releases you don't have yet…",
     "playlist_move_hint": "Drag to reorder (or Alt + arrow keys)",
     "playlist_order_error": "The new order could not be saved to Jellyfin. The previous order is back.",
-    "playlist_changed_elsewhere": "This playlist was changed elsewhere, so it was reloaded. Try again."
+    "playlist_changed_elsewhere": "This playlist was changed elsewhere, so it was reloaded. Try again.",
+    "new_playlist": "New playlist",
+    "new_playlist_name": "Playlist name",
+    "create_playlist": "Create",
+    "playlist_created": "Playlist \"{name}\" created."
   },
   "player": {
     "now_playing": "Now Playing",
@@ -681,7 +685,9 @@
     "filter_user": "Filter by user",
     "all_users": "All users",
     "owner_unknown": "Owner unknown",
-    "load_error": "Could not load Jellyfin users."
+    "load_error": "Could not load Jellyfin users.",
+    "lyrics_edit_title": "Lyrics editing for users",
+    "lyrics_edit_description": "Let every Jellyfin account edit synced lyrics, not only administrators."
   },
   "lyrics": {
     "found_title": "Lyrics found",

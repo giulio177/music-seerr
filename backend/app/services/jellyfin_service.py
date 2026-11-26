@@ -539,6 +539,28 @@ class JellyfinService:
         return None
 
     @classmethod
+    async def create_playlist(cls, name: str, user_id: str, item_ids: Optional[List[str]] = None) -> Optional[str]:
+        """Create an audio playlist owned by `user_id` (optionally with songs); returns its ID."""
+        if not settings.JELLYFIN_API_KEY or not settings.JELLYFIN_URL:
+            return None
+        body = {"Name": name, "UserId": user_id, "MediaType": "Audio", "Ids": list(item_ids or [])}
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            try:
+                res = await client.post(f"{settings.JELLYFIN_URL.rstrip('/')}/Playlists", json=body, headers=cls._headers())
+                if res.status_code not in (200, 201):
+                    print(f"[JellyfinService] create_playlist HTTP {res.status_code}: {res.text[:200]}")
+                    return None
+                playlist_id = (res.json() or {}).get("Id")
+            except Exception as e:
+                print(f"[JellyfinService] create_playlist failed: {e}")
+                return None
+        if playlist_id and cls._owner_map_cache:
+            # The creator is the owner: record it so ownership checks need no rebuild.
+            stamp, owners, known = cls._owner_map_cache
+            cls._owner_map_cache = (stamp, {**owners, playlist_id: user_id}, known | {playlist_id})
+        return playlist_id
+
+    @classmethod
     async def add_to_playlist(cls, playlist_id: str, item_id: str, user_id: Optional[str] = None) -> bool:
         """Aggiunge un brano alla playlist specificata"""
         if not settings.JELLYFIN_API_KEY or not settings.JELLYFIN_URL:

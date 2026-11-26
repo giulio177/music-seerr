@@ -46,7 +46,7 @@ A companion [iOS app](#ios-app) is also available for iPhone (sideloaded via Sid
 - **One player across devices**: the web app and the [iOS app](#ios-app) of the same account share the current song, queue, and progress, and control each other. Audio plays on one device; **Play on this device** moves it.
 - **Previews keep your place**: preview a song while listening, then return to the queue where you left off.
 - **Reorder playlists**: drag songs in a playlist; the new order saves to Jellyfin.
-- **Track menu** on every song: add to a playlist, favorite, or jump to the artist or album.
+- **Track menu** on every song: add to a playlist (or a new one), favorite, or jump to the artist or album.
 - **Listening history** that updates live, tracks how much of each song you heard, and replays previews.
 - **Jellyfin listening sync**: plays in other Jellyfin clients appear in Sonalis within seconds, and library plays here count in Jellyfin.
 - **Activity overview**: downloads and plays per day, failed downloads, top playlists, and most played artists.
@@ -54,7 +54,7 @@ A companion [iOS app](#ios-app) is also available for iPhone (sideloaded via Sid
 ### Fix your library (administrators)
 
 - **Edit file**: trim intros, outros, and silence on a waveform; the cut is lossless and synced lyrics shift with it.
-- **Edit lyrics**: shift synced lyrics, fix single lines while the song plays, or time plain lyrics line by line.
+- **Edit lyrics**: shift synced lyrics, fix single lines while the song plays, or time plain lyrics line by line. An administrator can let every user edit lyrics.
 - **Change file**: when tags are right but the audio is wrong, pick the right track from catalog search with previews; only the audio is replaced (converted to MP3), keeping tags, cover, lyrics, and playlist entries.
 - **Playlist duplicates**: spot songs added more than once, choose which copy to keep, or mark title matches as different songs.
 - **Library import**: move server folders or browser uploads into the library layout, keeping the best-quality copy.

@@ -2976,6 +2976,10 @@
             display: flex;
         }
 
+        .new-playlist-box { display: grid; gap: 14px; }
+        .new-playlist-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .alert-popup-btn.primary { background: var(--accent-gradient); border-color: transparent; }
+
         .alert-popup-box {
             background: #1b1b26;
             border: 1px solid rgba(255, 255, 255, 0.15);
@@ -5934,6 +5938,14 @@
                             <input type="checkbox" role="switch" class="toggle-switch" id="showOtherUsersControls" onchange="saveOtherUsersControlsPreference(this.checked); flashSaved('adminVisibilitySavedFlash')">
                             <span class="saved-flash" id="adminVisibilitySavedFlash" aria-live="polite"></span>
                         </div>
+                        <div class="settings-row admin-only" id="adminLyricsUsersCard" style="display:none;">
+                            <div class="settings-row-copy">
+                                <label for="lyricsEditUsers" class="settings-row-title" data-i18n="users.lyrics_edit_title">Lyrics editing for users</label>
+                                <p class="settings-row-desc" data-i18n="users.lyrics_edit_description">Let every Jellyfin account edit synced lyrics, not only administrators.</p>
+                            </div>
+                            <input type="checkbox" role="switch" class="toggle-switch" id="lyricsEditUsers" onchange="saveLyricsEditUsers(this.checked)">
+                            <span class="saved-flash" id="lyricsUsersSavedFlash" aria-live="polite"></span>
+                        </div>
                     </div>
                 </section>
 
@@ -7883,6 +7895,8 @@
             });
             const controlsCard = document.getElementById('adminDataControlsCard');
             if (controlsCard) controlsCard.style.display = isAdmin ? '' : 'none';
+            const lyricsUsersCard = document.getElementById('adminLyricsUsersCard');
+            if (lyricsUsersCard) lyricsUsersCard.style.display = isAdmin ? '' : 'none';
             const storageCard = document.getElementById('adminStorageSettingsCard');
             if (storageCard) storageCard.style.display = isAdmin ? '' : 'none';
             const importCard = document.getElementById('adminImportCard');
@@ -7925,6 +7939,22 @@
             } catch (error) {
                 const preference = document.getElementById('showOtherUsersControls');
                 if (preference) preference.checked = showOtherUsersControls;
+                showAlertPopup(t('common.error'), t('users.preference_error'));
+            }
+        };
+
+        window.saveLyricsEditUsers = async function(value) {
+            if (!currentAppUser?.is_admin) return;
+            const input = document.getElementById('lyricsEditUsers');
+            try {
+                const response = await fetch('/api/settings', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lyrics_edit_users: Boolean(value) })
+                });
+                if (!response.ok) throw new Error();
+                flashSaved('lyricsUsersSavedFlash');
+            } catch (error) {
+                if (input) input.checked = !value;
                 showAlertPopup(t('common.error'), t('users.preference_error'));
             }
         };
@@ -10587,7 +10617,7 @@
                 if (data.found && data.synced) {
                     if (isJelly && currentPlayingJellyfinTrack === jellyTrack) {
                         currentLyricsSynced = { itemId: jellyTrack.id, text: data.synced };
-                        appleLyricsOverlay.classList.toggle('can-edit', Boolean(currentAppUser?.is_admin));
+                        appleLyricsOverlay.classList.toggle('can-edit', Boolean(currentAppUser?.can_edit_lyrics));
                     }
                     currentLyricsLines = parseLRC(data.synced);
                     renderAppleLyricsLines();
@@ -10597,7 +10627,7 @@
                     if (isJelly && currentPlayingJellyfinTrack === jellyTrack) {
                         // Lyrics without timing: administrators can time them line by line in the editor.
                         currentLyricsPlain = { itemId: jellyTrack.id, text: data.plain };
-                        appleLyricsOverlay.classList.toggle('can-edit', Boolean(currentAppUser?.is_admin));
+                        appleLyricsOverlay.classList.toggle('can-edit', Boolean(currentAppUser?.can_edit_lyrics));
                     }
                     currentLyricsLines = [];
                     appleLyricsWrapper.innerHTML = `
@@ -10814,7 +10844,7 @@
 
         window.openLyricsEditor = async function() {
             const track = currentPlayingJellyfinTrack;
-            if (lyricsEdit || !track || !currentAppUser?.is_admin) return;
+            if (lyricsEdit || !track || !currentAppUser?.can_edit_lyrics) return;
             const fab = document.getElementById('lyricsEditFab');
             fab.disabled = true;
             let raw = null;
@@ -11081,7 +11111,7 @@
             if (currentPlayingJellyfinTrack?.id === state.itemId) {
                 currentLyricsSynced = { itemId: state.itemId, text: content };
                 currentLyricsPlain = null;
-                appleLyricsOverlay.classList.toggle('can-edit', Boolean(currentAppUser?.is_admin));
+                appleLyricsOverlay.classList.toggle('can-edit', Boolean(currentAppUser?.can_edit_lyrics));
                 currentLyricsLines = parseLRC(content);
                 renderAppleLyricsLines();
                 activeLyricIndex = -1;
@@ -11945,6 +11975,53 @@
             }
         }
 
+        // Asks for a name in a glass dialog; resolves to the trimmed name or null when cancelled.
+        function askPlaylistName() {
+            return new Promise(resolve => {
+                const overlay = document.createElement('div');
+                overlay.className = 'alert-popup-overlay open';
+                overlay.setAttribute('role', 'dialog');
+                overlay.setAttribute('aria-modal', 'true');
+                overlay.innerHTML = `<form class="alert-popup-box new-playlist-box">
+                    <div class="alert-popup-title">${escapeHtml(t('jellyfin.new_playlist'))}</div>
+                    <input type="text" class="form-input" maxlength="200" required autocomplete="off" aria-label="${escapeHtml(t('jellyfin.new_playlist_name'))}" placeholder="${escapeHtml(t('jellyfin.new_playlist_name'))}">
+                    <div class="new-playlist-actions">
+                        <button type="button" class="alert-popup-btn" data-cancel>${escapeHtml(t('common.cancel'))}</button>
+                        <button type="submit" class="alert-popup-btn primary">${escapeHtml(t('jellyfin.create_playlist'))}</button>
+                    </div></form>`;
+                const finish = value => { overlay.remove(); document.removeEventListener('keydown', onKey); resolve(value); };
+                const onKey = event => { if (event.key === 'Escape') finish(null); };
+                overlay.addEventListener('click', event => { if (event.target === overlay || event.target.closest('[data-cancel]')) finish(null); });
+                overlay.querySelector('form').addEventListener('submit', event => {
+                    event.preventDefault();
+                    const name = overlay.querySelector('input').value.trim();
+                    if (name) finish(name);
+                });
+                document.addEventListener('keydown', onKey);
+                document.body.append(overlay);
+                overlay.querySelector('input').focus();
+            });
+        }
+
+        // Creates a playlist owned by the signed-in account with this song as its first entry.
+        async function createPlaylistWith(track) {
+            const name = await askPlaylistName();
+            if (!name) return;
+            try {
+                const response = await fetch('/api/jellyfin/playlists', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, item_ids: track?.id ? [track.id] : [] })
+                });
+                if (!response.ok) throw new Error(String(response.status));
+                invalidateJellyfinCachedJson('menu-playlists');
+                invalidateJellyfinCachedJson('menu-playlists:all');
+                await loadPlaylists();
+                showAlertPopup(t('common.success'), t('jellyfin.playlist_created', { name }), true);
+            } catch (error) {
+                showAlertPopup(t('common.error'), t('jellyfin.playlist_action_error', { status: Number(error.message) || '—' }));
+            }
+        }
+
         async function removeTrackFromPlaylist(track, playlistId, ownerId) {
             const entryId = track.playlist_entry_id || track.id;
             const index = currentDetailType === 'playlist' && currentDetailId === playlistId ? currentDetailTracks.indexOf(track) : -1;
@@ -11990,11 +12067,12 @@
                 label: t('jellyfin.add_to_playlist_menu'), icon: 'playlistAdd',
                 submenu: async () => {
                     const playlists = await accessiblePlaylists();
-                    return { empty: t('jellyfin.playlists_unavailable'), items: playlists.map(playlist => {
+                    const create = { label: t('jellyfin.new_playlist'), icon: 'playlistAdd', action: () => createPlaylistWith(track) };
+                    return { empty: t('jellyfin.playlists_unavailable'), items: [create, ...playlists.map(playlist => {
                         const label = playlist.owner_name && allUsers ? `${playlist.name} · ${playlist.owner_name}` : playlist.name;
                         if (allUsers && !playlist.owner_user_id) return { label, submenu: ownerPickerPage(owner => addTrackToPlaylist(track, playlist.id, owner)) };
                         return { label, action: () => addTrackToPlaylist(track, playlist.id, playlist.owner_user_id) };
-                    }) };
+                    })] };
                 }
             }];
             if (playlistId) {
@@ -14161,6 +14239,8 @@
                     if (dirInput) dirInput.value = data.music_dir || '';
                     if (urlInput) urlInput.value = data.jellyfin_url || '';
                     if (keyInput) keyInput.value = data.jellyfin_api_key || '';
+                    const lyricsUsers = document.getElementById('lyricsEditUsers');
+                    if (lyricsUsers) lyricsUsers.checked = Boolean(data.lyrics_edit_users);
                     populateJellyfinUserSelect(data.users || [], data.jellyfin_user_id || '');
 
                     const lang = data.language || safeLocalStorageGet('app_language') || 'en';
