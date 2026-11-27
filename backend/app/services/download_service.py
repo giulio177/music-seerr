@@ -136,6 +136,10 @@ class DownloadManager:
 
         # Lidarr-style layout: Album Artist/Album (Year)/Album Artist - Album - NN - Title.mp3
         release = await resolve_release(track)
+        source_id = youtube_video_id(track)
+        if source_id and release.cover_url == track.cover_url:
+            # No catalog match: the video thumbnail is not catalog art; look for a cover, else embed the thumbnail.
+            release.cover_url = None
         if not release.cover_url:
             release.cover_url = await find_cover_url(track)
         if release.cover_url and not track.cover_url:
@@ -168,7 +172,9 @@ class DownloadManager:
         # Cerca la traccia audio su YouTube Music / YouTube
         # Prefer the upload whose length matches the catalog (no video intros/outros); fall back to the first hit.
         job.message = "Choosing the version with the right length..."
-        search_query = await file_replace_service.pick_source(track.artist, track.title, int(track.duration or 0)) \
+        # A song requested from a YouTube link downloads that exact video.
+        search_query = (f"https://www.youtube.com/watch?v={source_id}" if source_id else None) \
+            or await file_replace_service.pick_source(track.artist, track.title, int(track.duration or 0)) \
             or f"ytsearch1:{track.artist} - {track.title} audio"
         cmd = [
             sys.executable,
@@ -488,6 +494,12 @@ class DownloadManager:
             audio.save()
         except Exception as e:
             print(f"[Tagging] Could not write tags to {path}: {e}")
+
+
+def youtube_video_id(track: TrackItem) -> Optional[str]:
+    """The video of a song requested from a YouTube link (`id` is `youtube:<video id>`)."""
+    source, _, video_id = (track.id or "").partition(":")
+    return video_id if source == "youtube" and file_replace_service.VIDEO_ID.match(video_id) else None
 
 
 def _free_stem(folder: str, stem: str) -> str:

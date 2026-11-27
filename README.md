@@ -80,7 +80,7 @@ A native companion client is available in a separate repository: [Sonalis for iO
 - **iOS only (iPhone)**: there is no Android or iPad app.
 - **Not on the App Store**: installed by sideloading with [SideStore](https://sidestore.io) or [AltStore](https://altstore.io); a free Apple ID is enough.
 - **iOS 26 or later**: required for the full experience (native tab bar mini player, Siri and Shortcuts, Control Center buttons, Action button, and Spotlight).
-- **Online and offline**: browse your Jellyfin library, search and request songs, download tracks, albums, and playlists with synced lyrics for offline playback, and share live playback and preferences with the web app.
+- **Online and offline**: browse your Jellyfin library, search and request songs (or request one from a YouTube link when the catalog lacks it), download tracks, albums, and playlists with synced lyrics for offline playback, and share live playback and preferences with the web app.
 
 See the [sonalis-ios repository](https://github.com/giulio177/sonalis-ios) for the SideStore/AltStore source URL, install steps, and free Apple ID limits.
 

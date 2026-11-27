@@ -1070,6 +1070,29 @@ async def download_lrc_file(item_id: str, request: Request, title: str, artist: 
         headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
 
+@app.get("/api/youtube/resolve", response_model=TrackItem)
+async def resolve_youtube_link(request: Request, url: str = Query(..., max_length=2048)):
+    """A song to request from a YouTube or YouTube Music link, for music the catalog search does not find.
+
+    Title and artist are guessed from the video; the client may correct them before `POST /api/download`, which then
+    downloads that exact video (`id` is `youtube:<video id>`).
+    """
+    principal = require_app_user(request)
+    video_id = file_replace_service.video_id_from_url(url)
+    if not video_id:
+        raise HTTPException(status_code=400, detail="not_youtube_link")
+    try:
+        info = await file_replace_service.video_info(video_id)
+    except (RuntimeError, ValueError) as exc:
+        print(f"[YouTube] Could not read {video_id}: {exc}")
+        raise HTTPException(status_code=404, detail="video_unavailable")
+    track = TrackItem(id=f"youtube:{video_id}", title=info["title"], artist=info["artist"], album=info["album"],
+                      duration=info["duration"], cover_url=info["thumbnail"], source="youtube")
+    if not principal.get("is_guest"):
+        track.jellyfin_id = await JellyfinService.find_track_id(info["title"], info["artist"], strict=True)
+        track.in_jellyfin = bool(track.jellyfin_id)
+    return track
+
 @app.post("/api/download", response_model=DownloadJob)
 async def start_download(req: DownloadRequest, request: Request):
     """

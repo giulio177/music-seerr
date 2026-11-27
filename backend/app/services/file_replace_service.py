@@ -74,6 +74,60 @@ async def search_candidates(query: str, limit: int = 12) -> List[dict]:
     return results
 
 
+YOUTUBE_HOSTS = {"youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com", "youtu.be", "www.youtu.be"}
+# Video title noise: "(Official Video)", "[Lyrics]", "(Audio)", ...
+_TITLE_NOISE = re.compile(r"\s*[\(\[][^\)\]]*\b(official|video|audio|lyrics?|testo|visuali[sz]er|hd|4k|m/?v|clip)\b[^\)\]]*[\)\]]", re.I)
+
+
+def video_id_from_url(url: str) -> Optional[str]:
+    """The video ID of a YouTube or YouTube Music link (watch, youtu.be, shorts, live, embed); None otherwise."""
+    from urllib.parse import parse_qs, urlsplit
+    text = (url or "").strip()
+    if not text or len(text) > 2048:
+        return None
+    if "://" not in text:
+        text = "https://" + text
+    try:
+        parts = urlsplit(text)
+    except ValueError:
+        return None
+    host = (parts.hostname or "").lower()
+    if parts.scheme not in {"http", "https"} or host not in YOUTUBE_HOSTS:
+        return None
+    segments = [part for part in parts.path.split("/") if part]
+    if host.endswith("youtu.be"):
+        candidate = segments[0] if segments else ""
+    elif segments[:1] in (["shorts"], ["live"], ["embed"], ["v"]) and len(segments) > 1:
+        candidate = segments[1]
+    else:
+        candidate = (parse_qs(parts.query).get("v") or [""])[0]
+    return candidate if VIDEO_ID.match(candidate) else None
+
+
+async def video_info(video_id: str) -> dict:
+    """Title, artist, album, length, and thumbnail of one video, guessed from YouTube Music fields or the title."""
+    raw = await _yt_dlp("--dump-single-json", "--skip-download", "--no-playlist",
+                        f"https://www.youtube.com/watch?v={video_id}", timeout=45)
+    data = json.loads(raw)
+    channel = re.sub(r"\s*-\s*Topic$|VEVO$", "", data.get("channel") or data.get("uploader") or "").strip()
+    title = (data.get("track") or "").strip()
+    artist = (data.get("artist") or (data.get("artists") or [None])[0] or "").split(",")[0].strip()
+    if not title:
+        title = _TITLE_NOISE.sub("", data.get("title") or "").strip()
+        pieces = re.split(r"\s+[-\u2013\u2014]\s+", title, maxsplit=1)
+        if len(pieces) == 2 and not artist:
+            artist, title = pieces[0].strip(), pieces[1].strip()
+    return {
+        "id": video_id,
+        "title": title[:300] or video_id,
+        "artist": (artist or channel)[:200] or "Unknown Artist",
+        "album": (data.get("album") or "").strip()[:200],
+        "duration": int(data.get("duration") or 0),
+        "thumbnail": f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg",
+        "channel": channel,
+    }
+
+
 async def local_path_for(jellyfin_path: str) -> Optional[str]:
     """Map a path reported by Jellyfin to the file in the music root (Jellyfin may mount it elsewhere)."""
     music_root = os.path.realpath(settings.MUSIC_OUTPUT_DIR)
