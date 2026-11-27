@@ -667,6 +667,20 @@ async def _album_of_item(item_id: str) -> Optional[str]:
     ALBUM_OF_ITEM[item_id] = album_id
     return album_id
 
+@app.get("/api/jellyfin/locate")
+async def locate_library_track(request: Request, item_id: str = "", title: str = "", artist: str = ""):
+    """Library song and its album, by Jellyfin ID or else by title and artist (search results, request history)."""
+    require_jellyfin_user(request)
+    if not settings.JELLYFIN_URL or not settings.JELLYFIN_API_KEY:
+        raise HTTPException(status_code=400, detail="Jellyfin is not configured.")
+    track_id = item_id if re.fullmatch(r"[0-9a-f]{32}", item_id or "") else None
+    if not track_id and title.strip():
+        track_id = await JellyfinService.find_track_id(title[:200], artist[:200], strict=bool(artist))
+    album_id = await _album_of_item(track_id) if track_id else None
+    if not track_id or not album_id:
+        raise HTTPException(status_code=404, detail="not_in_library")
+    return {"id": track_id, "album_id": album_id}
+
 @app.get("/api/jellyfin/track-cover")
 async def get_jellyfin_track_cover(request: Request, title: str, artist: str = ""):
     """Artwork of a library track found by title and artist, for history rows saved without a cover."""

@@ -851,6 +851,8 @@ class JellyfinService:
             "index_number": item.get("IndexNumber"),
             "disc_number": item.get("ParentIndexNumber"),
             "has_lyrics": item.get("HasLyrics", False),
+            # Jellyfin's Audio Normalization task: dB that bring the song to -18 LUFS (None until analysed).
+            "normalization_gain": item.get("NormalizationGain"),
             "is_favorite": bool((item.get("UserData") or {}).get("IsFavorite")),
             "playlist_entry_id": item.get("PlaylistItemId"),
             "path": item.get("Path", ""),
