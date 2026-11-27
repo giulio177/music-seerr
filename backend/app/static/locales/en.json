@@ -526,7 +526,8 @@
     "alias_error_alias_same_name": "The two names are the same.",
     "alias_error_alias_duplicate": "That name already has an alias.",
     "alias_error_invalid_aliases": "Enter both names (up to 200 characters each).",
-    "alias_error_config_not_saved": "The aliases could not be saved."
+    "alias_error_config_not_saved": "The aliases could not be saved.",
+    "guide_link": "Settings guide: what each setting does and why it exists"
   },
   "auth": {
     "checking_session": "Checking your session…",

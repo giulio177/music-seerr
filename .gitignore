@@ -47,3 +47,4 @@
 **/*.lrc
 **/*.md
 !/README.md
+!/docs/SETTINGS.md

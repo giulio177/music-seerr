@@ -8,7 +8,7 @@
 
 Request single songs for your Jellyfin library: search, preview, download with synced lyrics, and play them from the web or iPhone.
 
-[Why](#why) · [Features](#features) · [iOS app](#ios-app) · [Install](#install) · [Configuration](#configuration) · [Library layout](#library-layout) · [Security](#security)
+[Why](#why) · [Features](#features) · [iOS app](#ios-app) · [Install](#install) · [Configuration](#configuration) · [Settings guide](docs/SETTINGS.md) · [Library layout](#library-layout) · [Security](#security)
 
 ![Search results with a preview playing in the player](docs/screenshots/search.png)
 
@@ -102,6 +102,8 @@ docker compose up -d
 - Images are published for `linux/amd64` and `linux/arm64` (including 64-bit Raspberry Pi OS) at `ghcr.io/giulio177/sonalis`.
 
 ## Configuration
+
+Every in-app setting, with what it does and why it exists, is explained in the [settings guide](docs/SETTINGS.md).
 
 ### Environment variables
 
